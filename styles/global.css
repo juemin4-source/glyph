@@ -55,6 +55,43 @@ body {
 /* ===== App Layout ===== */
 .app-layout { display: flex; flex-direction: column; height: 100vh; }
 
+/* ===== Glyph Top Bar ===== */
+.glyph-topbar {
+  display: flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 12px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+.glyph-topbar-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border: none; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.glyph-topbar-btn:hover { background: var(--bg-raised); color: var(--text-primary); }
+.glyph-topbar-title {
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  margin-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 200px;
+}
+.glyph-topbar-spacer { flex: 1; }
+
+/* ===== Glyph Workspace ===== */
+.glyph-workspace {
+  display: flex; flex: 1; overflow: hidden;
+}
+.glyph-sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-default);
+  overflow-y: auto;
+}
+.glyph-main {
+  flex: 1; overflow-y: auto;
+  background: var(--bg-canvas);
+}
+
 /* ===== Offline Banner (editor.html) ===== */
 .offline-banner {
   display: none; align-items: center; justify-content: center; gap: 6px;
