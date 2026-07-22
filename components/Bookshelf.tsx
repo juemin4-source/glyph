@@ -107,6 +107,32 @@ function BookCard({
     setMenuOpen(false);
   };
 
+  const COVER_PRESETS: [string, string][] = [
+    ['#6366f1', '#8b5cf6'], ['#1a1a3e', '#0d0d2b'], ['#2e1a1a', '#1f0f0f'],
+    ['#1a2e1a', '#0f1f0f'], ['#1a1a2e', '#0f0f1a'], ['#2e2a1a', '#1f1f0f'],
+    ['#1a2a3e', '#0f1f2e'], ['#3e1a1a', '#2a0f0f'], ['#0a2a1a', '#051f0f'],
+    ['#2a1a3e', '#1a0f2e'], ['#3e2a1a', '#2a1a0f'], ['#1a2a2a', '#0f1a1a'],
+  ];
+
+  const handleChangeCover = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Find current gradient in presets and pick the next one
+    const currentIdx = COVER_PRESETS.findIndex(p =>
+      p[0] === project.gradient[0] && p[1] === project.gradient[1]
+    );
+    const nextIdx = (currentIdx + 1) % COVER_PRESETS.length;
+    const newGradient = COVER_PRESETS[nextIdx];
+    try {
+      await api.updateProject({
+        id: project.id, name: project.title, genre: project.genre,
+        status: project.status, wordCount: project.wordCount,
+        gradient: JSON.stringify(newGradient),
+        createdAt: Date.now(), updatedAt: Date.now()
+      });
+      onRefreshProjects?.();
+    } catch (e) { console.error('Failed to update cover', e); }
+  };
+
   const genreBg = GENRE_GRADIENT_BG[project.genre] || GENRE_GRADIENT_BG['其他'];
   const genreRadial = GENRE_RADIAL_GLOW[project.genre] || '';
 
@@ -162,7 +188,7 @@ function BookCard({
 
       {/* Cover edit button (pencil, shown on hover) */}
       <button
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleChangeCover}
         aria-label="换封面色"
         title="换封面色"
         style={{

@@ -16,7 +16,6 @@ import type { WorldObject, ObjectType, ObjectStatus, CanonLevel, SaveStatus } fr
 import { OBJECT_TYPES, OBJECT_STATUSES, CANON_LEVELS, STATUS_DISPLAY, CANON_COLORS } from '../types/world';
 import { TEMPLATES } from '../data/seed';
 import { markdownToHtml, ensureEditorContent, htmlToMarkdown, isHtmlContent, countWords } from '../utils/markdown';
-import DocOutline from './DocOutline';
 import { Check, RefreshCw, X, Eye } from 'lucide-react';
 import type { ChapterPacket } from '../contracts/chapter-packet.contract';
 
@@ -412,7 +411,6 @@ export default function DocumentView({
   if (!currentObject) {
     return (
       <div className="doc-view">
-        <DocOutline allObjects={allObjects} currentObjectId={null} onNavigate={onNavigate} onCreateObject={onCreateObject} />
         <div className="doc-editor-area">
           <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>
             <p style={{ fontSize: 18, marginBottom: 16 }}>选择或创建一个对象</p>
@@ -431,7 +429,6 @@ export default function DocumentView({
 
   return (
     <div className="doc-view">
-      <DocOutline allObjects={allObjects} currentObjectId={currentObject.id} onNavigate={onNavigate} onCreateObject={onCreateObject} />
       <div className="doc-editor-area">
         {renderToolbar()}
         {renderProperties()}
