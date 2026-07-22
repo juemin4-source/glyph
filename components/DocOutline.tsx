@@ -1,10 +1,17 @@
-﻿import { useState, useMemo, type ReactNode } from 'react';
-import { Trash2, FileText, User, Lock, Search, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Globe } from 'lucide-react';
+import { useState, useMemo, type ReactNode } from 'react';
+import { Trash2, FileText, User, Lock, Search, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Hash, Globe } from 'lucide-react';
 import type { WorldObject, ObjectType } from '../types/world';
+
+interface HeadingItem {
+  level: 1 | 2 | 3;
+  text: string;
+  lineNumber: number;
+}
 
 interface DocOutlineProps {
   allObjects: WorldObject[];
   currentObjectId: string | null;
+  currentObjectContent?: string;
   onNavigate: (name: string, id?: string) => void;
   onCreateObject?: (templateType: ObjectType) => void;
 }
@@ -24,7 +31,6 @@ const GROUPS: GroupConfig[] = [
   { key: 'setting', label: '设定', icon: <Globe size={14} />, predicate: (o) => ['地点', '组织', '规则/机制', '事件', '物品', '术语'].includes(o.type) && o.status !== '废弃' && o.status !== '草稿' },
 ];
 
-/** Map group key to the most appropriate ObjectType to create */
 function createTypeForGroup(groupKey: string): ObjectType {
   switch (groupKey) {
     case 'chapter': return '章节';
@@ -48,7 +54,54 @@ function statusIcon(status: string): ReactNode {
   }
 }
 
-export default function DocOutline({ allObjects, currentObjectId, onNavigate, onCreateObject }: DocOutlineProps) {
+/** Parse Markdown ATX headings (# ## ###) from content text */
+function parseHeadings(content: string): HeadingItem[] {
+  const lines = content.split('\n');
+  const headings: HeadingItem[] = [];
+  const re = /^(#{1,3})\s+(.+?)(?:\s+#{1,3})?$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(re);
+    if (match) {
+      const level = match[1].length as 1 | 2 | 3;
+      const text = match[2].trim();
+      if (text) {
+        headings.push({ level, text, lineNumber: i });
+      }
+    }
+  }
+  return headings;
+}
+
+function HeadingOutline({ headings }: { headings: HeadingItem[] }) {
+  if (headings.length === 0) return null;
+
+  return (
+    <div className="outline-group">
+      <div className="outline-group-header">
+        <Hash size={14} />
+        <span className="outline-group-label" style={{ marginLeft: 6 }}>标题</span>
+        <span className="outline-count">{headings.length}</span>
+      </div>
+      <div className="outline-items">
+        {headings.map((h, idx) => (
+          <div
+            key={`h-${idx}-${h.lineNumber}`}
+            className="outline-item outline-heading-item"
+            title={`${h.text} (第 ${h.lineNumber + 1} 行)`}
+            style={{ paddingLeft: 12 + (h.level - 1) * 16 }}
+          >
+            <span className="outline-item-name" style={{ fontSize: 12 - h.level * 0.5, fontWeight: h.level === 1 ? 600 : 400 }}>
+              {h.text}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function DocOutline({ allObjects, currentObjectId, currentObjectContent, onNavigate, onCreateObject }: DocOutlineProps) {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
@@ -65,6 +118,11 @@ export default function DocOutline({ allObjects, currentObjectId, onNavigate, on
       .filter(g => g.items.length > 0);
   }, [allObjects]);
 
+  const headings = useMemo(() => {
+    if (!currentObjectContent) return [];
+    return parseHeadings(currentObjectContent);
+  }, [currentObjectContent]);
+
   return (
     <div className={`doc-outline ${panelCollapsed ? 'collapsed' : ''}`}>
       <div className="doc-outline-header">
@@ -75,6 +133,7 @@ export default function DocOutline({ allObjects, currentObjectId, onNavigate, on
       </div>
       {!panelCollapsed && (
         <div className="doc-outline-tree">
+          {/* File-level object groups */}
           {groups.map(group => (
             <div key={group.key} className="outline-group">
               <div className="outline-group-header" onClick={() => toggleGroup(group.key)}>
@@ -102,7 +161,11 @@ export default function DocOutline({ allObjects, currentObjectId, onNavigate, on
               )}
             </div>
           ))}
-          {groups.length === 0 && (
+
+          {/* Markdown heading outline (current document) */}
+          <HeadingOutline headings={headings} />
+
+          {groups.length === 0 && headings.length === 0 && (
             <div className="outline-empty">
               <div style={{ marginBottom: 8 }}>暂无对象</div>
               {onCreateObject && (
@@ -117,4 +180,3 @@ export default function DocOutline({ allObjects, currentObjectId, onNavigate, on
     </div>
   );
 }
-

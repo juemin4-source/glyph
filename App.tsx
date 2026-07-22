@@ -408,6 +408,7 @@ function AppInner() {
             <DocOutline
               allObjects={objects}
               currentObjectId={selectedObjectId}
+              currentObjectContent={currentObject?.content}
               onNavigate={onNavigate}
               onCreateObject={onCreateObject}
             />
