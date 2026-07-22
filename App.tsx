@@ -35,6 +35,8 @@ import { ToastProvider, useToast } from './components/Toast';
 
 import './styles/global.css';
 import './styles/variables.css';
+import './styles/editor.css';
+import './styles/ai.css';
 import './components/ui/design-tokens.css';
 
 // ── IDs ──

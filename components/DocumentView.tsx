@@ -9,7 +9,7 @@
  */
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { WikiLink } from '../extensions/WikiLink';
 import type { WorldObject, ObjectType, ObjectStatus, CanonLevel, SaveStatus } from '../types/world';
@@ -51,7 +51,7 @@ export default function DocumentView({
   chapterPacket,
   onGenerateFromPacket,
 }: DocumentViewProps) {
-  const [localEditMode, setLocalEditMode] = useState<EditMode>('source');
+  const [localEditMode, setLocalEditMode] = useState<EditMode>('wysiwyg');
   // Use external editMode when provided by parent (nav-bar controlled)
   const editMode = externalEditorMode ?? localEditMode;
   const setEditMode = (mode: EditMode) => {
@@ -391,7 +391,24 @@ export default function DocumentView({
     if (editMode === 'wysiwyg') {
       return (
         <div className="doc-editor tiptap-editor">
-          {editor && <EditorContent editor={editor} />}
+          {editor && (
+            <>
+              <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: 'top' }}>
+                <div className="bubble-menu">
+                  <button onClick={() => editor.chain().focus().toggleBold().run()} className={`bm-btn ${editor.isActive('bold') ? 'active' : ''}`} style={{ fontWeight: 700 }}>B</button>
+                  <button onClick={() => editor.chain().focus().toggleItalic().run()} className={`bm-btn ${editor.isActive('italic') ? 'active' : ''}`} style={{ fontStyle: 'italic' }}>I</button>
+                  <button onClick={() => editor.chain().focus().toggleStrike().run()} className={`bm-btn ${editor.isActive('strike') ? 'active' : ''}`} style={{ textDecoration: 'line-through' }}>S</button>
+                  <span className="bm-sep" />
+                  <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={`bm-btn ${editor.isActive('heading', { level: 2 }) ? 'active' : ''}`}>H2</button>
+                  <button onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={`bm-btn ${editor.isActive('heading', { level: 3 }) ? 'active' : ''}`}>H3</button>
+                  <span className="bm-sep" />
+                  <button onClick={() => editor.chain().focus().toggleBlockquote().run()} className={`bm-btn ${editor.isActive('blockquote') ? 'active' : ''}`}>❝</button>
+                  <button onClick={() => editor.chain().focus().toggleBulletList().run()} className={`bm-btn ${editor.isActive('bulletList') ? 'active' : ''}`}>≡</button>
+                </div>
+              </BubbleMenu>
+              <EditorContent editor={editor} />
+            </>
+          )}
         </div>
       );
     }
