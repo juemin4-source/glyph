@@ -1,0 +1,48 @@
+.bookshelfPage {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.appLayout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.mainContent {
+  flex: 1;
+  overflow: auto;
+  min-width: 0;
+}
+
+.docSplit {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.inspectorToggle {
+  width: 24px;
+  border: none;
+  border-left: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.inspectorToggle:hover {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}

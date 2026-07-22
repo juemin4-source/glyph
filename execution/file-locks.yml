@@ -1,0 +1,232 @@
+﻿# 织梦机 v1.2 文件锁
+# 定义各角色的文件操作权限
+# 优先级：P0
+# ---
+# rule: 未在此文件中声明的文件，Worker 不得编辑。
+# rule: 标记为 chancellor_approval_required 的文件，Worker 提出 issue 后需 Chancellor 审批。
+# rule: 标记为 read_only 的文件，任何角色不得修改。
+# rule: 冲突时，逐层上报：worker → version-lead → chancellor。
+
+# ============================================================
+# worker-fe 授权文件（前端 TypeScript/React）
+# ============================================================
+# worker-fe 可以创建、修改、删除以下文件。
+# 新创建的文件会自动纳入 worker-fe 权限范围。
+
+worker-fe:
+  directories:
+    - path: "projects/zhimengji/src/"
+      note: "前端源码根目录 — 所有 .ts/.tsx/.css 文件"
+      recursive: true
+    - path: "projects/zhimengji/src/components/"
+      note: "React 组件"
+      recursive: true
+    - path: "projects/zhimengji/src/lib/"
+      note: "库文件 — SyncManager, Changelog 等"
+      recursive: true
+    - path: "projects/zhimengji/src/hooks/"
+      note: "自定义 hooks — useSaveStatus, useGlobalSearch 等"
+      recursive: true
+    - path: "projects/zhimengji/src/types/"
+      note: "TypeScript 类型定义"
+      recursive: true
+    - path: "projects/zhimengji/src/utils/"
+      note: "工具函数"
+      recursive: true
+    - path: "projects/zhimengji/src/extensions/"
+      note: "TipTap 扩展"
+      recursive: true
+    - path: "projects/zhimengji/src/styles/"
+      note: "全局样式和 CSS 变量"
+      recursive: true
+    - path: "projects/zhimengji/src/data/"
+      note: "种子数据/模板数据"
+      recursive: true
+    - path: "projects/zhimengji/src/__tests__/"
+      note: "前端测试文件"
+      recursive: true
+    - path: "projects/zhimengji/src/parser/"
+      note: "Markdown 解析器"
+      recursive: true
+
+  files:
+    - path: "projects/zhimengji/src/App.tsx"
+      note: "根组件 — 集成 SyncManager、Changelog、状态路由"
+    - path: "projects/zhimengji/src/main.tsx"
+      note: "入口文件"
+    - path: "projects/zhimengji/src/tauri-api.ts"
+      note: "Tauri IPC 封装层"
+    - path: "projects/zhimengji/src/vite-env.d.ts"
+      note: "Vite 类型声明"
+    - path: "projects/zhimengji/tsconfig.json"
+      note: "TypeScript 配置"
+    - path: "projects/zhimengji/tsconfig.node.json"
+      note: "TypeScript Node 配置"
+    - path: "projects/zhimengji/vite.config.ts"
+      note: "Vite 构建配置"
+    - path: "projects/zhimengji/index.html"
+      note: "HTML 入口"
+    - path: "projects/zhimengji/package.json"
+      note: "依赖管理"
+
+# ============================================================
+# worker-be 授权文件（后端 Rust/Tauri）
+# ============================================================
+
+worker-be:
+  directories:
+    - path: "projects/zhimengji/src-tauri/src/"
+      note: "Rust 后端源码"
+      recursive: true
+    - path: "projects/zhimengji/src-tauri/"
+      note: "Tauri 配置和构建文件"
+      recursive: false
+
+  files:
+    - path: "projects/zhimengji/src-tauri/Cargo.toml"
+      note: "Rust 依赖管理"
+    - path: "projects/zhimengji/src-tauri/tauri.conf.json"
+      note: "Tauri 应用配置"
+    - path: "projects/zhimengji/src-tauri/build.rs"
+      note: "Rust 构建脚本"
+
+# ============================================================
+# 读保护文件（Worker 可读不可写）
+# ============================================================
+# 这些文件包含产品定义和文档，Worker 可以读取以理解上下文，
+# 但不能修改。修改由 product-manager / design-lead 负责。
+
+read_only:
+  directories:
+    - path: "projects/zhimengji/docs/v1.2/"
+      note: "v1.2 产品与设计规格"
+      recursive: true
+    - path: "projects/zhimengji/docs/product/"
+      note: "产品文档"
+      recursive: true
+
+  files:
+    - path: "projects/zhimengji/docs/execution/contracts.json"
+      note: "实现契约 — 修改需 Chancellor 审批"
+    - path: "projects/zhimengji/docs/execution/team-conventions.md"
+      note: "团队约定 — 修改需 Chancellor 审批"
+    - path: "projects/zhimengji/docs/execution/file-locks.yml"
+      note: "文件锁本身 — 修改需 Chancellor 审批"
+
+# ============================================================
+# Chancellor 审批文件（Worker 提出 issue，Chancellor 审批后修改）
+# ============================================================
+# 这些文件涉及架构决策和公共契约。
+# Worker 可以在实现过程中发现需要修改时提出 issue，
+# 由 Chancellor 或 Version Lead 审批后再修改。
+
+chancellor_approval_required:
+  files:
+    - path: "projects/zhimengji/docs/execution/contracts.json"
+      note: "修改契约影响所有 Worker，需 Chancellor 审批"
+    - path: "projects/zhimengji/docs/execution/team-conventions.md"
+      note: "修改约定影响所有团队协作"
+    - path: "projects/zhimengji/docs/execution/file-locks.yml"
+      note: "修改文件锁权限涉及安全"
+    - path: "projects/zhimengji/docs/v1.2/product-spec-v1.2.md"
+      note: "产品规格变更需产品经理 review"
+    - path: "projects/zhimengji/docs/v1.2/design-spec-v1.2.md"
+      note: "设计规格变更需设计 lead review"
+
+  directories:
+    - path: "projects/zhimengji/src-tauri/"
+      note: "后端架构变更 — 新增命令/表/依赖需审批"
+      recursive: true
+      description: "后端架构变更（新增 Tauri 命令、数据库表、依赖）均需审批"
+
+# ============================================================
+# 跨 Worker 共享文件（worker-fe 和 worker-be 同时涉及）
+# ============================================================
+# 这些文件需要前后端同时修改，应协调调度避免冲突。
+
+shared:
+  - file: "projects/zhimengji/src/tauri-api.ts"
+    between: ["worker-fe", "worker-be"]
+    note: "前端 IPC 封装 — 新增命令需要 worker-be 在 Rust 端实现"
+
+  - file: "projects/zhimengji/src/types/world.ts"
+    between: ["worker-fe", "worker-fe"]
+    note: "仅 worker-fe 操作，但影响 Inspector/DocumentView/CanvasView 多组件"
+
+  - file: "projects/zhimengji/src-tauri/src/commands.rs"
+    between: ["worker-be", "worker-fe"]
+    note: "后端命令 — 新增命令后 worker-fe 需在 tauri-api.ts 中添加对应封装"
+
+  - file: "projects/zhimengji/src-tauri/src/models.rs"
+    between: ["worker-be", "worker-fe"]
+    note: "数据类型 — 修改字段会影响前后端序列化"
+
+  - file: "projects/zhimengji/src-tauri/src/db.rs"
+    between: ["worker-be", "worker-fe"]
+    note: "数据库操作 — 修改 schema 需通知前端相关变更"
+
+# ============================================================
+# 冲突处理规则
+# ============================================================
+
+conflict_rules:
+  - scenario: "worker-fe 和 worker-be 需要修改同一个文件"
+    resolution: |
+      1. 确认修改范围不重叠（不同函数/不同区域）
+      2. 如果重叠：优先完成 worker-be 的 schema/API 变更
+      3. worker-fe 在 worker-be 提交后再做前端适配
+      4. 如果无法排序：上报 Version Lead 协调
+
+  - scenario: "Worker 需要修改 chancellor_approval_required 文件"
+    resolution: |
+      1. Worker 在实现过程中发现需要修改契约
+      2. 提交 Issue（包含：需要修改什么、为什么、影响范围）
+      3. Version Lead 初审 → Chancellor 终审
+      4. 审批通过后 Worker 方可修改
+
+  - scenario: "两个 Worker 同时需要修改同一个文件的不同区域"
+    resolution: |
+      1. 通过 git 标准 merge 流程处理
+      2. 如果 merge 冲突与语义相关（同个函数签名变更）：
+         上报 Version Lead 仲裁
+
+  - scenario: "Worker 需要修改 read_only 文件"
+    resolution: |
+      1. 禁止直接修改
+      2. 提出 Issue 说明修改需求
+      3. 由该文件的拥有者角色（product-manager / design-lead）进行修改
+      4. Worker 等待修改完成后继续
+
+# ============================================================
+# Worker 行为边界
+# ============================================================
+
+worker_constraints:
+  - role: "worker-fe"
+    must_read_before_implement:
+      - "projects/zhimengji/docs/v1.2/product-spec-v1.2.md"
+      - "projects/zhimengji/docs/v1.2/design-spec-v1.2.md"
+      - "projects/zhimengji/docs/execution/contracts.json"
+      - "projects/zhimengji/docs/execution/team-conventions.md"
+      - "projects/zhimengji/docs/execution/file-locks.yml"
+      - "projects/zhimengji/src/types/world.ts"
+      - "projects/zhimengji/src/tauri-api.ts"
+
+  - role: "worker-be"
+    must_read_before_implement:
+      - "projects/zhimengji/docs/execution/contracts.json"
+      - "projects/zhimengji/docs/execution/team-conventions.md"
+      - "projects/zhimengji/docs/execution/file-locks.yml"
+      - "projects/zhimengji/src-tauri/src/models.rs"
+      - "projects/zhimengji/src-tauri/src/db.rs"
+      - "projects/zhimengji/src-tauri/src/commands.rs"
+
+  - rule: "Worker 不得修改未授权文件"
+    severity: "P1"
+    violation: "PROTOCOL_VIOLATION"
+    action: "立即回退修改，重新分配正确的 Worker"
+
+  - rule: "Worker 修改前必须读 must_read_before_implement 列表"
+    severity: "P1"
+    violation: "MISSING_CONTEXT"
+    action: "停止实现，阅读必要文档后继续"

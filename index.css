@@ -1,0 +1,8 @@
+/* Base reset — global.css imports the full UI theme */
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans SC", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body { margin: 0; min-height: 100vh; }

@@ -1,0 +1,23 @@
+.darkroomOverlay { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; flex-direction: column; overflow: hidden; animation: darkroomFadeIn 0.3s ease; }
+.darkroomOverlay[data-texture="true"] { background: radial-gradient(ellipse at 50% 50%, #111 0%, #000 100%); }
+@keyframes darkroomFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.darkroomTopBar { position: absolute; top: 0; left: 0; right: 0; height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 10; opacity: 0.15; transition: opacity 0.3s; }
+.darkroomOverlay:hover .darkroomTopBar { opacity: 1; }
+.darkroomExitBtn { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border: 1px solid #333; border-radius: 4px; background: transparent; color: #888; cursor: pointer; font-size: var(--text-xs); }
+.darkroomExitBtn:hover { border-color: var(--accent); color: var(--accent-text); }
+.darkroomRightControls { display: flex; align-items: center; gap: 8px; }
+.darkroomWordCountBadge { font-size: var(--text-xs); color: #555; }
+.darkroomTextureToggle { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; border-radius: 4px; background: transparent; color: #555; cursor: pointer; }
+.darkroomTextureToggle:hover { border-color: #888; color: #888; }
+.darkroomTextureToggleActive { border-color: var(--accent); color: var(--accent-text); }
+.darkroomEditorArea { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 60px 20px; }
+.darkroomEditorInner { max-width: 720px; width: 100%; margin: 0 auto; overflow-y: auto; scrollbar-width: none; height: 100%; }
+.darkroomEditorInner::-webkit-scrollbar { display: none; }
+.darkroomEditorInner :global(.ProseMirror) { font-size: 18px; line-height: 2; padding-top: 20vh; color: #e0e0e0; }
+.darkroomEditorInner :global(.ProseMirror:focus) { outline: none; }
+.darkroomProgressBar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 60%; max-width: 400px; height: 3px; background: #222; border-radius: 2px; overflow: hidden; }
+.darkroomProgressFill { height: 100%; background: var(--accent); border-radius: 2px; box-shadow: 0 0 12px rgba(183,255,0,0.4); transition: width 0.3s ease; }
+.darkroomProgressLabel { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); font-size: var(--text-xs); color: #555; }
+.darkroomProgressWarning { color: var(--accent-text); }
+.darkroomEntryBtn { position: fixed; bottom: 40px; right: 40px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); color: var(--text-muted); cursor: pointer; z-index: 100; box-shadow: var(--shadow-md); transition: all 0.2s; }
+.darkroomEntryBtn:hover { border-color: var(--accent); color: var(--accent-text); box-shadow: 0 0 16px rgba(183,255,0,0.2); }

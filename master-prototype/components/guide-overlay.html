@@ -1,0 +1,16 @@
+<!-- Guide Overlay: 3-step guide overlay -->
+<div class="guide-overlay" id="{{guideId}}">
+  <div class="guide-card">
+    <button class="guide-skip btn btn-ghost" id="{{guideSkipId}}" style="padding:.3rem .6rem;font-size:.75rem">跳过 <i data-lucide="arrow-right" size="12"></i></button>
+    <div class="guide-step-indicator" id="{{guideStepLabel}}">第 {{stepCurrent}} / {{stepTotal}} 步</div>
+    <div class="guide-icon" id="{{guideIcon}}"><i data-lucide="{{guideIconName}}" size="16"></i></div>
+    <h2 id="{{guideTitle}}">{{guideTitleText}}</h2>
+    <p id="{{guideDesc}}">{{guideDescText}}</p>
+    <div class="guide-dots" id="{{guideDots}}">{{guideDotItems}}</div>
+    <div class="guide-actions">
+      <button class="btn btn-secondary" id="{{guidePrev}}" style="display:none">上一步</button>
+      <button class="btn btn-primary" id="{{guideNext}}">下一步</button>
+      <button class="btn btn-primary" id="{{guideStart}}" style="display:none">开始使用</button>
+    </div>
+  </div>
+</div>

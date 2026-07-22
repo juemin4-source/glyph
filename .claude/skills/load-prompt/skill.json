@@ -1,0 +1,45 @@
+{
+  "name": "load-prompt",
+  "version": "0.1.0",
+  "description": "load-prompt — softill",
+  "level": "L0_read_probe",
+  "type": "tool",
+  "runtime": "node",
+  "entry": "handler.js",
+  "archetype": {
+    "primary": "Diagnostic",
+    "secondary": [
+      "Delivery"
+    ]
+  },
+  "thickness": "thin",
+  "input": {
+    "type": "object",
+    "properties": {
+      "input": {
+        "type": "string",
+        "description": "输入参数"
+      }
+    },
+    "required": [
+      "input"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "result"
+    ]
+  },
+  "triggers": {
+    "keywords": [
+      "load-prompt",
+      "load prompt"
+    ]
+  }
+}

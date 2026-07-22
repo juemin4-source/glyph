@@ -1,0 +1,238 @@
+/* StepProgressIndicator — 步骤进度指示器 */
+.step-progress {
+  margin-bottom: 24px;
+}
+
+.step-progress-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #a0a0a0);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.step-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.step-progress-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b6b);
+  background: var(--bg-surface, #141414);
+  border: 1.5px solid var(--border-default, #2a2a2a);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.step-progress-dot-active {
+  border-color: var(--accent, #B7FF00);
+  color: var(--accent, #B7FF00);
+  background: rgba(183, 255, 0, 0.08);
+  font-weight: 600;
+}
+
+.step-progress-dot-completed {
+  background: var(--accent, #B7FF00);
+  border-color: var(--accent, #B7FF00);
+  color: var(--text-inverse, #0a0a0a);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.step-progress-dot-skipped {
+  border-color: var(--text-muted, #6b6b6b);
+  color: var(--text-muted, #6b6b6b);
+  font-size: 0.75rem;
+}
+
+.step-progress-dot-past {
+  opacity: 0.5;
+}
+
+.step-progress-line {
+  flex: 1;
+  height: 1.5px;
+  background: var(--border-default, #2a2a2a);
+  min-width: 20px;
+}
+
+.step-progress-line-filled {
+  background: var(--accent, #B7FF00);
+  opacity: 0.5;
+}
+
+.step-progress-names {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 0 2px;
+}
+
+.step-progress-name {
+  font-size: 0.6875rem;
+  color: var(--text-muted, #6b6b6b);
+  text-align: center;
+  max-width: 60px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.step-progress-name-active {
+  color: var(--accent, #B7FF00);
+  font-weight: 500;
+}
+
+/* AiFillCard — AI 填充卡片 */
+.ai-fill-card {
+  background: var(--bg-surface, #141414);
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.ai-fill-card-confirmed {
+  border-color: rgba(183, 255, 0, 0.25);
+  background: rgba(183, 255, 0, 0.03);
+}
+
+.ai-fill-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ai-fill-card-check {
+  color: var(--safe, #22C55E);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.ai-fill-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #e8e8e8);
+  flex: 1;
+}
+
+.ai-fill-card-badge {
+  font-size: 0.6875rem;
+  color: var(--safe, #22C55E);
+  background: rgba(34, 197, 94, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.ai-fill-card-loading {
+  font-size: 0.75rem;
+  color: var(--accent, #B7FF00);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.ai-fill-card-content {
+  margin-bottom: 16px;
+}
+
+.ai-fill-card-ai-section {
+  background: rgba(183, 255, 0, 0.04);
+  border: 1px solid rgba(183, 255, 0, 0.12);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.ai-fill-card-ai-label {
+  font-size: 0.6875rem;
+  color: var(--accent, #B7FF00);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.ai-fill-card-edit-section {
+  /* User's editable content — no special styling needed */
+}
+
+.ai-fill-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default, #2a2a2a);
+}
+
+.ai-fill-card-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* DoNotAskAgainToggle */
+.dna-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dna-toggle-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dna-toggle-slider {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  background: var(--bg-input, #0a0a0a);
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dna-toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted, #6b6b6b);
+  top: 2px;
+  left: 2px;
+  transition: all 0.2s ease;
+}
+
+.dna-toggle-checkbox:checked + .dna-toggle-slider {
+  background: var(--accent, #B7FF00);
+  border-color: var(--accent, #B7FF00);
+}
+
+.dna-toggle-checkbox:checked + .dna-toggle-slider::after {
+  background: var(--text-inverse, #0a0a0a);
+  left: 16px;
+}
+
+.dna-toggle-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b6b);
+}

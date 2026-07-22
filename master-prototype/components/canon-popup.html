@@ -1,0 +1,14 @@
+<!-- Canon Popup: Canon level explanation popup -->
+<div class="canon-backdrop" id="{{canonBackdropId}}">
+  <div class="canon-popup">
+    <h2><span><i data-lucide="globe" size="16"></i></span> {{canonTitle}}</h2>
+    <p class="canon-intro">{{canonIntro}}</p>
+    {{canonLevelRows}}
+    <div class="canon-actions">
+      <button class="btn btn-secondary" id="{{canonDismissId}}" style="padding-left:.6rem">
+        <span class="check-box" id="{{canonCheckId}}"><i data-lucide="check" size="12"></i></span> 不再显示
+      </button>
+      <button class="btn btn-primary" id="{{canonStartId}}">开始使用</button>
+    </div>
+  </div>
+</div>

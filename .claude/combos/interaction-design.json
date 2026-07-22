@@ -1,0 +1,27 @@
+{
+  "id": "combo-interaction-design",
+  "version": "0.1.0",
+  "goal": {
+    "description": "交互设计标准化：统一点击/输入/加载/错误/空间状态模式",
+    "skillRefs": ["design-interaction", "design-system"]
+  },
+  "plan": {
+    "nodes": [
+      { "id": "audit", "softill": "code-search", "input": { "pattern": "__PATTERN__" }, "when": { "always": true }, "description": "审计当前交互模式分布" },
+      { "id": "standardize-loading", "softill": "file-patch", "input": {}, "when": { "audit": "PASS" }, "humanCheckpoint": true, "description": "统一定 loading/error/empty 三态组件" },
+      { "id": "standardize-confirm", "softill": "file-patch", "input": {}, "when": { "standardize-loading": "PASS" }, "description": "统一确认/取消对话框模式" },
+      { "id": "verify", "softill": "test-runner", "input": { "command": "npx tsc -b && npm run build" }, "when": { "standardize-confirm": "PASS" }, "description": "验证构建" }
+    ],
+    "validation": { "requiredEvidences": ["test-runner"], "minEvidenceCount": 1 },
+    "recovery": { "maxRetries": 1, "onMaxRetries": "human" }
+  },
+  "docs": {
+    "patterns": {
+      "loading": { "count": 96, "files": ["AiControlCenter", "CanvasAiBar", "PremiseEntryGate", "QuickDraftPanel"] },
+      "empty": { "count": 72, "components": ["EmptyState（已有）"] },
+      "error": { "count": 31, "components": ["各画板各自写 error state"] },
+      "confirm": { "count": 111, "files": ["AiWritePreviewPanel", "DocCard", "ChatDrawer"] }
+    },
+    "target": "统一 LoadingState / ErrorDisplay / ConfirmModal 三个组件，替换全部 238 处分散实现"
+  }
+}

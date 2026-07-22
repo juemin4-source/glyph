@@ -1,0 +1,790 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark-green">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>织梦机 — 工作区原型 (Batch 02)</title>
+<style>
+:root, [data-theme="dark-green"] {
+  --bg-canvas: #0a0a0a; --bg-surface: #141414; --bg-raised: #1e1e1e; --bg-header: #0e0e0e;
+  --bg-input: #0a0a0a; --bg-hover: #1a1a1a; --accent: #B7FF00; --accent-soft: rgba(183, 255, 0, 0.1);
+  --accent-hover: #c8ff33; --accent-text: #B7FF00; --border-default: #2a2a2a; --border-light: #1e1e1e;
+  --border-hover: #444; --border-focus: #B7FF00; --text-primary: #e8e8e8; --text-secondary: #a0a0a0;
+  --text-muted: #6b6b6b; --text-heading: #f0f0f0; --text-inverse: #0a0a0a;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4); --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.35); --scrollbar-bg: #0a0a0a; --scrollbar-thumb: #333;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  --text-xs: 0.75rem; --text-sm: 0.8125rem; --text-base: 0.9375rem; --text-lg: 1.0625rem;
+  --text-xl: 1.25rem; --text-2xl: 1.5rem; --leading-tight: 1.3; --leading-normal: 1.6;
+  --leading-relaxed: 1.8; --weight-normal: 400; --weight-medium: 500; --weight-semibold: 600;
+  --weight-bold: 700; --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px; --radius-full: 9999px;
+  --sidebar-width: 220px; --inspector-width: 280px; --header-height: 44px; --statusbar-height: 32px;
+  --transition-fast: 0.15s ease; --transition-normal: 0.25s ease;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--font-body); font-size: var(--text-base); color: var(--text-primary); background: var(--bg-canvas); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+.offline-banner { display: none; align-items: center; justify-content: center; gap: var(--space-2); height: 28px; background: #c8a200; color: #1a1a00; font-size: var(--text-xs); font-weight: var(--weight-medium); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
+.offline-banner.show { display: flex; }
+.loading-overlay { display: none; position: fixed; inset: 0; z-index: 9999; background: var(--bg-canvas); align-items: center; justify-content: center; flex-direction: column; gap: var(--space-4); }
+.loading-overlay.show { display: flex; }
+.spinner { width: 32px; height: 32px; border: 2px solid var(--border-default); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay .label { font-size: var(--text-sm); color: var(--text-muted); }
+.loading-bar { width: 200px; height: 2px; background: var(--border-light); border-radius: 1px; overflow: hidden; }
+.loading-bar-fill { height: 100%; animation: loadProgress 2s ease-in-out infinite; background: var(--accent); }
+@keyframes loadProgress { 0% { width: 0%; margin-left: 0; } 50% { width: 60%; margin-left: 20%; } 100% { width: 100%; margin-left: 0; } }
+.app-shell { display: flex; flex-direction: column; height: 100vh; width: 100vw; padding-top: 28px; }
+.app-shell.no-banner { padding-top: 0; }
+.top-nav { height: var(--header-height); display: flex; align-items: center; padding: 0 var(--space-3); background: var(--bg-header); border-bottom: 1px solid var(--border-default); flex-shrink: 0; gap: var(--space-1); }
+.nav-back { display: flex; align-items: center; gap: var(--space-1); color: var(--text-secondary); font-size: var(--text-sm); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
+.nav-back:hover { color: var(--accent-text); background: var(--accent-soft); }
+.nav-divider { width: 1px; height: 20px; background: var(--border-default); margin: 0 var(--space-2); }
+.nav-title { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text-heading); margin-right: var(--space-4); }
+.nav-tab { padding: var(--space-1) var(--space-3); font-size: var(--text-sm); color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition-fast); }
+.nav-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.nav-tab.active { color: var(--accent-text); background: var(--accent-soft); }
+.nav-spacer { flex: 1; }
+.body-area { flex: 1; display: flex; overflow: hidden; position: relative; }
+.left-sidebar { width: var(--sidebar-width); min-width: 0; background: var(--bg-surface); border-right: 1px solid var(--border-default); display: flex; flex-direction: column; flex-shrink: 0; transition: width var(--transition-normal); overflow: hidden; }
+.left-sidebar.collapsed { width: 28px; min-width: 28px; }
+.left-sidebar.collapsed .sidebar-content { display: none; }
+.collapse-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text-muted); cursor: pointer; flex-shrink: 0; }
+.collapse-btn:hover { color: var(--accent-text); background: var(--accent-soft); border-radius: var(--radius-sm); }
+.sidebar-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.sidebar-search-area { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-light); display: flex; gap: var(--space-2); align-items: center; }
+.sidebar-search { flex: 1; height: 28px; padding: 0 var(--space-2); border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-input); color: var(--text-primary); font-size: var(--text-xs); outline: none; }
+.sidebar-search::placeholder { color: var(--text-muted); }
+.sidebar-search:focus { border-color: var(--border-focus); }
+.sidebar-new-btn { height: 28px; width: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); cursor: pointer; font-size: var(--text-lg); }
+.sidebar-new-btn:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.outline-tree { flex: 1; overflow-y: auto; padding: var(--space-1) 0; }
+.outline-group { margin-bottom: var(--space-1); }
+.outline-group-header { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--text-muted); letter-spacing: 0.5px; cursor: pointer; user-select: none; }
+.outline-group-header:hover { color: var(--text-secondary); }
+.outline-group-header .arrow { width: 16px; text-align: center; transition: transform var(--transition-fast); flex-shrink: 0; }
+.outline-group-header .arrow.collapsed { transform: rotate(-90deg); }
+.outline-group-items.collapsed { display: none; }
+.outline-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-1) var(--space-6); font-size: var(--text-sm); color: var(--text-secondary); cursor: pointer; border-left: 2px solid transparent; transition: all var(--transition-fast); }
+.outline-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.outline-item.active { border-left-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.outline-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-gold { background: #d4a017; } .dot-blue { background: #4a90d9; } .dot-purple { background: #9b59b6; } .dot-gray { background: #666; }
+.outline-item .type-tag { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 300px; position: relative; }
+.resize-handle-left, .resize-handle-right { width: 4px; cursor: col-resize; background: transparent; flex-shrink: 0; z-index: 10; }
+.resize-handle-left:hover, .resize-handle-right:hover, .resize-handle-left:active, .resize-handle-right:active { background: var(--accent); opacity: 0.3; }
+.editor-toolbar { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); background: var(--bg-surface); border-bottom: 1px solid var(--border-light); flex-wrap: wrap; flex-shrink: 0; }
+.toolbar-group { display: flex; align-items: center; gap: 2px; padding: 0 var(--space-1); border-right: 1px solid var(--border-light); }
+.toolbar-group:last-child { border-right: none; }
+.tool-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); cursor: pointer; font-size: var(--text-sm); transition: all var(--transition-fast); }
+.tool-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.tool-btn.active { background: var(--accent-soft); color: var(--accent-text); }
+.mode-group { display: flex; margin-left: auto; border: 1px solid var(--border-default); border-radius: var(--radius-sm); overflow: hidden; }
+.mode-btn { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all var(--transition-fast); }
+.mode-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.mode-btn.active { color: var(--accent-text); background: var(--accent-soft); }
+.mode-btn+.mode-btn { border-left: 1px solid var(--border-default); }
+.badge-area { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); position: relative; }
+.type-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px var(--space-2); border-radius: var(--radius-full); font-size: 10px; font-weight: var(--weight-semibold); background: var(--accent-soft); color: var(--accent-text); }
+.canon-badge { display: inline-flex; align-items: center; padding: 1px var(--space-2); border-radius: var(--radius-full); font-size: 10px; font-weight: var(--weight-bold); cursor: pointer; transition: all var(--transition-fast); }
+.canon-badge.gold { background: rgba(212,160,23,0.2); color: #d4a017; }
+.canon-badge.gold:hover { background: rgba(212,160,23,0.35); }
+.canon-badge.blue { background: rgba(74,144,217,0.2); color: #4a90d9; }
+.canon-badge.blue:hover { background: rgba(74,144,217,0.35); }
+.canon-badge.purple { background: rgba(155,89,182,0.2); color: #9b59b6; }
+.canon-badge.purple:hover { background: rgba(155,89,182,0.35); }
+.canon-badge.gray { background: rgba(102,102,102,0.2); color: #999; }
+.canon-badge.gray:hover { background: rgba(102,102,102,0.35); }
+.canon-popup { display: none; position: absolute; top: 100%; left: 0; z-index: 100; width: 260px; background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: var(--space-3); }
+.canon-popup.show { display: block; }
+.canon-popup-title { font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--text-heading); margin-bottom: var(--space-2); }
+.canon-tier { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) 0; font-size: var(--text-xs); color: var(--text-secondary); }
+.canon-tier .tier-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.canon-tier .tier-label { width: 20px; font-weight: var(--weight-bold); }
+.canon-tier .tier-desc { color: var(--text-muted); }
+.canon-popup-footer { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border-light); font-size: 10px; color: var(--text-muted); }
+.editor-area { flex: 1; display: flex; overflow: hidden; }
+.editor-source { flex: 1; padding: var(--space-4); overflow-y: auto; }
+.editor-source .syntax-hl { white-space: pre-wrap; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.8; }
+.editor-source .syntax-hl .h1 { color: #e8e8e8; font-weight: var(--weight-bold); font-size: var(--text-lg); }
+.editor-source .syntax-hl .bold { font-weight: var(--weight-bold); color: #f0f0f0; }
+.editor-source .syntax-hl .blockquote { color: var(--text-muted); border-left: 2px solid var(--accent); padding-left: var(--space-3); display: block; }
+.editor-source .syntax-hl .code { color: var(--accent-text); font-family: var(--font-mono); }
+.editor-source .syntax-hl .separator { color: var(--text-muted); }
+.editor-source .syntax-hl .wikilink { color: #4a90d9; cursor: pointer; border-bottom: 1px dotted #4a90d9; position: relative; }
+.editor-source .syntax-hl .wikilink:hover { background: rgba(74,144,217,0.15); }
+.editor-source .syntax-hl .wikilink.missing { color: #d4762a; border-bottom: 2px dashed #d4762a; }
+.editor-source .syntax-hl .wikilink.missing:hover { background: rgba(212,118,42,0.15); }
+.wiki-tooltip { display: none; position: fixed; z-index: 200; background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: var(--space-2) var(--space-3); font-size: var(--text-xs); max-width: 260px; pointer-events: none; }
+.wiki-tooltip.show { display: block; }
+.wiki-tooltip .wt-name { font-weight: var(--weight-semibold); color: var(--text-heading); margin-bottom: 2px; }
+.wiki-tooltip .wt-type { color: var(--accent-text); }
+.wiki-tooltip .wt-status { color: var(--text-muted); }
+.wiki-tooltip .wt-summary { color: var(--text-secondary); margin-top: var(--space-1); }
+.wiki-tooltip .wt-summary.missing { color: var(--text-muted); font-style: italic; }
+.editor-preview { display: none; flex: 1; padding: var(--space-6); overflow-y: auto; }
+.editor-preview.show { display: block; }
+.editor-preview h1 { font-size: var(--text-2xl); font-weight: var(--weight-bold); color: var(--text-heading); margin: 1.5em 0 0.5em; }
+.editor-preview h2 { font-size: var(--text-xl); font-weight: var(--weight-semibold); color: var(--text-heading); margin: 1.2em 0 0.4em; }
+.editor-preview p { margin-bottom: 0.5em; line-height: var(--leading-relaxed); }
+.editor-preview blockquote { border-left: 3px solid var(--accent); padding: 0.3em 1em; color: var(--text-secondary); background: var(--accent-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin: 0.5em 0; }
+.editor-preview code { background: var(--bg-raised); padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono); font-size: 0.85em; color: var(--accent-text); }
+.editor-preview ul, .editor-preview ol { padding-left: 1.5em; margin: 0.3em 0; }
+.editor-preview .wikilink-preview { color: #4a90d9; cursor: pointer; border-bottom: 1px dotted #4a90d9; }
+.editor-preview .wikilink-preview.missing { color: #d4762a; border-bottom: 2px dashed #d4762a; }
+.editor-richtext { display: none; flex: 1; align-items: center; justify-content: center; }
+.editor-richtext.show { display: flex; }
+.editor-richtext p { color: var(--text-muted); }
+.empty-cta { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: var(--space-4); text-align: center; }
+.empty-cta.show { display: flex; }
+.empty-cta-icon { font-size: 48px; opacity: 0.3; margin-bottom: var(--space-2); }
+.empty-cta-title { font-size: var(--text-lg); color: var(--text-heading); font-weight: var(--weight-medium); }
+.empty-cta-desc { font-size: var(--text-sm); color: var(--text-muted); max-width: 300px; }
+.empty-cta-buttons { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.empty-cta-btn { padding: var(--space-2) var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-secondary); cursor: pointer; font-size: var(--text-sm); transition: all var(--transition-fast); }
+.empty-cta-btn:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.empty-cta-btn.primary { background: var(--accent); color: var(--text-inverse); font-weight: var(--weight-semibold); border-color: var(--accent); }
+.empty-cta-btn.primary:hover { background: var(--accent-hover); }
+.editor-status { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-1) var(--space-3); background: var(--bg-surface); border-top: 1px solid var(--border-light); font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.right-inspector { width: var(--inspector-width); background: var(--bg-surface); border-left: 1px solid var(--border-default); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+.inspector-content { flex: 1; overflow-y: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.project-summary { display: none; }
+.project-summary.show { display: block; }
+.summary-title { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text-heading); margin-bottom: var(--space-3); }
+.summary-stats { display: flex; flex-direction: column; gap: var(--space-2); }
+.stat-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-1) 0; font-size: var(--text-sm); }
+.stat-row .stat-label { color: var(--text-secondary); }
+.stat-row .stat-value { color: var(--text-heading); font-weight: var(--weight-medium); }
+.stat-divider { height: 1px; background: var(--border-light); margin: var(--space-1) 0; }
+.stat-breakdown { padding-left: var(--space-3); }
+.stat-breakdown .stat-row { font-size: var(--text-xs); }
+.stat-breakdown .stat-value { color: var(--text-muted); }
+.object-inspector { display: none; }
+.object-inspector.show { display: block; }
+.inspector-section { margin-bottom: var(--space-4); }
+.inspector-section-title { font-size: 10px; font-weight: var(--weight-semibold); color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: var(--space-2); }
+.inspector-field { margin-bottom: var(--space-2); }
+.field-label { font-size: var(--text-xs); color: var(--text-muted); margin-bottom: 2px; }
+.field-value { font-size: var(--text-sm); color: var(--text-primary); }
+.canon-select { width: 100%; padding: var(--space-1) var(--space-2); border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-input); color: var(--text-primary); font-size: var(--text-sm); cursor: pointer; outline: none; }
+.canon-select:focus { border-color: var(--border-focus); }
+.canon-select option { background: var(--bg-raised); color: var(--text-primary); }
+.link-list { display: flex; flex-direction: column; gap: 2px; }
+.link-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-sm); color: var(--text-secondary); transition: all var(--transition-fast); }
+.link-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.link-item .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.link-item .link-type { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+.timeline { position: relative; padding-left: var(--space-4); }
+.timeline::before { content: ""; position: absolute; left: 4px; top: 4px; bottom: 4px; width: 1px; background: var(--border-light); }
+.timeline-item { position: relative; padding: var(--space-1) 0 var(--space-2) var(--space-3); font-size: var(--text-xs); }
+.timeline-item::before { content: ""; position: absolute; left: -9px; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.timeline-item .tl-date { color: var(--text-muted); }
+.timeline-item .tl-action { color: var(--text-secondary); }
+.action-buttons { display: flex; flex-direction: column; gap: var(--space-2); }
+.action-btn { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--border-default); border-radius: var(--radius-md); background: transparent; color: var(--text-secondary); cursor: pointer; font-size: var(--text-sm); transition: all var(--transition-fast); }
+.action-btn:hover { border-color: var(--border-hover); background: var(--bg-hover); color: var(--text-primary); }
+.action-btn.danger:hover { border-color: #e74c3c; color: #e74c3c; }
+.action-btn.promote { border-color: var(--accent); color: var(--accent-text); }
+.action-btn.promote:hover { background: var(--accent-soft); }
+.reason-dialog-overlay { display: none; position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+.reason-dialog-overlay.show { display: flex; }
+.reason-dialog { width: 360px; background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: var(--space-4); }
+.dialog-title { font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--text-heading); margin-bottom: var(--space-3); }
+.dialog-desc { font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-3); }
+.dialog-input { width: 100%; padding: var(--space-2); border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-input); color: var(--text-primary); font-size: var(--text-sm); resize: vertical; min-height: 80px; outline: none; font-family: var(--font-body); }
+.dialog-input:focus { border-color: var(--border-focus); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
+.dialog-btn { padding: var(--space-1) var(--space-4); border-radius: var(--radius-sm); font-size: var(--text-sm); border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); cursor: pointer; }
+.dialog-btn:hover { background: var(--bg-hover); }
+.dialog-btn.primary { background: var(--accent); color: var(--text-inverse); border-color: var(--accent); font-weight: var(--weight-semibold); }
+.dialog-btn.primary:hover { background: var(--accent-hover); }
+.status-bar { height: var(--statusbar-height); display: flex; align-items: center; padding: 0 var(--space-3); background: var(--bg-header); border-top: 1px solid var(--border-default); flex-shrink: 0; gap: var(--space-3); font-size: 11px; color: var(--text-muted); }
+.save-indicator { display: flex; align-items: center; gap: 4px; }
+.save-indicator.saved { color: #4ade80; }
+.save-indicator.saving { color: var(--accent-text); }
+.save-indicator.unsaved { color: #fbbf24; }
+.save-indicator.offline { color: #f87171; }
+.save-indicator.error { color: #ef4444; }
+.status-divider { width: 1px; height: 14px; background: var(--border-default); }
+.status-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+.screen-dot-nav { position: fixed; bottom: var(--space-8); left: 50%; transform: translateX(-50%); z-index: 50; display: flex; gap: var(--space-2); background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-full); padding: var(--space-1) var(--space-3); }
+.screen-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--border-default); background: transparent; cursor: pointer; transition: all var(--transition-fast); }
+.screen-dot:hover { border-color: var(--accent); }
+.screen-dot.active { background: var(--accent); border-color: var(--accent); }
+.prototype-legend { position: fixed; bottom: var(--space-10); right: var(--space-3); z-index: 50; background: var(--bg-raised); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); font-size: 10px; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; }
+.prototype-legend span { display: flex; align-items: center; gap: 4px; }
+.prototype-legend .key { display: inline-block; padding: 0 4px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 2px; font-family: var(--font-mono); font-size: 9px; color: var(--text-secondary); }
+</style>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+<!-- Offline Banner (Screen 05) -->
+<div class="offline-banner" id="offlineBanner">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9"/><path d="M12 20h.01"/></svg>
+  当前处于离线模式 — 更改将在恢复连接后同步
+</div>
+
+<!-- Loading Overlay (Screen 05) -->
+<div class="loading-overlay show" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="label">正在加载项目...</div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+</div>
+
+<!-- App Shell -->
+<div class="app-shell no-banner" id="appShell">
+  <!-- Top Nav Bar -->
+  <nav class="top-nav">
+    <span class="nav-back" onclick="navigateBack()"><i data-lucide="arrow-left" size="12"></i> 书架</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">织梦机 v0.2</span>
+    <span class="nav-tab active" onclick="switchNavTab(this)">文档</span>
+    <span class="nav-tab" onclick="switchNavTab(this)">画板</span>
+    <span class="nav-tab" onclick="switchNavTab(this)">设定集</span>
+    <span class="nav-tab" onclick="switchNavTab(this)">AI</span>
+    <span class="nav-tab" onclick="switchNavTab(this)">判断记录</span>
+    <span class="nav-spacer"></span>
+  </nav>
+
+  <!-- 3-Column Body Area -->
+  <div class="body-area">
+
+    <!-- LEFT SIDEBAR / Outline (Screen 07) -->
+    <div class="left-sidebar" id="leftSidebar">
+      <div class="sidebar-content" id="sidebarContent">
+        <div class="sidebar-search-area">
+          <input class="sidebar-search" type="text" placeholder="搜索大纲..." />
+          <button class="sidebar-new-btn" title="新建">＋</button>
+        </div>
+        <div class="outline-tree" id="outlineTree">
+          <div class="outline-group">
+            <div class="outline-group-header" onclick="toggleGroup(this)">
+              <span class="arrow"><i data-lucide="chevron-down" size="12"></i></span><span>正文</span>
+              <span style="margin-left:auto;font-weight:400;color:var(--text-muted)">3 章</span>
+            </div>
+            <div class="outline-group-items">
+              <div class="outline-item active" data-id="ch1" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-gold"></span><span>楔子 · 迷雾之城</span><span class="type-tag">章</span>
+              </div>
+              <div class="outline-item" data-id="ch2" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-blue"></span><span>第一章 · 暗潮涌动</span><span class="type-tag">章</span>
+              </div>
+              <div class="outline-item" data-id="ch3" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-purple"></span><span>第二章 · 深渊回响</span><span class="type-tag">章</span>
+              </div>
+            </div>
+          </div>
+          <div class="outline-group">
+            <div class="outline-group-header" onclick="toggleGroup(this)">
+              <span class="arrow"><i data-lucide="chevron-down" size="12"></i></span><span>人物</span>
+              <span style="margin-left:auto;font-weight:400;color:var(--text-muted)">8</span>
+            </div>
+            <div class="outline-group-items">
+              <div class="outline-item" data-id="char1" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-gold"></span><span>林北辰</span><span class="type-tag">主</span>
+              </div>
+              <div class="outline-item" data-id="char2" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-blue"></span><span>苏晚晴</span><span class="type-tag">主</span>
+              </div>
+              <div class="outline-item" data-id="char3" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-blue"></span><span>顾长生</span><span class="type-tag">要</span>
+              </div>
+              <div class="outline-item" data-id="char4" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-purple"></span><span>墨离</span><span class="type-tag">要</span>
+              </div>
+              <div class="outline-item" data-id="char5" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-gray"></span><span>白鹤 (草案)</span><span class="type-tag">配</span>
+              </div>
+            </div>
+          </div>
+          <div class="outline-group">
+            <div class="outline-group-header" onclick="toggleGroup(this)">
+              <span class="arrow"><i data-lucide="chevron-down" size="12"></i></span><span>设定</span>
+              <span style="margin-left:auto;font-weight:400;color:var(--text-muted)">12</span>
+            </div>
+            <div class="outline-group-items">
+              <div class="outline-item" data-id="loc1" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-gold"></span><span>天启城</span><span class="type-tag">地点</span>
+              </div>
+              <div class="outline-item" data-id="org1" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-blue"></span><span>星月阁</span><span class="type-tag">组织</span>
+              </div>
+              <div class="outline-item" data-id="rule1" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-blue"></span><span>灵脉体系</span><span class="type-tag">规则</span>
+              </div>
+              <div class="outline-item" data-id="loc2" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-purple"></span><span>深渊裂隙</span><span class="type-tag">地点</span>
+              </div>
+            </div>
+          </div>
+          <div class="outline-group">
+            <div class="outline-group-header" onclick="toggleGroup(this)">
+              <span class="arrow"><i data-lucide="chevron-down" size="12"></i></span><span>草稿</span>
+              <span style="margin-left:auto;font-weight:400;color:var(--text-muted)">2</span>
+            </div>
+            <div class="outline-group-items">
+              <div class="outline-item" data-id="dft1" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-gray"></span><span>第三章大纲草稿</span><span class="type-tag">草稿</span>
+              </div>
+              <div class="outline-item" data-id="dft2" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-gray"></span><span>结局构思 v2</span><span class="type-tag">草稿</span>
+              </div>
+            </div>
+          </div>
+          <div class="outline-group">
+            <div class="outline-group-header" onclick="toggleGroup(this)">
+              <span class="arrow"><i data-lucide="chevron-down" size="12"></i></span><span>废弃</span>
+              <span style="margin-left:auto;font-weight:400;color:var(--text-muted)">1</span>
+            </div>
+            <div class="outline-group-items">
+              <div class="outline-item" data-id="trash1" onclick="selectOutlineItem(this);updateInspector(this)">
+                <span class="dot dot-gray"></span><span>旧版时间线 (v0.1)</span><span class="type-tag">废弃</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebar()" title="折叠侧栏">◀</button>
+    </div>
+
+    <div class="resize-handle-left" id="resizeHandleLeft"></div>
+
+    <!-- MAIN CONTENT - Document Editor (Screen 06) -->
+    <div class="main-content">
+      <div class="editor-toolbar">
+        <div class="toolbar-group">
+          <button class="tool-btn" onclick="toggleTool(this)">H1</button>
+          <button class="tool-btn" onclick="toggleTool(this)">H2</button>
+          <button class="tool-btn" onclick="toggleTool(this)">H3</button>
+        </div>
+        <div class="toolbar-group">
+          <button class="tool-btn" onclick="toggleTool(this)"><b>B</b></button>
+          <button class="tool-btn" onclick="toggleTool(this)"><i>I</i></button>
+          <button class="tool-btn" onclick="toggleTool(this)"><u>U</u></button>
+          <button class="tool-btn" onclick="toggleTool(this)"><s>S</s></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="tool-btn" onclick="toggleTool(this)">❝</button>
+          <button class="tool-btn" onclick="toggleTool(this)">{ }</button>
+          <button class="tool-btn" onclick="toggleTool(this)">≡</button>
+          <button class="tool-btn" onclick="toggleTool(this)"><i data-lucide="link" size="16"></i></button>
+          <button class="tool-btn" onclick="toggleTool(this)"><i data-lucide="image" size="16"></i></button>
+        </div>
+        <div class="badge-area">
+          <span class="type-badge">人物 <i data-lucide="user" size="16"></i></span>
+          <span class="canon-badge gold" id="canonBadge" onclick="toggleCanonPopup(event)">金</span>
+          <div class="canon-popup" id="canonPopup">
+            <div class="canon-popup-title">设定层级体系 — 四层裁定</div>
+            <div class="canon-tier"><span class="tier-dot" style="background:#d4a017"></span><span class="tier-label">金</span><span>核心设定 — 不可变更的根基</span></div>
+            <div class="canon-tier"><span class="tier-dot" style="background:#4a90d9"></span><span class="tier-label">蓝</span><span>权威设定 — 经审批的正式内容</span></div>
+            <div class="canon-tier"><span class="tier-dot" style="background:#9b59b6"></span><span class="tier-label">紫</span><span>试行设定 — 待验证的提案</span></div>
+            <div class="canon-tier"><span class="tier-dot" style="background:#666"></span><span class="tier-label">灰</span><span>草稿 — 未审核的临时内容</span></div>
+            <div class="canon-popup-footer">当前文档位于金层 — 核心设定，修改需审批。</div>
+          </div>
+        </div>
+        <div class="mode-group">
+          <button class="mode-btn active" onclick="switchMode(this,'source')">源码</button>
+          <button class="mode-btn" onclick="switchMode(this,'preview')">预览</button>
+          <button class="mode-btn" onclick="switchMode(this,'richtext')">富文本</button>
+        </div>
+      </div>
+      <div class="editor-area">
+        <!-- Source Mode (default) -->
+        <div class="editor-source" id="editorSourceMode">
+          <div class="syntax-hl">
+<span class="h1"># 楔子 · 迷雾之城</span>
+<span class="separator">---</span>
+天启城，永夜第十七年。
+林北辰站在钟楼顶端，俯瞰着这座永远笼罩在灰雾中的城市。<span class="wikilink" onmouseenter="showWikiTooltip(event,'林北辰','人物','金','天启城总务司调查员，灵脉共鸣者。')" onmouseleave="hideWikiTooltip()">[[林北辰]]</span>的披风在寒风中猎猎作响。
+"三年前，我们在这里发现第一个"<span class="wikilink missing" onmouseenter="showWikiTooltip(event,'深渊之门','地点','','',true)" onmouseleave="hideWikiTooltip()">[[深渊之门]]</span>。"他低声说。
+<span class="blockquote">> 记忆像潮水一样涌来。那不是一扇门，是一个伤口——世界被撕开的伤口。</span>
+苏晚晴走到他身边。<span class="wikilink" onmouseenter="showWikiTooltip(event,'苏晚晴','人物','蓝','星月阁首席执事，精通灵脉术法。')" onmouseleave="hideWikiTooltip()">[[苏晚晴]]</span>的眼睛在暮色中泛着微光。
+"阁主传讯，"她说，"<span class="wikilink" onmouseenter="showWikiTooltip(event,'顾长生','人物','蓝','星月阁阁主，天启城守护者。')" onmouseleave="hideWikiTooltip()">[[顾长生]]</span>要我们撤回。深渊裂隙在扩大。"
+<span class="bold">"撤回？"</span>林北辰转过身，"我们花了三年才走到这里。"
+"这不是商量，北辰。这是命令。"
+<span class="separator">---</span>
+## 城区形势
+此时的天启城分为三个区域：
+- <span class="bold">内城区</span> — 由<span class="wikilink" onmouseenter="showWikiTooltip(event,'星月阁','组织','蓝','天启城最高灵脉管理机构，护城三阁之一。')" onmouseleave="hideWikiTooltip()">[[星月阁]]</span>掌控，秩序尚在
+- <span class="bold">外城区</span> — 灵脉稀薄，已出现多起"空洞化"事件
+- <span class="bold">深渊带</span> — 完全被<span class="wikilink missing" onmouseenter="showWikiTooltip(event,'深渊裂隙','地点','','',true)" onmouseleave="hideWikiTooltip()">[[深渊裂隙]]</span>吞噬
+<span class="code">`灵脉共鸣指数: 73.4% | 危险等级: 高危`</span>
+苏晚晴递过一张泛黄的纸，"这是<span class="wikilink" onmouseenter="showWikiTooltip(event,'墨离','人物','紫','星月阁执事，负责灵脉监测与情报。')" onmouseleave="hideWikiTooltip()">[[墨离]]</span>三天前送来的。你看这个图案。"
+林北辰接过纸，瞳孔骤然收缩。
+          </div>
+        </div>
+
+        <!-- Preview Mode -->
+        <div class="editor-preview" id="editorPreviewMode">
+          <h1>楔子 · 迷雾之城</h1>
+          <hr style="border-color:var(--border-light);margin:1em 0;">
+          <p>天启城，永夜第十七年。林北辰站在钟楼顶端，俯瞰着这座永远笼罩在灰雾中的城市。<span class="wikilink-preview" onclick="selectOutlineItemByData('char1')">[[林北辰]]</span>的披风在寒风中猎猎作响。</p>
+          <p>"三年前，我们在这里发现第一个"<span class="wikilink-preview missing">[[深渊之门]]</span>。"他低声说。</p>
+          <blockquote>记忆像潮水一样涌来。那不是一扇门，是一个伤口——世界被撕开的伤口。</blockquote>
+          <p>苏晚晴走到他身边。<span class="wikilink-preview" onclick="selectOutlineItemByData('char2')">[[苏晚晴]]</span>的眼睛在暮色中泛着微光。</p>
+          <p>"阁主传讯，"她说，"<span class="wikilink-preview" onclick="selectOutlineItemByData('char3')">[[顾长生]]</span>要我们撤回。深渊裂隙在扩大。"</p>
+          <p><strong>"撤回？"</strong>林北辰转过身，"我们花了三年才走到这里。"</p>
+          <p>"这不是商量，北辰。这是命令。"</p>
+          <hr style="border-color:var(--border-light);margin:1em 0;">
+          <h2>城区形势</h2>
+          <ul>
+            <li><strong>内城区</strong> — 由<span class="wikilink-preview" onclick="selectOutlineItemByData('org1')">[[星月阁]]</span>掌控</li>
+            <li><strong>外城区</strong> — 灵脉稀薄，已出现多起"空洞化"事件</li>
+            <li><strong>深渊带</strong> — 完全被<span class="wikilink-preview missing">[[深渊裂隙]]</span>吞噬</li>
+          </ul>
+          <p><code>灵脉共鸣指数: 73.4% | 危险等级: 高危</code></p>
+          <p>苏晚晴递过一张泛黄的纸，"这是<span class="wikilink-preview" onclick="selectOutlineItemByData('char4')">[[墨离]]</span>三天前送来的。"</p>
+        </div>
+
+        <!-- Rich Text placeholder -->
+        <div class="editor-richtext" id="editorRichTextMode">
+          <p>富文本编辑模式（开发中）</p>
+        </div>
+
+        <!-- Empty State CTA -->
+        <div class="empty-cta" id="emptyCta">
+          <div class="empty-cta-icon"><i data-lucide="edit-3" size="16"></i></div>
+          <div class="empty-cta-title">创建第一个设定</div>
+          <div class="empty-cta-desc">从空白开始构建你的世界，或选择一个类型快速开始</div>
+          <div class="empty-cta-buttons">
+            <button class="empty-cta-btn primary" onclick="closeEmptyCta()">人物 <i data-lucide="user" size="16"></i></button>
+            <button class="empty-cta-btn" onclick="closeEmptyCta()">地点 <i data-lucide="globe" size="16"></i></button>
+            <button class="empty-cta-btn" onclick="closeEmptyCta()">组织 <i data-lucide="building" size="16"></i></button>
+            <button class="empty-cta-btn" onclick="closeEmptyCta()">规则 <i data-lucide="scale" size="16"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor Status Line -->
+      <div class="editor-status">
+        <span id="editorWordCount">字数: 342</span>
+        <span id="editorLinks">链接: 6</span>
+        <span>设定层级: 金</span>
+        <span id="editorUpdated">最后更新: 10 分钟前</span>
+      </div>
+    </div>
+
+    <div class="resize-handle-right" id="resizeHandleRight"></div>
+
+    <!-- RIGHT INSPECTOR (Screen 08) -->
+    <div class="right-inspector" id="rightInspector">
+      <div class="inspector-content">
+        <!-- Project Summary (default, no selection) -->
+        <div class="project-summary show" id="projectSummary">
+          <div class="summary-title">项目概览</div>
+          <div class="summary-stats">
+            <div class="stat-row"><span class="stat-label">总对象数</span><span class="stat-value">26</span></div>
+            <div class="stat-row"><span class="stat-label">关联链接</span><span class="stat-value">47</span></div>
+            <div class="stat-row"><span class="stat-label">总字数</span><span class="stat-value">12,840</span></div>
+            <div class="stat-divider"></div>
+            <div class="stat-breakdown">
+              <div class="stat-row"><span class="stat-label">人物</span><span class="stat-value">8</span></div>
+              <div class="stat-row"><span class="stat-label">地点</span><span class="stat-value">5</span></div>
+              <div class="stat-row"><span class="stat-label">组织</span><span class="stat-value">3</span></div>
+              <div class="stat-row"><span class="stat-label">规则</span><span class="stat-value">4</span></div>
+              <div class="stat-row"><span class="stat-label">章节</span><span class="stat-value">3</span></div>
+              <div class="stat-row"><span class="stat-label">草稿/废弃</span><span class="stat-value">3</span></div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-row"><span class="stat-label">金层设定</span><span class="stat-value" style="color:#d4a017;">4</span></div>
+            <div class="stat-row"><span class="stat-label">蓝层设定</span><span class="stat-value" style="color:#4a90d9;">9</span></div>
+            <div class="stat-row"><span class="stat-label">紫层设定</span><span class="stat-value" style="color:#9b59b6;">8</span></div>
+            <div class="stat-row"><span class="stat-label">灰层设定</span><span class="stat-value" style="color:#666;">5</span></div>
+          </div>
+        </div>
+
+        <!-- Object Inspector (shown on outline selection) -->
+        <div class="object-inspector" id="objectInspector">
+          <div class="inspector-section">
+            <div class="inspector-section-title">对象信息</div>
+            <div class="inspector-field">
+              <div class="field-label">类型</div>
+              <div class="field-value" id="objType">人物 <i data-lucide="user" size="16"></i></div>
+            </div>
+            <div class="inspector-field">
+              <div class="field-label">设定层级</div>
+              <select class="canon-select">
+                <option value="gold" style="color:#d4a017;">金 — 核心设定</option>
+                <option value="blue" selected style="color:#4a90d9;">蓝 — 权威设定</option>
+                <option value="purple" style="color:#9b59b6;">紫 — 试行设定</option>
+                <option value="gray" style="color:#999;">灰 — 草稿</option>
+              </select>
+            </div>
+            <div class="inspector-field">
+              <div class="field-label">状态</div>
+              <div class="field-value" id="objStatus" style="color:#4ade80;">已发布</div>
+            </div>
+            <div class="inspector-field">
+              <div class="field-label">创建时间</div>
+              <div class="field-value" id="objCreated">2026-06-12 14:30</div>
+            </div>
+            <div class="inspector-field">
+              <div class="field-label">最后修改</div>
+              <div class="field-value" id="objModified">2026-07-08 09:15</div>
+            </div>
+          </div>
+          <div class="inspector-section">
+            <div class="inspector-section-title">关联对象</div>
+            <div class="field-label" style="margin-bottom:4px;">被引用 (3)</div>
+            <div class="link-list">
+              <div class="link-item" onclick="selectOutlineItemByData('ch1')">
+                <span class="dot dot-gold"></span><span>楔子 · 迷雾之城</span><span class="link-type">章</span>
+              </div>
+              <div class="link-item" onclick="selectOutlineItemByData('loc1')">
+                <span class="dot dot-gold"></span><span>天启城</span><span class="link-type">地点</span>
+              </div>
+              <div class="link-item" onclick="selectOutlineItemByData('org1')">
+                <span class="dot dot-blue"></span><span>星月阁</span><span class="link-type">组织</span>
+              </div>
+            </div>
+            <div class="field-label" style="margin-bottom:4px;margin-top:var(--space-2);">引用 (2)</div>
+            <div class="link-list">
+              <div class="link-item" onclick="selectOutlineItemByData('rule1')">
+                <span class="dot dot-blue"></span><span>灵脉体系</span><span class="link-type">规则</span>
+              </div>
+              <div class="link-item" onclick="selectOutlineItemByData('char4')">
+                <span class="dot dot-purple"></span><span>墨离</span><span class="link-type">人物</span>
+              </div>
+            </div>
+          </div>
+          <div class="inspector-section">
+            <div class="inspector-section-title">判断历程</div>
+            <div class="timeline">
+              <div class="timeline-item"><span class="tl-date">2026-07-08</span><br><span class="tl-action"><i data-lucide="lock" size="16"></i> 锁定为金层设定</span></div>
+              <div class="timeline-item"><span class="tl-date">2026-07-01</span><br><span class="tl-action"><i data-lucide="arrow-up" size="16"></i> 从蓝层提升至金层</span></div>
+              <div class="timeline-item"><span class="tl-date">2026-06-28</span><br><span class="tl-action"><i data-lucide="edit-3" size="16"></i> 内容修订 — 新增 120 字</span></div>
+              <div class="timeline-item"><span class="tl-date">2026-06-20</span><br><span class="tl-action">✅ 审核通过 (顾长生 审批)</span></div>
+              <div class="timeline-item"><span class="tl-date">2026-06-12</span><br><span class="tl-action"><i data-lucide="sparkles" size="16"></i> 创建对象</span></div>
+            </div>
+          </div>
+          <div class="inspector-section">
+            <div class="inspector-section-title">操作</div>
+            <div class="action-buttons">
+              <button class="action-btn" onclick="showAddToBoard()"><i data-lucide="clipboard" size="16"></i> 添加到面板</button>
+              <button class="action-btn" onclick="showAddToBoard()"><i data-lucide="pin" size="16"></i> 固定到速览</button>
+              <button class="action-btn promote" onclick="showReasonDialog('promote')"><i data-lucide="arrow-up" size="16"></i> 提升层级</button>
+              <button class="action-btn" onclick="showReasonDialog('lock')"><i data-lucide="lock" size="16"></i> 锁定对象</button>
+              <button class="action-btn danger" onclick="showReasonDialog('discard')"><i data-lucide="trash-2" size="16"></i> 弃置对象</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Status Bar (Screen 05 bottom) -->
+  <div class="status-bar">
+    <span class="save-indicator saved" id="saveIndicator">
+      <span id="saveIcon"><i data-lucide="check" size="12"></i></span>
+      <span id="saveLabel">已保存</span>
+    </span>
+    <span class="status-divider"></span>
+    <span id="syncQueue">队列: 0 项待同步</span>
+    <span class="status-divider"></span>
+    <span class="status-right">
+      <span>字数: 12,840</span>
+      <span>链接: 47</span>
+      <span>金:4 蓝:9 紫:8 灰:5</span>
+    </span>
+  </div>
+</div>
+
+<!-- WikiLink Tooltip (Screen 06) -->
+<div class="wiki-tooltip" id="wikiTooltip">
+  <div class="wt-name" id="wtName"></div>
+  <div><span class="wt-type" id="wtType"></span> · <span class="wt-status" id="wtStatus"></span></div>
+  <div class="wt-summary" id="wtSummary"></div>
+</div>
+
+<!-- Reason Dialog (Screen 08) -->
+<div class="reason-dialog-overlay" id="reasonDialog">
+  <div class="reason-dialog">
+    <div class="dialog-title" id="dialogTitle">确认操作</div>
+    <div class="dialog-desc" id="dialogDesc">请说明原因：</div>
+    <textarea class="dialog-input" id="dialogInput" placeholder="输入操作原因..."></textarea>
+    <div class="dialog-actions">
+      <button class="dialog-btn" onclick="closeReasonDialog()">取消</button>
+      <button class="dialog-btn primary" onclick="confirmReasonDialog()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screen Navigation Dots -->
+<div class="screen-dot-nav">
+  <span class="screen-dot" title="Loading Spinner" onclick="showScreen('loading')"></span>
+  <span class="screen-dot" title="Offline Banner" onclick="showScreen('offline')"></span>
+  <span class="screen-dot active" title="Workspace (default)" onclick="showScreen('workspace')"></span>
+  <span class="screen-dot" title="Empty State CTA" onclick="showScreen('empty')"></span>
+  <span class="screen-dot" title="Canon Level Popup" onclick="showCanonPopup()"></span>
+</div>
+
+<div class="prototype-legend">
+  <span><span class="key">点击</span> 大纲项目 <i data-lucide="arrow-right" size="12"></i> 切换右侧检查器</span>
+  <span><span class="key">悬停</span> [[WikiLink]] <i data-lucide="arrow-right" size="12"></i> 查看对象提示</span>
+  <span><span class="key">点击</span> 金/蓝/紫/灰标签 <i data-lucide="arrow-right" size="12"></i> 层级说明弹窗</span>
+  <span><span class="key">点击</span> ◀ 按钮 <i data-lucide="arrow-right" size="12"></i> 折叠左侧栏</span>
+</div>
+
+<script>
+function showScreen(name) {
+  var dots = document.querySelectorAll('.screen-dot');
+  var screens = ['loading','offline','workspace','empty','canon'];
+  var idx = screens.indexOf(name);
+  dots.forEach(function(d){d.classList.remove('active')});
+  if(idx>=0&&dots[idx]) dots[idx].classList.add('active');
+  var lo=document.getElementById('loadingOverlay'), bn=document.getElementById('offlineBanner');
+  var sh=document.getElementById('appShell'), ec=document.getElementById('emptyCta');
+  var es=document.getElementById('editorSourceMode'), cp=document.getElementById('canonPopup');
+  lo.classList.remove('show');bn.classList.remove('show');sh.style.display='flex';
+  ec.classList.remove('show');es.style.display='block';cp.classList.remove('show');
+  switch(name){
+    case'loading':lo.classList.add('show');sh.style.display='none';break;
+    case'offline':bn.classList.add('show');sh.style.paddingTop='28px';break;
+    case'workspace':sh.style.paddingTop='0';break;
+    case'empty':ec.classList.add('show');es.style.display='none';sh.style.paddingTop='0';break;
+    case'canon':cp.classList.add('show');sh.style.paddingTop='0';break;
+  }
+}
+function switchNavTab(el){
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+}
+function toggleSidebar(){
+  var s=document.getElementById('leftSidebar'),b=document.getElementById('sidebarCollapseBtn');
+  s.classList.toggle('collapsed');b.textContent=s.classList.contains('collapsed')?'▶':'◀';
+}
+function toggleGroup(h){
+  var a=h.querySelector('.arrow'),g=h.nextElementSibling;
+  a.classList.toggle('collapsed');g.classList.toggle('collapsed');
+}
+function selectOutlineItem(el){
+  document.querySelectorAll('.outline-item').forEach(function(i){i.classList.remove('active')});
+  el.classList.add('active');
+}
+function updateInspector(el){
+  var sum=document.getElementById('projectSummary'),ins=document.getElementById('objectInspector');
+  sum.classList.remove('show');ins.classList.add('show');
+  var t=el.querySelector('.type-tag').textContent;
+  var d=el.querySelector('.dot');
+  var tm={'章':'章节 <i data-lucide="file-text" size="16"></i>','主':'人物 <i data-lucide="user" size="16"></i>','要':'人物 <i data-lucide="user" size="16"></i>','配':'人物 <i data-lucide="user" size="16"></i>','地点':'地点 <i data-lucide="globe" size="16"></i>','组织':'组织 <i data-lucide="building" size="16"></i>','规则':'规则 <i data-lucide="scale" size="16"></i>','草稿':'草稿 <i data-lucide="edit-3" size="16"></i>','废弃':'废弃 <i data-lucide="trash-2" size="16"></i>'};
+  document.getElementById('objType').textContent=tm[t]||'其他';
+  var dc=Array.from(d.classList).find(function(c){return c.indexOf('dot-')===0});
+  var lm={'dot-gold':'金','dot-blue':'蓝','dot-purple':'紫','dot-gray':'灰'};
+  var lv=lm[dc]||'蓝';
+  var bd=document.getElementById('canonBadge');
+  bd.className='canon-badge '+dc.replace('dot-','');bd.textContent=lv;
+  var sm={'金':'gold','蓝':'blue','紫':'purple','灰':'gray'};
+  var sel=document.querySelector('.canon-select');
+  if(sel) sel.value=sm[lv]||'blue';
+  document.getElementById('objStatus').textContent=(lv==='金'||lv==='蓝')?'已发布':'草稿';
+  document.getElementById('objStatus').style.color=(lv==='金'||lv==='蓝')?'#4ade80':'#fbbf24';
+}
+function selectOutlineItemByData(id){
+  var el=document.querySelector('.outline-item[data-id="'+id+'"]');
+  if(el){selectOutlineItem(el);updateInspector(el);}
+}
+function switchMode(btn,mode){
+  document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  document.getElementById('editorSourceMode').style.display=mode==='source'?'block':'none';
+  document.getElementById('editorPreviewMode').classList.toggle('show',mode==='preview');
+  document.getElementById('editorRichTextMode').classList.toggle('show',mode==='richtext');
+}
+function toggleTool(btn){btn.classList.toggle('active')}
+var tooltip=document.getElementById('wikiTooltip');
+function showWikiTooltip(e,name,type,canon,summary,missing){
+  document.getElementById('wtName').textContent=name||'';
+  document.getElementById('wtType').textContent=(type||'')+(canon?' ['+canon+']':'');
+  document.getElementById('wtStatus').textContent=missing?'<i data-lucide="alert-triangle" size="16"></i> 未创建':'已创建';
+  var se=document.getElementById('wtSummary');
+  if(summary){se.textContent=summary;se.className='wt-summary';}
+  else{se.textContent='暂无摘要';se.className='wt-summary missing';}
+  tooltip.classList.add('show');
+  var r=e.target.getBoundingClientRect(),l=r.left,t=r.bottom+4;
+  if(l+260>window.innerWidth)l=window.innerWidth-270;
+  tooltip.style.left=l+'px';tooltip.style.top=t+'px';
+}
+function hideWikiTooltip(){tooltip.classList.remove('show')}
+function toggleCanonPopup(e){e.stopPropagation();document.getElementById('canonPopup').classList.toggle('show')}
+function showCanonPopup(){
+  document.getElementById('canonPopup').classList.add('show');
+  document.getElementById('appShell').style.display='flex';document.getElementById('appShell').style.paddingTop='0';
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+document.addEventListener('click',function(e){
+  var p=document.getElementById('canonPopup');
+  if(!e.target.closest('.canon-badge')&&!e.target.closest('.canon-popup'))p.classList.remove('show');
+});
+function closeEmptyCta(){
+  document.getElementById('emptyCta').classList.remove('show');
+  document.getElementById('editorSourceMode').style.display='block';
+  setSaveState('saving');setTimeout(function(){setSaveState('saved')},1500);
+}
+function setSaveState(s){
+  var i=document.getElementById('saveIndicator'),ic=document.getElementById('saveIcon'),lb=document.getElementById('saveLabel');
+  i.className='save-indicator '+s;
+  switch(s){case'saved':ic.textContent='<i data-lucide="check" size="12"></i>';lb.textContent='已保存';break;
+  case'saving':ic.textContent='⟳';lb.textContent='保存中...';break;
+  case'unsaved':ic.textContent='●';lb.textContent='未保存';break;
+  case'offline':ic.textContent='●';lb.textContent='离线';break;
+  case'error':ic.textContent='<i data-lucide="alert-triangle" size="16"></i>';lb.textContent='保存失败';break;}
+}
+var dialogAction=null;
+function showReasonDialog(a){
+  dialogAction=a;
+  var m={'promote':{title:'提升层级',desc:'确认要将此对象提升到更高设定层级吗？请说明原因：'},
+  'lock':{title:'锁定对象',desc:'锁定后内容不可编辑。请说明锁定原因：'},
+  'discard':{title:'弃置对象',desc:'此操作将把对象移至废弃区。请说明弃置原因：'}};
+  var d=m[a]||m.promote;
+  document.getElementById('dialogTitle').textContent=d.title;
+  document.getElementById('dialogDesc').textContent=d.desc;
+  document.getElementById('dialogInput').value='';
+  document.getElementById('reasonDialog').classList.add('show');
+}
+function closeReasonDialog(){document.getElementById('reasonDialog').classList.remove('show');dialogAction=null}
+function confirmReasonDialog(){
+  var inp=document.getElementById('dialogInput').value.trim();
+  if(!inp){alert('请输入操作原因');return}
+  var lb=dialogAction==='promote'?'提升层级':dialogAction==='lock'?'锁定':'弃置';
+  closeReasonDialog();setSaveState('saving');
+  document.getElementById('saveLabel').textContent=lb+'中...';
+  setTimeout(function(){setSaveState('saved')},1200);
+}
+function showAddToBoard(){
+  setSaveState('saving');
+  document.getElementById('saveLabel').textContent='添加到面板...';
+  setTimeout(function(){setSaveState('saved');document.getElementById('saveLabel').textContent='已添加到面板'},800);
+}
+function navigateBack(){setSaveState('unsaved')}
+setTimeout(function(){document.getElementById('loadingOverlay').classList.remove('show')},1500);
+(function(){
+  var rz=false,ch=null;
+  function ih(hid,tid,dir){
+    var h=document.getElementById(hid),t=document.getElementById(tid);
+    if(!h||!t)return;
+    h.addEventListener('mousedown',function(e){
+      rz=true;ch={target:t,startX:e.clientX,startW:t.offsetWidth,dir:dir};
+      document.body.style.cursor='col-resize';document.body.style.userSelect='none';
+    });
+  }
+  document.addEventListener('mousemove',function(e){
+    if(!rz||!ch)return;
+    var d=e.clientX-ch.startX,nw=ch.dir==='left'?ch.startW+d:ch.startW-d;
+    nw=Math.max(180,Math.min(400,nw));ch.target.style.width=nw+'px';
+  });
+  document.addEventListener('mouseup',function(){
+    if(rz){rz=false;ch=null;document.body.style.cursor='';document.body.style.userSelect=''}
+  });
+  ih('resizeHandleLeft','leftSidebar','left');
+  ih('resizeHandleRight','rightInspector','right');
+})();
+</script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

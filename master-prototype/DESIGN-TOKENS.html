@@ -1,0 +1,839 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zhimengji Design Tokens — Shared Design System</title>
+<style>
+  :root {
+    --bg-canvas:            #0a0a0a;
+    --bg-surface:           #141416;
+    --bg-raised:            #1e1e1e;
+    --bg-header:            #0e0e0e;
+    --bg-sidebar:           #0e0e0e;
+    --bg-tooltip:           #252525;
+    --bg-overlay:           rgba(0, 0, 0, 0.65);
+    --bg-banner:            #1a1a0e;
+    --accent:               #B7FF00;
+    --accent-hover:         #c8ff33;
+    --accent-active:        #a0e600;
+    --accent-disabled:      rgba(183, 255, 0, 0.25);
+    --accent-soft:          rgba(183, 255, 0, 0.10);
+    --accent-soft-hover:    rgba(183, 255, 0, 0.18);
+    --accent-glow:          rgba(183, 255, 0, 0.20);
+    --accent-text:          #0a0a0a;
+    --canon-core:           #FFB74D;
+    --canon-core-soft:      rgba(255, 183, 77, 0.15);
+    --canon-core-glow:      rgba(255, 183, 77, 0.25);
+    --canon-project:        #90CAF9;
+    --canon-project-soft:   rgba(144, 202, 249, 0.15);
+    --canon-project-glow:   rgba(144, 202, 249, 0.25);
+    --canon-draft:          #CE93D8;
+    --canon-draft-soft:     rgba(206, 147, 216, 0.15);
+    --canon-draft-glow:     rgba(206, 147, 216, 0.25);
+    --canon-none:           #666666;
+    --canon-none-soft:      rgba(102, 102, 102, 0.15);
+    --canon-none-glow:      rgba(102, 102, 102, 0.25);
+    --text-primary:         #e0e0e0;
+    --text-secondary:       #a0a0a0;
+    --text-muted:           #666666;
+    --text-disabled:        #444444;
+    --text-on-accent:       #0a0a0a;
+    --text-on-dark:         #e0e0e0;
+    --border-default:       #2a2a2a;
+    --border-subtle:        #222222;
+    --border-light:         #333333;
+    --border-accent:        rgba(183, 255, 0, 0.30);
+    --border-focus:         rgba(183, 255, 0, 0.50);
+    --safe:                 #4CAF50;
+    --safe-soft:            rgba(76, 175, 80, 0.15);
+    --warning:              #FF9800;
+    --warning-soft:         rgba(255, 152, 0, 0.15);
+    --danger:               #f44336;
+    --danger-soft:          rgba(244, 67, 54, 0.15);
+    --info:                 #42A5F5;
+    --info-soft:            rgba(66, 165, 245, 0.15);
+    --font-sans:            -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    --font-mono:            "JetBrains Mono", "Fira Code", Consolas, monospace;
+    --font-serif:           "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+    --fs-base:              0.9375rem;
+    --fs-sm:                0.8125rem;
+    --fs-xs:                0.6875rem;
+    --fs-lg:                1.10rem;
+    --fs-xl:                1.35rem;
+    --fs-2xl:               1.75rem;
+    --fs-3xl:               2.25rem;
+    --lh-tight:             1.3;
+    --lh-base:              1.6;
+    --lh-loose:             1.8;
+    --fw-normal:            400;
+    --fw-medium:            500;
+    --fw-semibold:          600;
+    --fw-bold:              700;
+    --space-1:              4px;
+    --space-2:              8px;
+    --space-3:              12px;
+    --space-4:              16px;
+    --space-5:              20px;
+    --space-6:              24px;
+    --space-8:              32px;
+    --space-10:             40px;
+    --space-12:             48px;
+    --space-16:             64px;
+    --radius-sm:            4px;
+    --radius-md:            8px;
+    --radius-lg:            12px;
+    --radius-xl:            16px;
+    --radius-full:          9999px;
+    --shadow-none:          none;
+    --shadow-sm:            0 1px 4px rgba(0, 0, 0, 0.25);
+    --shadow-md:            0 2px 12px rgba(0, 0, 0, 0.30);
+    --shadow-lg:            0 8px 32px rgba(0, 0, 0, 0.45);
+    --shadow-xl:            0 25px 60px rgba(0, 0, 0, 0.55);
+    --shadow-focus:         0 0 0 2px rgba(183, 255, 0, 0.15);
+    --shadow-glow-accent:   0 0 20px rgba(183, 255, 0, 0.15);
+    --shadow-glow-canon:    0 0 16px rgba(255, 183, 77, 0.15);
+    --nav-height:           44px;
+    --status-bar-height:    28px;
+    --toolbar-height:       40px;
+    --sidebar-width:        220px;
+    --inspector-width:      280px;
+    --tool-panel-width:     48px;
+    --object-pool-width:    220px;
+    --transition-fast:      0.12s ease;
+    --transition-base:      0.18s ease;
+    --transition-normal:    0.25s ease;
+    --transition-slow:      0.35s ease;
+    --transition-modal:     0.30s cubic-bezier(0.22, 1, 0.36, 1);
+    --transition-bounce:    0.40s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --z-base:               0;
+    --z-dropdown:           100;
+    --z-sticky:             200;
+    --z-modal-backdrop:     300;
+    --z-modal:              310;
+    --z-toast:              400;
+    --z-tooltip:            500;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:15px;scroll-behavior:smooth}
+  body{font-family:var(--font-sans);font-size:var(--fs-base);line-height:var(--lh-base);color:var(--text-primary);background:var(--bg-canvas);-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-default);border-radius:var(--radius-full)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+  ::selection{background:rgba(183,255,0,0.20)}
+  button,input,textarea,select{font-family:var(--font-sans);outline:none}
+  button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--border-focus);outline-offset:2px}
+  a{color:var(--accent);text-decoration:none;transition:color var(--transition-fast)}
+  a:hover{color:var(--accent-hover)}
+  .ds-page{max-width:1100px;margin:0 auto;padding:var(--space-8) var(--space-6)}
+  .ds-section{margin-bottom:var(--space-10);padding-bottom:var(--space-8);border-bottom:1px solid var(--border-subtle)}
+  .ds-section:last-child{border-bottom:none}
+  .ds-title{font-size:var(--fs-2xl);font-weight:var(--fw-bold);letter-spacing:-0.02em;margin-bottom:var(--space-2)}
+  .ds-subtitle{font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--text-secondary);margin-bottom:var(--space-6)}
+  .ds-section-heading{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin-bottom:var(--space-4);display:flex;align-items:center;gap:var(--space-3)}
+  .ds-section-heading .count{font-size:var(--fs-sm);color:var(--text-muted);font-weight:var(--fw-normal)}
+  .ds-label{font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--space-3)}
+  .ds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-4)}
+  .ds-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4)}
+  .ds-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-4)}
+  .ds-flex{display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-start}
+  .ds-flex-row{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center}
+  .swatch{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)}
+  .swatch-color{width:100%;height:48px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);transition:transform var(--transition-fast)}
+  .swatch:hover .swatch-color{transform:scale(1.02)}
+  .swatch-name{font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-family:var(--font-mono)}
+  .swatch-value{font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono)}
+  .swatch-desc{font-size:var(--fs-xs);color:var(--text-secondary);line-height:var(--lh-tight)}
+  .token-table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+  .token-table th{text-align:left;padding:var(--space-2) var(--space-3);color:var(--text-muted);font-size:var(--fs-xs);font-weight:var(--fw-semibold);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--border-default)}
+  .token-table td{padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--border-subtle);vertical-align:middle}
+  .token-table tr:last-child td{border-bottom:none}
+  .token-table .token-name{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--accent);white-space:nowrap}
+  .token-table .token-val{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-secondary)}
+  .type-sample{margin-bottom:var(--space-4)}
+  .type-sample .label{font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono);margin-bottom:var(--space-1)}
+  .type-sample h1{font-size:var(--fs-3xl);font-weight:var(--fw-bold);line-height:var(--lh-tight)}
+  .type-sample h2{font-size:var(--fs-2xl);font-weight:var(--fw-bold);line-height:var(--lh-tight)}
+  .type-sample h3{font-size:var(--fs-xl);font-weight:var(--fw-semibold);line-height:var(--lh-tight)}
+  .type-sample .body{font-size:var(--fs-base);line-height:var(--lh-base);max-width:480px}
+  .type-sample .body-sm{font-size:var(--fs-sm);line-height:var(--lh-base)}
+  .type-sample .caption{font-size:var(--fs-xs);line-height:var(--lh-tight)}
+  .type-sample .mono{font-family:var(--font-mono);font-size:var(--fs-sm)}
+  .spacing-row{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3)}
+  .spacing-label{width:100px;font-size:var(--fs-xs);font-family:var(--font-mono);color:var(--text-muted);flex-shrink:0}
+  .spacing-bar{height:12px;background:var(--accent);border-radius:var(--radius-sm);flex-shrink:0;opacity:0.6;transition:opacity var(--transition-fast)}
+  .spacing-bar:hover{opacity:1}
+  .spacing-value{font-size:var(--fs-xs);font-family:var(--font-mono);color:var(--text-secondary)}
+  .nav-bar{height:var(--nav-height);background:var(--bg-header);border-bottom:1px solid var(--border-default);display:flex;align-items:center;padding:0 var(--space-4);gap:var(--space-3);flex-shrink:0;user-select:none;position:relative;z-index:var(--z-sticky)}
+  .nav-back{display:flex;align-items:center;gap:var(--space-1);color:var(--text-secondary);font-size:var(--fs-sm);cursor:pointer;padding:var(--space-1) var(--space-2);border-radius:var(--radius-sm);transition:all var(--transition-fast);border:none;background:transparent;font-family:var(--font-sans)}
+  .nav-back:hover{color:var(--text-primary);background:var(--bg-raised)}
+  .nav-back:active{background:var(--bg-surface);transform:scale(0.97)}
+  .nav-divider{width:1px;height:20px;background:var(--border-default);flex-shrink:0}
+  .nav-project-name{font-size:var(--fs-sm);font-weight:var(--fw-semibold);flex-shrink:0}
+  .nav-spacer{flex:1}
+  .nav-mode-group{display:flex;gap:0;background:var(--bg-surface);border-radius:var(--radius-md);padding:2px;border:1px solid var(--border-default)}
+  .nav-mode-btn{padding:3px 14px;font-size:var(--fs-xs);border:none;background:transparent;color:var(--text-secondary);cursor:pointer;border-radius:var(--radius-sm);transition:all var(--transition-fast);letter-spacing:0.02em;font-family:var(--font-sans);font-weight:var(--fw-medium)}
+  .nav-mode-btn:hover{color:var(--text-primary);background:var(--bg-raised)}
+  .nav-mode-btn:active{transform:scale(0.97)}
+  .nav-mode-btn.active{background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 1px rgba(183,255,0,0.20)}
+  .nav-mode-btn:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+  .nav-actions{display:flex;align-items:center;gap:var(--space-1);margin-left:var(--space-2)}
+  .nav-icon-btn{width:30px;height:30px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;transition:all var(--transition-fast);font-size:1rem}
+  .nav-icon-btn:hover{background:var(--bg-raised);color:var(--text-primary)}
+  .nav-icon-btn:active{background:var(--bg-surface);transform:scale(0.92)}
+  .nav-icon-btn.active{color:var(--accent);background:var(--accent-soft)}
+  .nav-icon-btn:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+  .nav-badges{display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-3)}
+  .status-bar{height:var(--status-bar-height);background:var(--bg-header);border-top:1px solid var(--border-default);display:flex;align-items:center;padding:0 var(--space-4);gap:var(--space-4);flex-shrink:0;font-size:var(--fs-xs);color:var(--text-muted);user-select:none}
+  .status-item{display:flex;align-items:center;gap:var(--space-1)}
+  .status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .status-dot.sync{background:var(--accent)}
+  .status-dot.saving{background:var(--warning)}
+  .status-dot.saved{background:var(--safe)}
+  .status-dot.error{background:var(--danger)}
+  .status-dot.idle{background:var(--text-muted)}
+  .status-spacer{flex:1}
+  .status-label{font-size:var(--fs-xs);color:var(--text-muted)}
+  .status-badge{font-size:var(--fs-xs);padding:0 var(--space-2);height:18px;display:flex;align-items:center;border-radius:var(--radius-sm);background:var(--bg-raised);border:1px solid var(--border-default);color:var(--text-secondary)}
+  .sidebar{width:var(--sidebar-width);background:var(--bg-sidebar);border-right:1px solid var(--border-default);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width var(--transition-normal),border-color var(--transition-normal);position:relative;z-index:10}
+  .sidebar.collapsed{width:0;border-right-color:transparent}
+  .sidebar-header{height:40px;display:flex;align-items:center;padding:0 var(--space-2) 0 var(--space-3);gap:var(--space-2);border-bottom:1px solid var(--border-default);flex-shrink:0;white-space:nowrap;overflow:hidden}
+  .sidebar-title{font-size:var(--fs-sm);font-weight:var(--fw-semibold);letter-spacing:0.03em}
+  .sidebar-content{flex:1;overflow-y:auto;padding:var(--space-2) 0}
+  .sidebar-item{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);font-size:var(--fs-sm);color:var(--text-secondary);cursor:pointer;transition:all var(--transition-fast);border:none;background:transparent;width:100%;text-align:left;font-family:var(--font-sans)}
+  .sidebar-item:hover{background:var(--bg-raised);color:var(--text-primary)}
+  .sidebar-item:active{background:var(--bg-surface)}
+  .sidebar-item.active{color:var(--accent);background:var(--accent-soft)}
+  .sidebar-item:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+  .sidebar-toggle-btn{width:28px;height:28px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;transition:all var(--transition-fast);flex-shrink:0;font-size:1rem}
+  .sidebar-toggle-btn:hover{background:var(--bg-raised);color:var(--text-primary)}
+  .sidebar-toggle-btn:active{transform:scale(0.92)}
+  .card{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:var(--space-4);transition:all var(--transition-normal);cursor:pointer}
+  .card:hover{border-color:var(--border-light);box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+  .card:active{transform:translateY(0);box-shadow:var(--shadow-sm)}
+  .card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--border-accent),var(--shadow-md)}
+  .card.disabled{opacity:0.5;cursor:not-allowed;pointer-events:none}
+  .card-header{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2)}
+  .card-title{font-size:var(--fs-sm);font-weight:var(--fw-semibold);flex:1}
+  .card-body{font-size:var(--fs-sm);color:var(--text-secondary);line-height:var(--lh-base)}
+  .card-footer{display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--border-subtle)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:6px 16px;font-size:var(--fs-sm);font-weight:var(--fw-medium);font-family:var(--font-sans);line-height:1.4;border-radius:var(--radius-md);border:1px solid transparent;cursor:pointer;transition:all var(--transition-fast);user-select:none;white-space:nowrap;text-decoration:none}
+  .btn-primary{background:var(--accent);color:var(--text-on-accent);border-color:var(--accent)}
+  .btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+  .btn-primary:active{background:var(--accent-active);border-color:var(--accent-active);transform:scale(0.97)}
+  .btn-primary:disabled{background:var(--accent-disabled);border-color:var(--accent-disabled);color:rgba(10,10,10,0.35);cursor:not-allowed;pointer-events:none}
+  .btn-secondary{background:transparent;color:var(--text-primary);border-color:var(--border-default)}
+  .btn-secondary:hover{background:var(--bg-raised);border-color:var(--border-light)}
+  .btn-secondary:active{background:var(--bg-surface);transform:scale(0.97)}
+  .btn-secondary:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+  .btn-ghost{background:transparent;color:var(--text-secondary);border-color:transparent}
+  .btn-ghost:hover{background:var(--bg-raised);color:var(--text-primary)}
+  .btn-ghost:active{background:var(--bg-surface);transform:scale(0.97)}
+  .btn-ghost:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+  .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .btn-danger:hover{background:#e53935;border-color:#e53935}
+  .btn-danger:active{background:#d32f2f;transform:scale(0.97)}
+  .btn-danger:disabled{opacity:0.4;cursor:not-allowed;pointer-events:none}
+  .btn-sm{padding:3px 10px;font-size:var(--fs-xs);border-radius:var(--radius-sm)}
+  .btn-lg{padding:9px 24px;font-size:var(--fs-base)}
+  .btn-icon{width:30px;height:30px;padding:0}
+  .btn-icon.btn-sm{width:26px;height:26px}
+  .btn-icon.btn-lg{width:38px;height:38px}
+  .badge{display:inline-flex;align-items:center;gap:var(--space-1);padding:1px 10px;font-size:var(--fs-xs);font-weight:var(--fw-medium);line-height:1.5;border-radius:var(--radius-full);white-space:nowrap;user-select:none;transition:all var(--transition-fast)}
+  .badge-accent{background:var(--accent-soft);color:var(--accent);border:1px solid rgba(183,255,0,0.15)}
+  .badge-canon-core{background:var(--canon-core-soft);color:var(--canon-core);border:1px solid rgba(255,183,77,0.20)}
+  .badge-canon-project{background:var(--canon-project-soft);color:var(--canon-project);border:1px solid rgba(144,202,249,0.20)}
+  .badge-canon-draft{background:var(--canon-draft-soft);color:var(--canon-draft);border:1px solid rgba(206,147,216,0.20)}
+  .badge-canon-none{background:var(--canon-none-soft);color:var(--canon-none);border:1px solid rgba(102,102,102,0.20)}
+  .badge-default{background:var(--bg-raised);color:var(--text-secondary);border:1px solid var(--border-default)}
+  .badge-safe{background:var(--safe-soft);color:var(--safe);border:1px solid rgba(76,175,80,0.20)}
+  .badge-warning{background:var(--warning-soft);color:var(--warning);border:1px solid rgba(255,152,0,0.20)}
+  .badge-danger{background:var(--danger-soft);color:var(--danger);border:1px solid rgba(244,67,54,0.20)}
+  .badge-info{background:var(--info-soft);color:var(--info);border:1px solid rgba(66,165,245,0.20)}
+  .badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .badge .badge-dot.accent{background:var(--accent)}
+  .badge .badge-dot.safe{background:var(--safe)}
+  .badge .badge-dot.warning{background:var(--warning)}
+  .badge .badge-dot.danger{background:var(--danger)}
+  .badge .badge-dot.muted{background:var(--text-muted)}
+  .modal-backdrop{position:fixed;inset:0;background:var(--bg-overlay);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:var(--z-modal-backdrop);display:flex;align-items:center;justify-content:center;animation:fadeIn var(--transition-normal) ease}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(16px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .modal{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-xl);box-shadow:var(--shadow-xl);width:100%;max-width:480px;max-height:85vh;overflow-y:auto;z-index:var(--z-modal);animation:slideUp var(--transition-modal)}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-5) var(--space-6) var(--space-3)}
+  .modal-title{font-size:var(--fs-lg);font-weight:var(--fw-semibold)}
+  .modal-close{width:30px;height:30px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;transition:all var(--transition-fast);font-size:1.1rem}
+  .modal-close:hover{background:var(--bg-raised);color:var(--text-primary)}
+  .modal-close:active{transform:scale(0.92)}
+  .modal-body{padding:var(--space-3) var(--space-6) var(--space-5);font-size:var(--fs-sm);color:var(--text-secondary);line-height:var(--lh-base)}
+  .modal-footer{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-3);padding:var(--space-3) var(--space-6) var(--space-5);border-top:1px solid var(--border-subtle)}
+  .modal-wide{max-width:640px}
+  .modal-narrow{max-width:360px}
+  .toast-container{position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:var(--z-toast);display:flex;flex-direction:column;gap:var(--space-2);pointer-events:none}
+  @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(20px)}}
+  .toast{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--bg-raised);border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);font-size:var(--fs-sm);color:var(--text-primary);min-width:280px;max-width:400px;pointer-events:auto;animation:toastIn var(--transition-normal) ease}
+  .toast-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:var(--fs-xs)}
+  .toast-icon.safe{background:var(--safe-soft);color:var(--safe)}
+  .toast-icon.warning{background:var(--warning-soft);color:var(--warning)}
+  .toast-icon.danger{background:var(--danger-soft);color:var(--danger)}
+  .toast-icon.info{background:var(--info-soft);color:var(--info)}
+  .toast-message{flex:1}
+  .toast-action{color:var(--accent);cursor:pointer;font-weight:var(--fw-medium);transition:color var(--transition-fast);border:none;background:transparent;font-family:var(--font-sans);font-size:var(--fs-sm);padding:0}
+  .toast-action:hover{color:var(--accent-hover)}
+  .toast-close{width:20px;height:20px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:0.75rem;transition:all var(--transition-fast)}
+  .toast-close:hover{background:var(--bg-surface);color:var(--text-primary)}
+  .toast-default{border-left:3px solid var(--border-light)}
+  .toast-success{border-left:3px solid var(--safe)}
+  .toast-warning{border-left:3px solid var(--warning)}
+  .toast-error{border-left:3px solid var(--danger)}
+  .toast-info{border-left:3px solid var(--info)}
+  .input{width:100%;padding:8px 12px;font-size:var(--fs-sm);font-family:var(--font-sans);color:var(--text-primary);background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);transition:all var(--transition-fast);line-height:1.5}
+  .input:hover{border-color:var(--border-light)}
+  .input:focus{border-color:var(--border-accent);box-shadow:var(--shadow-focus)}
+  .input:disabled{opacity:0.4;cursor:not-allowed;pointer-events:none}
+  .input::placeholder{color:var(--text-muted)}
+  .input-error{border-color:var(--danger)!important;box-shadow:0 0 0 1px rgba(244,67,54,0.15)!important}
+  .textarea{resize:vertical;min-height:80px}
+  .select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%23666'%3E%3Cpath d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+  .tab-bar{display:flex;gap:0;background:var(--bg-surface);border-radius:var(--radius-md);padding:2px;border:1px solid var(--border-default)}
+  .tab-item{padding:var(--space-1) var(--space-4);font-size:var(--fs-sm);border:none;background:transparent;color:var(--text-secondary);cursor:pointer;border-radius:var(--radius-sm);transition:all var(--transition-fast);font-family:var(--font-sans);font-weight:var(--fw-medium)}
+  .tab-item:hover{color:var(--text-primary);background:var(--bg-raised)}
+  .tab-item:active{transform:scale(0.97)}
+  .tab-item.active{background:var(--accent-soft);color:var(--accent)}
+  .tab-item:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+  .toggle{position:relative;display:inline-flex;width:36px;height:20px;cursor:pointer}
+  .toggle input{opacity:0;width:0;height:0;position:absolute}
+  .toggle-track{width:100%;height:100%;background:var(--border-default);border-radius:var(--radius-full);transition:all var(--transition-fast);position:relative}
+  .toggle-track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--text-secondary);border-radius:50%;transition:all var(--transition-fast)}
+  .toggle:hover .toggle-track{background:var(--border-light)}
+  .toggle input:checked+.toggle-track{background:var(--accent)}
+  .toggle input:checked+.toggle-track::after{left:18px;background:var(--text-on-accent)}
+  .toggle input:disabled+.toggle-track{opacity:0.35;cursor:not-allowed}
+  .progress{width:100%;height:6px;background:var(--bg-raised);border-radius:var(--radius-full);overflow:hidden}
+  .progress-fill{height:100%;border-radius:var(--radius-full);transition:width var(--transition-normal)}
+  .progress-fill.accent{background:var(--accent)}
+  .progress-fill.safe{background:var(--safe)}
+  .progress-fill.warning{background:var(--warning)}
+  .progress-fill.danger{background:var(--danger)}
+  [data-tooltip]{position:relative}
+  [data-tooltip]::after{content:attr(data-tooltip);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);background:var(--bg-tooltip);color:var(--text-primary);font-size:var(--fs-xs);padding:var(--space-1) var(--space-2);border-radius:var(--radius-sm);border:1px solid var(--border-default);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity var(--transition-fast);z-index:var(--z-tooltip);font-family:var(--font-sans)}
+  [data-tooltip]:hover::after{opacity:1}
+  .canon-node{position:absolute;min-width:150px;background:var(--bg-surface);border-radius:var(--radius-lg);border:2px solid var(--canon-none);padding:0;cursor:pointer;transition:box-shadow var(--transition-normal),border-color var(--transition-normal);user-select:none;overflow:hidden}
+  .canon-node:hover{box-shadow:var(--shadow-lg)}
+  .canon-node:active{box-shadow:var(--shadow-sm)}
+  .canon-node.selected{box-shadow:0 0 0 2px var(--accent),var(--shadow-lg)}
+  .canon-node.canon-core{border-color:var(--canon-core)}
+  .canon-node.canon-project{border-color:var(--canon-project)}
+  .canon-node.canon-draft{border-color:var(--canon-draft);border-style:dashed}
+  .canon-node.disabled{opacity:0.4;pointer-events:none}
+  .canon-node-header{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3)}
+  .canon-node-icon{width:26px;height:26px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:0.875rem;flex-shrink:0}
+  .canon-node-name{font-size:var(--fs-sm);font-weight:var(--fw-semibold);flex:1}
+  .canon-node-body{padding:0 var(--space-3) var(--space-2);font-size:var(--fs-xs);color:var(--text-secondary)}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--space-10);text-align:center;gap:var(--space-3)}
+  .empty-state-icon{font-size:2.5rem;opacity:0.3}
+  .empty-state-title{font-size:var(--fs-lg);font-weight:var(--fw-semibold)}
+  .empty-state-desc{font-size:var(--fs-sm);color:var(--text-muted);max-width:320px}
+  .prototype-banner{height:24px;background:var(--bg-banner);border-bottom:1px solid #333300;display:flex;align-items:center;justify-content:center;gap:var(--space-2);font-size:var(--fs-xs);color:var(--accent);flex-shrink:0;letter-spacing:0.5px}
+  .ds-header{padding:var(--space-8) 0 var(--space-6);border-bottom:1px solid var(--border-default);margin-bottom:var(--space-8)}
+  .ds-header h1{font-size:var(--fs-3xl);font-weight:var(--fw-bold);background:linear-gradient(135deg,var(--accent),#d4ff5e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:var(--space-2)}
+  .ds-header .desc{font-size:var(--fs-base);color:var(--text-secondary);max-width:600px}
+  .ds-header .meta{display:flex;gap:var(--space-4);margin-top:var(--space-4);font-size:var(--fs-xs);color:var(--text-muted)}
+  .ds-toc{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-8)}
+  .ds-toc a{font-size:var(--fs-sm);padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);background:var(--bg-surface);border:1px solid var(--border-default);color:var(--text-secondary);transition:all var(--transition-fast)}
+  .ds-toc a:hover{background:var(--bg-raised);border-color:var(--border-light);color:var(--accent)}
+  .component-stage{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:var(--space-6);margin-bottom:var(--space-4)}
+  .component-stage .stage-label{font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono);margin-bottom:var(--space-4)}
+  .component-stage .stage-row{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center;margin-bottom:var(--space-3)}
+  .component-stage .stage-row:last-child{margin-bottom:0}
+  .stage-state-label{font-size:var(--fs-xs);color:var(--text-muted);width:60px;flex-shrink:0}
+  .anim-demo{display:flex;gap:var(--space-4);align-items:center}
+  .anim-box{width:40px;height:40px;border-radius:var(--radius-md);background:var(--accent)}
+  .anim-box.fast{transition:transform var(--transition-fast)}
+  .anim-box.base{transition:transform var(--transition-base)}
+  .anim-box.normal{transition:transform var(--transition-normal)}
+  .anim-box.slow{transition:transform var(--transition-slow)}
+  .anim-box.bounce{transition:transform var(--transition-bounce)}
+  .anim-box:hover{transform:scale(1.35)}
+  @media(max-width:768px){
+    .ds-grid-3{grid-template-columns:repeat(2,1fr)}
+    .ds-grid-2{grid-template-columns:1fr}
+    .ds-page{padding:var(--space-4)}
+    .modal{max-width:calc(100vw - 32px)}
+  }
+  @media(max-width:480px){
+    .ds-grid-3,.ds-grid{grid-template-columns:1fr}
+    .component-stage .stage-row{flex-direction:column;align-items:flex-start}
+  }
+</style>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+<div class="prototype-banner"><span>Zhimengji</span> Design Tokens v1.2 &middot; Master Prototype Reference</div>
+<div class="ds-page">
+<header class="ds-header">
+  <h1>Zhimengji Design Tokens</h1>
+  <p class="desc">Shared design system for the Zhimengji (织梦机) master prototype &mdash; 93 screens across 17 phases. Dark-green theme with #B7FF00 accent.</p>
+  <div class="meta">
+    <span>Version 1.2&ndash;1.3</span>
+    <span>93 screens</span>
+    <span>17 phases</span>
+    <span>Last updated 2026-07-08</span>
+  </div>
+</header>
+<nav class="ds-toc" id="toc">
+  <a href="#colors">Colors</a>
+  <a href="#typography">Typography</a>
+  <a href="#spacing">Spacing</a>
+  <a href="#borders">Borders &amp; Shadows</a>
+  <a href="#layout">Layout</a>
+  <a href="#nav-bar">Nav Bar</a>
+  <a href="#status-bar">Status Bar</a>
+  <a href="#sidebar">Sidebar</a>
+  <a href="#card">Card</a>
+  <a href="#button">Button</a>
+  <a href="#badge">Badge</a>
+  <a href="#modal">Modal</a>
+  <a href="#toast">Toast</a>
+  <a href="#form">Form</a>
+  <a href="#tab">Tab Bar</a>
+  <a href="#toggle">Toggle</a>
+  <a href="#progress">Progress</a>
+  <a href="#canon-node">Canon Node</a>
+  <a href="#animation">Animation</a>
+  <a href="#zindex">Z-Index</a>
+</nav>
+<section class="ds-section" id="colors">
+  <h2 class="ds-section-heading">Colors <span class="count">32 tokens</span></h2>
+  <div class="ds-label">Backgrounds</div>
+  <div class="ds-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#0a0a0a"></div><div class="swatch-name">--bg-canvas</div><div class="swatch-value">#0a0a0a</div><div class="swatch-desc">App background, canvas viewport</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#141416"></div><div class="swatch-name">--bg-surface</div><div class="swatch-value">#141416</div><div class="swatch-desc">Card backgrounds, dropdowns</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#1e1e1e"></div><div class="swatch-name">--bg-raised</div><div class="swatch-value">#1e1e1e</div><div class="swatch-desc">Interactive surfaces, hover states</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#0e0e0e"></div><div class="swatch-name">--bg-header</div><div class="swatch-value">#0e0e0e</div><div class="swatch-desc">Nav bar, header bars</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#0e0e0e"></div><div class="swatch-name">--bg-sidebar</div><div class="swatch-value">#0e0e0e</div><div class="swatch-desc">Sidebar background</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#252525"></div><div class="swatch-name">--bg-tooltip</div><div class="swatch-value">#252525</div><div class="swatch-desc">Tooltip background</div></div>
+  </div>
+  <div class="ds-label" style="margin-top:var(--space-5)">Accent (Brand) &mdash; #B7FF00</div>
+  <div class="ds-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#B7FF00"></div><div class="swatch-name">--accent</div><div class="swatch-value">#B7FF00</div><div class="swatch-desc">Brand, active states, CTAs</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#c8ff33"></div><div class="swatch-name">--accent-hover</div><div class="swatch-value">#c8ff33</div><div class="swatch-desc">Hover state for accent elements</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#a0e600"></div><div class="swatch-name">--accent-active</div><div class="swatch-value">#a0e600</div><div class="swatch-desc">Active/pressed state</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:rgba(183,255,0,0.10);border-color:rgba(183,255,0,0.2)"></div><div class="swatch-name">--accent-soft</div><div class="swatch-value">rgba(183,255,0,0.10)</div><div class="swatch-desc">Subtle accent background</div></div>
+  </div>
+  <div class="ds-label" style="margin-top:var(--space-5)">Canon Colors</div>
+  <div class="ds-grid-3">
+    <div class="swatch"><div class="swatch-color" style="background:#FFB74D"></div><div class="swatch-name">--canon-core</div><div class="swatch-value">#FFB74D</div><div class="swatch-desc">Core canon &mdash; solid border</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#90CAF9"></div><div class="swatch-name">--canon-project</div><div class="swatch-value">#90CAF9</div><div class="swatch-desc">Project canon &mdash; solid border</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#CE93D8"></div><div class="swatch-name">--canon-draft</div><div class="swatch-value">#CE93D8</div><div class="swatch-desc">Draft canon &mdash; dashed border</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#666666"></div><div class="swatch-name">--canon-none</div><div class="swatch-value">#666666</div><div class="swatch-desc">Unlisted &mdash; subtle border</div></div>
+  </div>
+  <div class="ds-label" style="margin-top:var(--space-5)">Status Colors</div>
+  <div class="ds-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#4CAF50"></div><div class="swatch-name">--safe</div><div class="swatch-value">#4CAF50</div><div class="swatch-desc">Success, saved, connected</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#FF9800"></div><div class="swatch-name">--warning</div><div class="swatch-value">#FF9800</div><div class="swatch-desc">Warning, saving, offline</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#f44336"></div><div class="swatch-name">--danger</div><div class="swatch-value">#f44336</div><div class="swatch-desc">Error, danger, disconnect</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#42A5F5"></div><div class="swatch-name">--info</div><div class="swatch-value">#42A5F5</div><div class="swatch-desc">Information, help</div></div>
+  </div>
+  <div class="ds-label" style="margin-top:var(--space-5)">Text</div>
+  <div class="ds-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#e0e0e0"></div><div class="swatch-name">--text-primary</div><div class="swatch-value">#e0e0e0</div><div class="swatch-desc">Body text, headings</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#a0a0a0"></div><div class="swatch-name">--text-secondary</div><div class="swatch-value">#a0a0a0</div><div class="swatch-desc">Secondary text, metadata</div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#666666"></div><div class="swatch-name">--text-muted</div><div class="swatch-value">#666666</div><div class="swatch-desc">Placeholder, hints, disabled</div></div>
+  </div>
+  <details style="margin-top:var(--space-5)">
+    <summary style="cursor:pointer;font-size:var(--fs-sm);color:var(--text-secondary);user-select:none">View full color token table</summary>
+    <table class="token-table" style="margin-top:var(--space-3)">
+      <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+      <tbody>
+        <tr><td class="token-name">--bg-canvas</td><td class="token-val">#0a0a0a</td><td>App background</td></tr>
+        <tr><td class="token-name">--bg-surface</td><td class="token-val">#141416</td><td>Card backgrounds</td></tr>
+        <tr><td class="token-name">--bg-raised</td><td class="token-val">#1e1e1e</td><td>Interactive surfaces</td></tr>
+        <tr><td class="token-name">--bg-header</td><td class="token-val">#0e0e0e</td><td>Nav/header backgrounds</td></tr>
+        <tr><td class="token-name">--bg-sidebar</td><td class="token-val">#0e0e0e</td><td>Sidebar</td></tr>
+        <tr><td class="token-name">--accent</td><td class="token-val">#B7FF00</td><td>Brand, active states, CTAs</td></tr>
+        <tr><td class="token-name">--accent-hover</td><td class="token-val">#c8ff33</td><td>Hover</td></tr>
+        <tr><td class="token-name">--accent-active</td><td class="token-val">#a0e600</td><td>Pressed</td></tr>
+        <tr><td class="token-name">--canon-core</td><td class="token-val">#FFB74D</td><td>Core canon</td></tr>
+        <tr><td class="token-name">--canon-project</td><td class="token-val">#90CAF9</td><td>Project canon</td></tr>
+        <tr><td class="token-name">--canon-draft</td><td class="token-val">#CE93D8</td><td>Draft canon</td></tr>
+        <tr><td class="token-name">--canon-none</td><td class="token-val">#666666</td><td>Unlisted</td></tr>
+        <tr><td class="token-name">--safe</td><td class="token-val">#4CAF50</td><td>Success</td></tr>
+        <tr><td class="token-name">--warning</td><td class="token-val">#FF9800</td><td>Warning</td></tr>
+        <tr><td class="token-name">--danger</td><td class="token-val">#f44336</td><td>Danger</td></tr>
+        <tr><td class="token-name">--info</td><td class="token-val">#42A5F5</td><td>Info</td></tr>
+        <tr><td class="token-name">--text-primary</td><td class="token-val">#e0e0e0</td><td>Body text</td></tr>
+        <tr><td class="token-name">--text-secondary</td><td class="token-val">#a0a0a0</td><td>Secondary text</td></tr>
+        <tr><td class="token-name">--text-muted</td><td class="token-val">#666666</td><td>Muted/hint</td></tr>
+      </tbody>
+    </table>
+  </details>
+</section>
+<section class="ds-section" id="typography">
+  <h2 class="ds-section-heading">Typography <span class="count">3 families, 7 sizes</span></h2>
+  <div class="ds-label">Font Stacks</div>
+  <table class="token-table" style="margin-bottom:var(--space-6)"><thead><tr><th>Token</th><th>Family</th></tr></thead><tbody>
+    <tr><td class="token-name">--font-sans</td><td class="token-val" style="font-family:var(--font-sans)">-apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif</td></tr>
+    <tr><td class="token-name">--font-mono</td><td class="token-val" style="font-family:var(--font-mono)">"JetBrains Mono", "Fira Code", Consolas, monospace</td></tr>
+    <tr><td class="token-name">--font-serif</td><td class="token-val" style="font-family:var(--font-serif)">"Noto Serif SC", "Source Han Serif SC", Georgia, serif</td></tr>
+  </tbody></table>
+  <div class="ds-label">Type Scale</div>
+  <table class="token-table" style="margin-bottom:var(--space-6)"><thead><tr><th>Token</th><th>Size</th><th>Line Height</th><th>Weight</th><th>Usage</th></tr></thead><tbody>
+    <tr><td class="token-name">--fs-3xl</td><td class="token-val">2.25rem / 36px</td><td class="token-val">1.3</td><td class="token-val">700</td><td>Page headings</td></tr>
+    <tr><td class="token-name">--fs-2xl</td><td class="token-val">1.75rem / 28px</td><td class="token-val">1.3</td><td class="token-val">700</td><td>Section headings</td></tr>
+    <tr><td class="token-name">--fs-xl</td><td class="token-val">1.35rem / 21.6px</td><td class="token-val">1.3</td><td class="token-val">600</td><td>Card titles, modal titles</td></tr>
+    <tr><td class="token-name">--fs-lg</td><td class="token-val">1.10rem / 17.6px</td><td class="token-val">1.4</td><td class="token-val">600</td><td>Sub-headings</td></tr>
+    <tr><td class="token-name">--fs-base</td><td class="token-val">0.9375rem / 15px</td><td class="token-val">1.6</td><td class="token-val">400</td><td>Body text</td></tr>
+    <tr><td class="token-name">--fs-sm</td><td class="token-val">0.8125rem / 13px</td><td class="token-val">1.5</td><td class="token-val">400</td><td>Secondary text, labels</td></tr>
+    <tr><td class="token-name">--fs-xs</td><td class="token-val">0.6875rem / 11px</td><td class="token-val">1.4</td><td class="token-val">400</td><td>Badges, timestamps, captions</td></tr>
+  </tbody></table>
+  <div class="ds-label">Live Samples</div>
+  <div class="ds-grid-2">
+    <div class="type-sample"><div class="label">--fs-3xl | --fw-bold | --lh-tight</div><h1>织梦机</h1></div>
+    <div class="type-sample"><div class="label">--fs-2xl | --fw-bold | --lh-tight</div><h2>Section Heading</h2></div>
+    <div class="type-sample"><div class="label">--fs-xl | --fw-semibold | --lh-tight</div><h3>Card Title Here</h3></div>
+    <div class="type-sample"><div class="label">--fs-lg | --fw-semibold</div><h3 style="font-size:var(--fs-lg)">Sub-heading Style</h3></div>
+    <div class="type-sample"><div class="label">--fs-base | --lh-base (body)</div><p class="body">Body text for paragraphs, descriptions, and content areas. Uses default line height for comfortable reading across all screen sizes.</p></div>
+    <div class="type-sample"><div class="label">--fs-sm (secondary text)</div><p class="body-sm">Secondary labels, metadata, inspector fields, sidebar items. Smaller but still highly readable.</p></div>
+    <div class="type-sample"><div class="label">--fs-xs (caption)</div><p class="caption">Badges, timestamps, status bar items, tooltips &mdash; 11px minimum for UI chrome.</p></div>
+    <div class="type-sample"><div class="label">--font-mono</div><p class="mono">console.log("Hello world");  // Code samples</p></div>
+  </div>
+</section>
+<section class="ds-section" id="spacing">
+  <h2 class="ds-section-heading">Spacing System <span class="count">4px base scale</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-6)">Based on a 4px unit. All component spacing uses these variables. Never use arbitrary pixel values.</p>
+    <div class="spacing-row"><span class="spacing-label">--space-1</span><div class="spacing-bar" style="width:4px"></div><span class="spacing-value">4px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-2</span><div class="spacing-bar" style="width:8px"></div><span class="spacing-value">8px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-3</span><div class="spacing-bar" style="width:12px"></div><span class="spacing-value">12px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-4</span><div class="spacing-bar" style="width:16px"></div><span class="spacing-value">16px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-5</span><div class="spacing-bar" style="width:20px"></div><span class="spacing-value">20px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-6</span><div class="spacing-bar" style="width:24px"></div><span class="spacing-value">24px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-8</span><div class="spacing-bar" style="width:32px"></div><span class="spacing-value">32px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-10</span><div class="spacing-bar" style="width:40px"></div><span class="spacing-value">40px</span></div>
+    <div class="spacing-row"><span class="spacing-label">--space-12</span><div class="spacing-bar" style="width:48px"></div><span class="spacing-value">48px</span></div>
+</section>
+<section class="ds-section" id="borders">
+  <h2 class="ds-section-heading">Borders &amp; Shadows <span class="count">4 borders, 7 shadows</span></h2>
+  <div class="ds-grid-2">
+    <div><div class="ds-label">Border Tokens</div>
+      <table class="token-table"><thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead><tbody>
+        <tr><td class="token-name">--border-default</td><td class="token-val">#2a2a2a</td><td>Standard borders</td></tr>
+        <tr><td class="token-name">--border-subtle</td><td class="token-val">#222222</td><td>Subtle dividers</td></tr>
+        <tr><td class="token-name">--border-light</td><td class="token-val">#333333</td><td>Hover borders</td></tr>
+        <tr><td class="token-name">--border-accent</td><td class="token-val">rgba(183,255,0,0.30)</td><td>Accent focus borders</td></tr>
+      </tbody></table>
+    </div>
+    <div><div class="ds-label">Shadow Tokens</div>
+      <table class="token-table"><thead><tr><th>Token</th><th>Value</th></tr></thead><tbody>
+        <tr><td class="token-name">--shadow-sm</td><td class="token-val">0 1px 4px rgba(0,0,0,0.25)</td></tr>
+        <tr><td class="token-name">--shadow-md</td><td class="token-val">0 2px 12px rgba(0,0,0,0.30)</td></tr>
+        <tr><td class="token-name">--shadow-lg</td><td class="token-val">0 8px 32px rgba(0,0,0,0.45)</td></tr>
+        <tr><td class="token-name">--shadow-xl</td><td class="token-val">0 25px 60px rgba(0,0,0,0.55)</td></tr>
+        <tr><td class="token-name">--shadow-focus</td><td class="token-val">0 0 0 2px rgba(183,255,0,0.15)</td></tr>
+        <tr><td class="token-name">--shadow-glow-accent</td><td class="token-val">0 0 20px rgba(183,255,0,0.15)</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+  <div class="ds-label" style="margin-top:var(--space-5)">Radius Tokens</div>
+  <div class="ds-flex">
+    <div class="swatch" style="width:140px"><div class="swatch-color" style="height:32px;border-radius:4px;background:var(--bg-raised)"></div><div class="swatch-name">--radius-sm</div><div class="swatch-value">4px</div></div>
+    <div class="swatch" style="width:140px"><div class="swatch-color" style="height:32px;border-radius:8px;background:var(--bg-raised)"></div><div class="swatch-name">--radius-md</div><div class="swatch-value">8px</div></div>
+    <div class="swatch" style="width:140px"><div class="swatch-color" style="height:32px;border-radius:12px;background:var(--bg-raised)"></div><div class="swatch-name">--radius-lg</div><div class="swatch-value">12px</div></div>
+    <div class="swatch" style="width:140px"><div class="swatch-color" style="height:32px;border-radius:16px;background:var(--bg-raised)"></div><div class="swatch-name">--radius-xl</div><div class="swatch-value">16px</div></div>
+    <div class="swatch" style="width:140px"><div class="swatch-color" style="height:32px;border-radius:9999px;background:var(--bg-raised)"></div><div class="swatch-name">--radius-full</div><div class="swatch-value">9999px</div></div>
+  </div>
+</section>
+<section class="ds-section" id="nav-bar">
+  <h2 class="ds-section-heading">Nav Bar <span class="count">.nav-bar</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Shared top navigation bar. Used across all workspace screens. Height: 44px.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;nav class="nav-bar"&gt;</div>
+    <div class="nav-bar" style="position:relative;border-radius:var(--radius-lg);margin-bottom:var(--space-3)">
+      <button class="nav-back">&larr; Back</button>
+      <div class="nav-divider"></div>
+      <span class="nav-project-name">My Novel</span>
+      <div class="nav-spacer"></div>
+      <div class="nav-mode-group">
+        <button class="nav-mode-btn">Write</button>
+        <button class="nav-mode-btn active">Canvas</button>
+        <button class="nav-mode-btn">Settings</button>
+      </div>
+      <div class="nav-actions">
+        <button class="nav-icon-btn" data-tooltip="Search"><i data-lucide="search" size="16"></i></button>
+        <button class="nav-icon-btn active" data-tooltip="Notifications"><i data-lucide="bell" size="16"></i></button>
+      </div>
+    </div>
+    <div class="stage-row"><span class="stage-state-label">normal</span><button class="nav-back" style="position:relative">&larr; Back</button><span style="font-size:var(--fs-xs);color:var(--text-muted)">Default look</span></div>
+    <div class="stage-row"><span class="stage-state-label">hover</span><button class="nav-back" style="position:relative;color:var(--text-primary);background:var(--bg-raised)">&larr; Back</button><span style="font-size:var(--fs-xs);color:var(--text-muted)">Background + brighter text</span></div>
+    <div class="stage-row"><span class="stage-state-label">active</span><button class="nav-back" style="position:relative;background:var(--bg-surface);transform:scale(0.97)">&larr; Back</button><span style="font-size:var(--fs-xs);color:var(--text-muted)">Slight scale down + darker bg</span></div>
+    <div class="stage-row"><span class="stage-state-label">mode inactive</span><button class="nav-mode-btn" style="position:relative">Write</button><span style="font-size:var(--fs-xs);color:var(--text-muted)">Unselected tab</span></div>
+    <div class="stage-row"><span class="stage-state-label">mode active</span><button class="nav-mode-btn active" style="position:relative">Canvas</button><span style="font-size:var(--fs-xs);color:var(--accent)">Accent bg + accent text</span></div>
+    <div class="stage-row"><span class="stage-state-label">icon normal</span><button class="nav-icon-btn" style="position:relative"><i data-lucide="search" size="16"></i></button><span style="font-size:var(--fs-xs);color:var(--text-muted)">Default</span></div>
+    <div class="stage-row"><span class="stage-state-label">icon active</span><button class="nav-icon-btn active" style="position:relative"><i data-lucide="bell" size="16"></i></button><span style="font-size:var(--fs-xs);color:var(--accent)">Accent bg + accent color</span></div>
+  </div>
+</section>
+<section class="ds-section" id="status-bar">
+  <h2 class="ds-section-heading">Status Bar <span class="count">.status-bar</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Bottom bar showing save state, word count, sync status. Height: 28px.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;div class="status-bar"&gt;</div>
+    <div class="status-bar" style="position:relative;border-radius:var(--radius-lg);border:1px solid var(--border-default)">
+      <div class="status-item"><span class="status-dot saved"></span><span class="status-label">Saved</span></div>
+      <div class="status-item"><span class="status-label">12,847 words</span></div>
+      <div class="status-spacer"></div>
+      <span class="status-label">Core canon</span>
+      <span class="status-badge">3 linked</span>
+    </div>
+    <div class="ds-label" style="margin-top:var(--space-5)">Status Dot States</div>
+    <div class="stage-row"><span class="stage-state-label">idle</span><span class="status-dot idle"></span><span style="font-size:var(--fs-xs);color:var(--text-muted)">No pending action</span></div>
+    <div class="stage-row"><span class="stage-state-label">saving</span><span class="status-dot saving"></span><span style="font-size:var(--fs-xs);color:var(--warning)">Write in progress</span></div>
+    <div class="stage-row"><span class="stage-state-label">saved</span><span class="status-dot saved"></span><span style="font-size:var(--fs-xs);color:var(--safe)">Last save successful</span></div>
+    <div class="stage-row"><span class="stage-state-label">sync</span><span class="status-dot sync"></span><span style="font-size:var(--fs-xs);color:var(--accent)">Sync active</span></div>
+    <div class="stage-row"><span class="stage-state-label">error</span><span class="status-dot error"></span><span style="font-size:var(--fs-xs);color:var(--danger)">Save failed</span></div>
+  </div>
+</section>
+<section class="ds-section" id="sidebar">
+  <h2 class="ds-section-heading">Sidebar <span class="count">.sidebar</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Left sidebar for outline navigation. Width: 220px. Has collapsed state with width: 0.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;aside class="sidebar"&gt;</div>
+    <div class="sidebar" style="position:relative;width:100%;max-width:280px;border:1px solid var(--border-default);border-radius:var(--radius-lg);height:auto">
+      <div class="sidebar-header"><span class="sidebar-title">Outline</span><div class="sidebar-spacer"></div><button class="sidebar-toggle-btn">&#9776;</button></div>
+      <div class="sidebar-content">
+        <button class="sidebar-item"><span style="color:var(--canon-core)">&#9679;</span> Chapter 1: Beginning</button>
+        <button class="sidebar-item active"><span style="color:var(--canon-core)">&#9679;</span> The First Encounter</button>
+        <button class="sidebar-item"><span style="color:var(--canon-project)">&#9679;</span> Character Profiles</button>
+        <button class="sidebar-item"><span style="color:var(--canon-draft)">&#9679;</span> Setting Notes</button>
+      </div>
+    </div>
+    <div class="stage-row"><span class="stage-state-label">normal</span><button class="sidebar-item" style="position:relative;width:200px;border-radius:var(--radius-sm)"><span style="color:var(--canon-project)">&#9679;</span> Normal Item</button></div>
+    <div class="stage-row"><span class="stage-state-label">hover</span><button class="sidebar-item" style="position:relative;width:200px;border-radius:var(--radius-sm);background:var(--bg-raised);color:var(--text-primary)"><span style="color:var(--canon-project)">&#9679;</span> Hovered Item</button></div>
+    <div class="stage-row"><span class="stage-state-label">active</span><button class="sidebar-item active" style="position:relative;width:200px;border-radius:var(--radius-sm)"><span style="color:var(--canon-core)">&#9679;</span> Active Item</button></div>
+  </div>
+</section>
+<section class="ds-section" id="card">
+  <h2 class="ds-section-heading">Card <span class="count">.card</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Surface card for bookshelf, object cards, doc cards. Includes hover lift, selected accent border, disabled state.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;div class="card"&gt;</div>
+    <div class="ds-flex">
+      <div class="card" style="width:200px"><div class="card-header"><span class="card-title">Default Card</span><span class="badge badge-accent">Active</span></div><div class="card-body">Standard card surface with hover lift and border transition.</div></div>
+      <div class="card selected" style="width:200px"><div class="card-header"><span class="card-title">Selected Card</span></div><div class="card-body">Accent border + shadow when selected.</div></div>
+      <div class="card disabled" style="width:200px"><div class="card-header"><span class="card-title">Disabled Card</span></div><div class="card-body">Reduced opacity, no pointer events.</div></div>
+    </div>
+    <div class="stage-row"><span class="stage-state-label">default</span><div style="border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:var(--space-4);background:var(--bg-surface);width:200px;font-size:var(--fs-sm)">Card body</div></div>
+    <div class="stage-row"><span class="stage-state-label">hover</span><div style="border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:var(--space-4);background:var(--bg-surface);width:200px;font-size:var(--fs-sm);transform:translateY(-1px);box-shadow:var(--shadow-lg)">Card body</div></div>
+    <div class="stage-row"><span class="stage-state-label">selected</span><div style="border:1px solid var(--accent);border-radius:var(--radius-lg);padding:var(--space-4);background:var(--bg-surface);width:200px;font-size:var(--fs-sm);box-shadow:var(--shadow-md)">Card body</div></div>
+  </div>
+</section>
+<section class="ds-section" id="button">
+  <h2 class="ds-section-heading">Button <span class="count">.btn</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Four button variants: primary, secondary, ghost, danger. Three sizes: sm, default, lg.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;button class="btn btn-*"&gt;</div>
+    <div class="ds-label">Variants (default size)</div>
+    <div class="stage-row">
+      <button class="btn btn-primary">Primary</button>
+      <button class="btn btn-secondary">Secondary</button>
+      <button class="btn btn-ghost">Ghost</button>
+      <button class="btn btn-danger">Danger</button>
+    </div>
+    <div class="ds-label" style="margin-top:var(--space-3)">Sizes</div>
+    <div class="stage-row">
+      <button class="btn btn-primary btn-sm">Small</button>
+      <button class="btn btn-primary">Default</button>
+      <button class="btn btn-primary btn-lg">Large</button>
+      <button class="btn btn-primary btn-icon btn-sm" data-tooltip="Small icon"><i data-lucide="check" size="16"></i></button>
+      <button class="btn btn-primary btn-icon" data-tooltip="Default icon"><i data-lucide="check" size="16"></i></button>
+    </div>
+    <div class="ds-label" style="margin-top:var(--space-3)">States</div>
+    <div class="stage-row"><span class="stage-state-label">normal</span><button class="btn btn-primary">Primary</button><button class="btn btn-secondary">Secondary</button><button class="btn btn-ghost">Ghost</button></div>
+    <div class="stage-row"><span class="stage-state-label">hover</span><button class="btn btn-primary" style="background:var(--accent-hover);border-color:var(--accent-hover)">Primary</button><button class="btn btn-secondary" style="background:var(--bg-raised);border-color:var(--border-light)">Secondary</button><button class="btn btn-ghost" style="background:var(--bg-raised);color:var(--text-primary)">Ghost</button></div>
+    <div class="stage-row"><span class="stage-state-label">active</span><button class="btn btn-primary" style="background:var(--accent-active);border-color:var(--accent-active);transform:scale(0.97)">Primary</button><button class="btn btn-secondary" style="background:var(--bg-surface);transform:scale(0.97)">Secondary</button><button class="btn btn-ghost" style="background:var(--bg-surface);transform:scale(0.97)">Ghost</button></div>
+    <div class="stage-row"><span class="stage-state-label">disabled</span><button class="btn btn-primary" disabled>Primary</button><button class="btn btn-secondary" disabled>Secondary</button><button class="btn btn-ghost" disabled>Ghost</button></div>
+  </div>
+</section>
+<section class="ds-section" id="badge">
+  <h2 class="ds-section-heading">Badge <span class="count">.badge</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Pill-shaped labels for status, canon level, metadata. 9 variants.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;span class="badge badge-*"&gt;</div>
+    <div class="ds-flex-row">
+      <span class="badge badge-accent">Accent</span>
+      <span class="badge badge-canon-core">Core</span>
+      <span class="badge badge-canon-project">Project</span>
+      <span class="badge badge-canon-draft">Draft</span>
+      <span class="badge badge-canon-none">Unlisted</span>
+      <span class="badge badge-default">Default</span>
+      <span class="badge badge-safe"><span class="badge-dot safe"></span>Online</span>
+      <span class="badge badge-warning"><span class="badge-dot warning"></span>Warning</span>
+      <span class="badge badge-danger"><span class="badge-dot danger"></span>Error</span>
+      <span class="badge badge-info">Info</span>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="modal">
+  <h2 class="ds-section-heading">Modal <span class="count">.modal</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Overlay dialog for wizards, settings, confirmations. Backdrop blur + slide-up animation. Default max-width: 480px.</p>
+  <div class="component-stage" style="position:relative;min-height:300px">
+    <div class="stage-label">&lt;div class="modal-backdrop"&gt; + &lt;div class="modal"&gt;</div>
+    <div style="position:absolute;inset:0;background:var(--bg-overlay);backdrop-filter:blur(4px);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center">
+      <div class="modal" style="position:relative;animation:none;margin:var(--space-4)">
+        <div class="modal-header"><span class="modal-title">Example Modal</span><button class="modal-close">&times;</button></div>
+        <div class="modal-body">This is a standard modal with header, body, and footer. Used for wizards, settings dialogs, and confirmation prompts.</div>
+        <div class="modal-footer"><button class="btn btn-ghost">Cancel</button><button class="btn btn-primary">Confirm</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="toast">
+  <h2 class="ds-section-heading">Toast <span class="count">.toast</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Notification popups. Slide-in from right. Four types: default, success, warning, error. Left border colored by type.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;div class="toast toast-*"&gt;</div>
+    <div style="display:flex;flex-direction:column;gap:var(--space-2);max-width:380px">
+      <div class="toast toast-default" style="animation:none"><span class="toast-message">Document saved successfully</span><button class="toast-close">&times;</button></div>
+      <div class="toast toast-success" style="animation:none"><span class="toast-message">Sync complete</span><button class="toast-close">&times;</button></div>
+      <div class="toast toast-warning" style="animation:none"><span class="toast-message">You are offline</span><button class="toast-close">&times;</button></div>
+      <div class="toast toast-error" style="animation:none"><span class="toast-message">Failed to save. Retry?</span><button class="toast-action">Retry</button><button class="toast-close">&times;</button></div>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="form">
+  <h2 class="ds-section-heading">Form Elements <span class="count">.input, .textarea, .select</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Input fields with focus accent glow, error state, and disabled states.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;input class="input"&gt;</div>
+    <div style="display:flex;flex-direction:column;gap:var(--space-3);max-width:360px">
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Normal</div><input class="input" type="text" placeholder="Enter project name..." value="My Novel"></div>
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Focus</div><input class="input" type="text" placeholder="Enter project name..." style="border-color:var(--border-accent);box-shadow:var(--shadow-focus)" value="Focused input"></div>
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Error</div><input class="input input-error" type="text" placeholder="Required field"></div>
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Disabled</div><input class="input" type="text" placeholder="Disabled" disabled value="Read only"></div>
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Textarea</div><textarea class="input textarea" placeholder="Write notes..." style="min-height:60px">Multiline text area for longer content.</textarea></div>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="tab">
+  <h2 class="ds-section-heading">Tab Bar <span class="count">.tab-bar, .tab-item</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Segmented control for mode switching and canvas sub-views.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;div class="tab-bar"&gt; + &lt;button class="tab-item"&gt;</div>
+    <div class="tab-bar" style="width:fit-content">
+      <button class="tab-item">Document</button>
+      <button class="tab-item active">Canvas</button>
+      <button class="tab-item">Settings</button>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="toggle">
+  <h2 class="ds-section-heading">Toggle Switch <span class="count">.toggle</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">On/off toggle. Accent when active, gray when off.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;label class="toggle"&gt;</div>
+    <div class="ds-flex-row">
+      <label class="toggle"><input type="checkbox" checked><span class="toggle-track"></span></label><span style="font-size:var(--fs-sm);color:var(--text-secondary)">Enabled</span>
+      <label class="toggle"><input type="checkbox"><span class="toggle-track"></span></label><span style="font-size:var(--fs-sm);color:var(--text-secondary)">Off</span>
+      <label class="toggle"><input type="checkbox" checked disabled><span class="toggle-track"></span></label><span style="font-size:var(--fs-sm);color:var(--text-muted)">Disabled (on)</span>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="progress">
+  <h2 class="ds-section-heading">Progress Bar <span class="count">.progress, .progress-fill</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Thin progress bar (6px) for usage monitoring, loading states.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;div class="progress"&gt; + &lt;div class="progress-fill"&gt;</div>
+    <div style="display:flex;flex-direction:column;gap:var(--space-3);max-width:360px">
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Accent (usage)</div><div class="progress"><div class="progress-fill accent" style="width:65%"></div></div></div>
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Safe (synced)</div><div class="progress"><div class="progress-fill safe" style="width:100%"></div></div></div>
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Warning (limit near)</div><div class="progress"><div class="progress-fill warning" style="width:78%"></div></div></div>
+      <div><div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:var(--space-1)">Danger (over limit)</div><div class="progress"><div class="progress-fill danger" style="width:92%"></div></div></div>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="canon-node">
+  <h2 class="ds-section-heading">Canon Node <span class="count">.canon-node</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Canvas node cards for relationship diagram, timeline, and deduction map. Border color changes by canon level.</p>
+  <div class="component-stage">
+    <div class="stage-label">&lt;div class="canon-node canon-*"&gt;</div>
+    <div class="ds-flex-row">
+      <div class="canon-node" style="position:relative;width:160px"><div class="canon-node-header"><div class="canon-node-icon" style="background:var(--canon-none-soft)"><i data-lucide="user" size="16"></i></div><span class="canon-node-name">Character</span></div><div class="canon-node-body">Unlisted canon level</div></div>
+      <div class="canon-node canon-core" style="position:relative;width:160px"><div class="canon-node-header"><div class="canon-node-icon" style="background:var(--canon-core-soft)"><i data-lucide="user" size="16"></i></div><span class="canon-node-name">Protagonist</span></div><div class="canon-node-body">Core canon &mdash; solid amber border</div></div>
+      <div class="canon-node canon-project" style="position:relative;width:160px"><div class="canon-node-header"><div class="canon-node-icon" style="background:var(--canon-project-soft)"><i data-lucide="user" size="16"></i></div><span class="canon-node-name">Side Character</span></div><div class="canon-node-body">Project canon &mdash; solid blue border</div></div>
+      <div class="canon-node canon-draft" style="position:relative;width:160px"><div class="canon-node-header"><div class="canon-node-icon" style="background:var(--canon-draft-soft)"><i data-lucide="user" size="16"></i></div><span class="canon-node-name">Draft Idea</span></div><div class="canon-node-body">Draft canon &mdash; dashed purple border</div></div>
+    </div>
+    <div class="ds-flex-row" style="margin-top:var(--space-4)">
+      <div class="canon-node canon-core" style="position:relative;width:150px"><div class="canon-node-header"><span class="canon-node-name">Default</span></div></div>
+      <div class="canon-node canon-core selected" style="position:relative;width:150px"><div class="canon-node-header"><span class="canon-node-name">Selected</span></div></div>
+      <div class="canon-node disabled" style="position:relative;width:150px"><div class="canon-node-header"><span class="canon-node-name">Disabled</span></div></div>
+    </div>
+  </div>
+</section>
+<section class="ds-section" id="animation">
+  <h2 class="ds-section-heading">Animation &amp; Transitions <span class="count">6 timing tokens, 4 keyframes</span></h2>
+  <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--space-4)">Hover these boxes to see each transition curve in action.</p>
+  <div class="ds-label">Transition Timing Tokens</div>
+  <table class="token-table" style="margin-bottom:var(--space-6)">
+    <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead><tbody>
+      <tr><td class="token-name">--transition-fast</td><td class="token-val">0.12s ease</td><td>Hover states, button feedback</td></tr>
+      <tr><td class="token-name">--transition-base</td><td class="token-val">0.18s ease</td><td>Nav interactions, tooltips</td></tr>
+      <tr><td class="token-name">--transition-normal</td><td class="token-val">0.25s ease</td><td>Card hover, sidebar collapse</td></tr>
+      <tr><td class="token-name">--transition-slow</td><td class="token-val">0.35s ease</td><td>Panel transitions, reveals</td></tr>
+      <tr><td class="token-name">--transition-modal</td><td class="token-val">0.30s cubic-bezier(0.22,1,0.36,1)</td><td>Modal open/close</td></tr>
+      <tr><td class="token-name">--transition-bounce</td><td class="token-val">0.40s cubic-bezier(0.34,1.56,0.64,1)</td><td>Delight animations</td></tr>
+    </tbody>
+  </table>
+  <div class="ds-label">Live Demo &mdash; Hover</div>
+  <div class="anim-demo">
+    <div class="anim-box fast" style="cursor:pointer"></div>
+    <span style="font-size:var(--fs-xs);color:var(--text-muted)">fast 0.12s</span>
+    <div class="anim-box base" style="cursor:pointer"></div>
+    <span style="font-size:var(--fs-xs);color:var(--text-muted)">base 0.18s</span>
+    <div class="anim-box normal" style="cursor:pointer"></div>
+    <span style="font-size:var(--fs-xs);color:var(--text-muted)">normal 0.25s</span>
+    <div class="anim-box slow" style="cursor:pointer"></div>
+    <span style="font-size:var(--fs-xs);color:var(--text-muted)">slow 0.35s</span>
+    <div class="anim-box bounce" style="cursor:pointer"></div>
+    <span style="font-size:var(--fs-xs);color:var(--text-muted)">bounce 0.40s</span>
+  </div>
+</section>
+<section class="ds-section" id="layout">
+  <h2 class="ds-section-heading">Layout Dimensions</h2>
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Component</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">--nav-height</td><td class="token-val">44px</td><td>Nav bar</td></tr>
+      <tr><td class="token-name">--status-bar-height</td><td class="token-val">28px</td><td>Status bar</td></tr>
+      <tr><td class="token-name">--toolbar-height</td><td class="token-val">40px</td><td>Editor toolbar</td></tr>
+      <tr><td class="token-name">--sidebar-width</td><td class="token-val">220px</td><td>Left sidebar (outline)</td></tr>
+      <tr><td class="token-name">--inspector-width</td><td class="token-val">280px</td><td>Right inspector</td></tr>
+      <tr><td class="token-name">--tool-panel-width</td><td class="token-val">48px</td><td>Canvas tool panel</td></tr>
+      <tr><td class="token-name">--object-pool-width</td><td class="token-val">220px</td><td>Canvas object pool</td></tr>
+    </tbody>
+  </table>
+</section>
+<section class="ds-section" id="zindex">
+  <h2 class="ds-section-heading">Z-Index Scale</h2>
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Layer</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">--z-base</td><td class="token-val">0</td><td>Document flow</td></tr>
+      <tr><td class="token-name">--z-dropdown</td><td class="token-val">100</td><td>Dropdowns, popups</td></tr>
+      <tr><td class="token-name">--z-sticky</td><td class="token-val">200</td><td>Nav bar, sticky headers</td></tr>
+      <tr><td class="token-name">--z-modal-backdrop</td><td class="token-val">300</td><td>Modal overlay</td></tr>
+      <tr><td class="token-name">--z-modal</td><td class="token-val">310</td><td>Modal dialog</td></tr>
+      <tr><td class="token-name">--z-toast</td><td class="token-val">400</td><td>Toast notifications</td></tr>
+      <tr><td class="token-name">--z-tooltip</td><td class="token-val">500</td><td>Tooltips</td></tr>
+    </tbody>
+  </table>
+</section>
+<footer style="padding:var(--space-8) 0;text-align:center;font-size:var(--fs-xs);color:var(--text-muted);border-top:1px solid var(--border-subtle)">
+  <p>Zhimengji Design Tokens &mdash; Part of the Master Prototype</p>
+  <p>93 screens &middot; 17 phases &middot; Dark-green theme &middot; #B7FF00 accent</p>
+  <p style="margin-top:var(--space-2)"><a href="#toc">Back to top</a></p>
+</footer>
+</div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

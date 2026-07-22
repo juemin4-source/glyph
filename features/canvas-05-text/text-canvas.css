@@ -1,0 +1,120 @@
+/* TextCanvas — 画板⑤ 正文编辑布局 */
+
+.text-canvas {
+  display: flex;
+  height: 100%;
+  background: var(--bg-canvas, #0a0a0a);
+}
+
+.text-canvas-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.text-canvas-panel {
+  width: 300px;
+  min-width: 280px;
+  max-width: 340px;
+  border-left: 1px solid var(--border-default, #2a2a2a);
+  background: var(--bg-surface, #141416);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.text-canvas-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-10, 40px);
+  text-align: center;
+  gap: var(--space-4, 16px);
+}
+
+.text-canvas-empty-icon {
+  font-size: 2.5rem;
+  opacity: 0.3;
+}
+
+.text-canvas-empty-title {
+  font-size: var(--text-lg, 1.0625rem);
+  font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.text-canvas-empty-desc {
+  font-size: var(--text-sm, 0.8125rem);
+  color: var(--text-muted, #666);
+  max-width: 320px;
+  line-height: 1.6;
+}
+
+.text-canvas-empty-action {
+  margin-top: var(--space-2, 8px);
+}
+
+.text-canvas-packet-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: 2px var(--space-3, 12px);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--accent-text, #B7FF00);
+  background: var(--accent-soft, rgba(183, 255, 0, 0.1));
+  border: 1px solid var(--border-accent, rgba(183, 255, 0, 0.3));
+  border-radius: var(--radius-full, 9999px);
+  white-space: nowrap;
+}
+
+/* ── AI Control Row ── */
+
+.text-canvas-ai-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  border-bottom: 1px solid var(--border-default, #2a2a2a);
+  background: var(--bg-surface, #141416);
+  flex-shrink: 0;
+  gap: var(--space-3, 12px);
+}
+
+.text-canvas-ai-row-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  flex: 1;
+  min-width: 0;
+}
+
+.text-canvas-ai-row-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.text-canvas-ai-row-title {
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-canvas-ai-row-meta {
+  font-size: var(--text-2xs, 0.65rem);
+  color: var(--text-muted, #666);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.text-canvas-ai-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 6px);
+  flex-shrink: 0;
+}

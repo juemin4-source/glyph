@@ -1,0 +1,1 @@
+export interface DiffLine { type: 'unchanged' | 'added' | 'removed'; content: string; lineNumberA?: number; lineNumberB?: number }

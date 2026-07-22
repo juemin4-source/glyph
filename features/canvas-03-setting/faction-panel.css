@@ -1,0 +1,189 @@
+/* FactionPanel — 势力面板 */
+.faction-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+}
+.faction-toolbar {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+.faction-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  flex: 1;
+  overflow-y: auto;
+}
+.faction-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  padding: 10px 14px;
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-raised, #1a1a2e);
+  border: 1px solid #2a2a3a;
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 0.15s ease);
+}
+.faction-card:hover {
+  border-color: var(--border-light, #444);
+}
+.faction-card-selected {
+  border: 1px solid var(--canon-draft, #CE93D8);
+}
+.faction-card-title {
+  font-size: 0.88rem;
+  font-weight: var(--fw-semibold, 600);
+  color: var(--text-primary, #e0e0e0);
+}
+.faction-card-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  line-height: var(--lh-base, 1.5);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.faction-card-meta {
+  font-size: 0.7rem;
+  color: var(--text-disabled, #555);
+  display: flex;
+  gap: var(--space-2, 8px);
+  flex-wrap: wrap;
+}
+.faction-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  margin-bottom: var(--space-1, 4px);
+}
+.faction-input {
+  width: 100%;
+  padding: var(--space-2, 8px) 10px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-default, #333);
+  background: var(--bg-raised, #1a1a2e);
+  color: var(--text-primary, #e0e0e0);
+  font-size: 0.82rem;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.faction-textarea {
+  width: 100%;
+  padding: var(--space-2, 8px) 10px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-default, #333);
+  background: var(--bg-raised, #1a1a2e);
+  color: var(--text-primary, #e0e0e0);
+  font-size: 0.82rem;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.faction-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--space-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-surface, #16162a);
+  border: 1px solid var(--border-default, #2a2a2a);
+}
+.faction-editor-actions {
+  display: flex;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-1, 4px);
+}
+.faction-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--space-3, 12px);
+  color: var(--text-muted, #666);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.faction-empty-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, #666);
+}
+.faction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 4px);
+  background: rgba(206, 147, 216, 0.15);
+  color: var(--canon-draft, #CE93D8);
+  font-size: 0.72rem;
+  font-weight: var(--fw-medium, 500);
+}
+.faction-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-primary, #ccc);
+}
+.faction-checkbox:hover {
+  background: var(--bg-raised, #222);
+}
+.faction-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 150px;
+  overflow-y: auto;
+  background: var(--bg-raised, #1a1a2e);
+  border-radius: var(--radius-sm, 6px);
+  padding: var(--space-1, 4px);
+}
+.faction-chips {
+  display: flex;
+  gap: var(--space-1, 4px);
+  flex-wrap: wrap;
+  margin-top: var(--space-1, 4px);
+}
+.faction-no-chars {
+  font-size: 0.78rem;
+  color: var(--text-muted, #666);
+  padding: var(--space-1, 4px) 0;
+}
+
+/* Base button */
+.faction-btn {
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  border-radius: var(--radius-sm, 6px);
+  border: none;
+  cursor: pointer;
+  font-weight: var(--fw-semibold, 600);
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+.faction-btn-primary {
+  background: var(--canon-project, #4A9EFF);
+  color: #fff;
+}
+.faction-btn-danger {
+  background: var(--danger, #E74C3C);
+  color: #fff;
+}
+.faction-btn-secondary {
+  background: #2a2a3e;
+  color: var(--text-secondary, #aaa);
+  border: 1px solid #3a3a4e;
+}
+.faction-btn-flex {
+  flex: 1;
+}

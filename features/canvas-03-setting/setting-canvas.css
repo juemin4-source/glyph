@@ -1,0 +1,64 @@
+/* SettingCanvasV2 — 设定画板 */
+.setting-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-surface, #12122a);
+}
+.setting-canvas-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-default, #2a2a2a);
+  background: var(--bg-surface, #16162a);
+  padding: 0 var(--space-2, 8px);
+}
+.setting-canvas-tab {
+  padding: 10px 20px;
+  font-size: 0.82rem;
+  font-weight: var(--fw-medium, 500);
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast, 0.15s ease), border-color var(--transition-fast, 0.15s ease);
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+}
+.setting-canvas-tab:hover {
+  color: var(--text-secondary, #aaa);
+}
+.setting-canvas-tab-active {
+  color: var(--canon-draft, #CE93D8);
+  border-bottom: 2px solid var(--canon-draft, #CE93D8);
+}
+.setting-canvas-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.setting-canvas-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-top: 1px solid var(--border-default, #2a2a2a);
+  background: var(--bg-surface, #16162a);
+}
+.setting-canvas-btn-confirm {
+  padding: 10px 28px;
+  border-radius: var(--radius-sm, 6px);
+  border: none;
+  cursor: pointer;
+  font-weight: var(--fw-semibold, 600);
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: var(--safe, #22C55E);
+  color: #fff;
+  transition: opacity var(--transition-fast, 0.15s ease);
+}
+.setting-canvas-btn-confirm:active {
+  opacity: 0.8;
+}

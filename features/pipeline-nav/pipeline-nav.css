@@ -1,0 +1,137 @@
+/* PipelineNav — 五画板管道导航栏 (织梦机 v2) */
+
+.pipeline-nav {
+  display: flex;
+  align-items: center;
+  height: var(--header-height, 44px);
+  padding: 0 12px;
+  background: var(--bg-header, #0e0e0e);
+  border-bottom: 1px solid var(--border-default, #2a2a2a);
+  gap: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pipeline-back-btn:hover {
+  color: var(--accent, #B7FF00) !important;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pipeline-project-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #e8e8e8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  letter-spacing: 0.01em;
+}
+
+.pipeline-stage-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.pipeline-stage-btn.active:hover {
+  background: rgba(183, 255, 0, 0.12);
+  border-color: rgba(183, 255, 0, 0.35);
+}
+
+/* Scrollable stages container on narrow screens */
+@media (max-width: 768px) {
+  .pipeline-stages {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .pipeline-stages::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ===== Legacy Menu Dropdown (D3) ===== */
+
+.pipeline-legacy-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #a0a0a0);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.pipeline-legacy-btn:hover {
+  color: var(--text-primary, #e8e8e8);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pipeline-legacy-btn.open {
+  color: var(--accent, #B7FF00);
+  background: rgba(183, 255, 0, 0.08);
+}
+
+.pipeline-legacy-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-elevated, #1a1a1a);
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-md, 8px);
+  padding: 4px;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.pipeline-legacy-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  background: none;
+  color: var(--text-secondary, #a0a0a0);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-family: inherit;
+}
+
+.pipeline-legacy-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary, #e8e8e8);
+}
+
+.pipeline-legacy-menu-item .menu-item-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.pipeline-legacy-menu-item:hover .menu-item-icon {
+  opacity: 1;
+}
+
+.pipeline-legacy-menu-divider {
+  height: 1px;
+  background: var(--border-default, #2a2a2a);
+  margin: 4px 8px;
+}
+
+.pipeline-right-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}

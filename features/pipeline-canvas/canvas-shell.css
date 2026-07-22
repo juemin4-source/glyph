@@ -1,0 +1,74 @@
+/* CanvasShell — 通用画板外壳 */
+.canvas-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+.canvas-shell-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-10, 40px);
+  text-align: center;
+}
+.canvas-shell-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-4, 16px);
+}
+.canvas-shell-icon-ready {
+  color: #4A9EFF;
+}
+.canvas-shell-title {
+  font-size: var(--fs-lg, 1.1rem);
+  font-weight: var(--fw-semibold, 600);
+  color: var(--text-primary, #e0e0e0);
+  margin-bottom: var(--space-2, 8px);
+}
+.canvas-shell-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted, #888);
+  max-width: 360px;
+  line-height: var(--lh-base, 1.6);
+}
+.canvas-shell-enter-btn {
+  margin-top: var(--space-5, 20px);
+  padding: var(--space-2, 8px) var(--space-6, 24px);
+  font-size: 0.85rem;
+  font-weight: var(--fw-semibold, 600);
+  border: 1.5px solid #4A9EFF;
+  border-radius: var(--radius-sm, 6px);
+  background: rgba(74, 158, 255, 0.1);
+  color: #4A9EFF;
+  cursor: pointer;
+  transition: background var(--transition-fast, 0.15s ease);
+  font-family: var(--font-sans, inherit);
+}
+.canvas-shell-enter-btn:hover {
+  background: rgba(74, 158, 255, 0.2);
+}
+.canvas-shell-done-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-1, 6px) var(--space-4, 16px);
+  background: rgba(76, 175, 80, 0.1);
+  border-bottom: 1px solid rgba(76, 175, 80, 0.2);
+  color: var(--safe, #22C55E);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 6px);
+}
+.canvas-shell-content {
+  flex: 1;
+  overflow: auto;
+}
+.canvas-shell-content-padded {
+  flex: 1;
+  overflow: auto;
+  padding-top: 36px;
+}

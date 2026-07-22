@@ -1,0 +1,66 @@
+/* AiSettings — 设计令牌化 */
+.ai-settings-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; flex-direction: column;
+  background: rgba(0,0,0,0.75);
+}
+.ai-settings-nav {
+  display: flex; align-items: center; height: 44px;
+  background: var(--bg-header); border-bottom: 1px solid var(--border-default);
+  padding: 0 16px; gap: 12px; flex-shrink: 0;
+}
+.ai-settings-layout {
+  display: flex; flex: 1; overflow: hidden;
+  background: var(--bg-surface); margin: 0 auto;
+  width: 100%; max-width: 960px;
+}
+.ai-settings-sidebar {
+  width: 200px; min-width: 200px; background: var(--bg-surface);
+  border-right: 1px solid var(--border-default);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.ai-settings-content {
+  flex: 1; overflow-y: auto; padding: 24px 32px;
+  background: var(--bg-surface);
+}
+.ai-settings-title {
+  font-size: 1.2rem; font-weight: 700;
+  color: var(--text-primary); margin-bottom: 4px;
+}
+.ai-settings-subtitle {
+  font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 20px;
+}
+.ai-settings-section {
+  margin-bottom: 24px;
+}
+.ai-settings-section-title {
+  font-size: 0.8125rem; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.ai-settings-card {
+  background: var(--bg-raised); border: 1px solid var(--border-default);
+  border-radius: var(--radius-md); padding: 16px; margin-bottom: 8px;
+}
+.ai-settings-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.ai-settings-label {
+  font-size: 0.75rem; color: var(--text-secondary); min-width: 80px;
+}
+.ai-settings-input {
+  flex: 1; padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default); background: var(--bg-input);
+  color: var(--text-primary); font-size: 0.8125rem;
+}
+.ai-settings-btn {
+  padding: 6px 16px; border-radius: var(--radius-md);
+  font-size: 0.75rem; cursor: pointer; font-weight: 500;
+}
+.ai-settings-btn-primary {
+  background: var(--accent); color: var(--text-inverse); border: none;
+}
+.ai-settings-btn-secondary {
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}

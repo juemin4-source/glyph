@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+target/
+
+# Rust build artifacts
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+
+# SomaOS session state (not committed)
+.soma/
+
+# Logs
+*.log
+autosave.log
+
+# Rustup init
+rustup-init.exe
+
+# Playwright
+playwright-report/
+test-results/

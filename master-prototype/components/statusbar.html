@@ -1,0 +1,13 @@
+<!-- Statusbar component: Bottom status bar -->
+<div class="statusbar" data-status="{{status}}">
+  <div class="status-left">
+    <span><span class="conn-dot" id="connDot"></span> <span id="connLabel">已连接</span></span>
+    <span>|</span>
+    <span>会话 Token: <span class="token-bar"><span class="token-fill"><span style="width:{{tokenPercent}}%"></span></span>{{tokenCount}}</span></span>
+  </div>
+  <div class="status-right">
+    <span>版本 v2.0-master-proto</span>
+    <span>|</span>
+    <span>{{batchLabel}}</span>
+  </div>
+</div>

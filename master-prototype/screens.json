@@ -1,0 +1,4376 @@
+{
+  "screens": [
+    {
+      "id": "shelf",
+      "sections": [
+        "nav",
+        "page-header",
+        "filterbar",
+        "statsbar",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "num": "01",
+      "title": "作品书架",
+      "modals": [
+        "wizard",
+        "delete"
+      ],
+      "description": "项目卡片网格，渐变色封面",
+      "overlays": [
+        "guide",
+        "canon"
+      ],
+      "phase": "1",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批",
+        "searchPlaceholder": "搜索作品...",
+        "stats": {
+          "count": 10,
+          "words": 198167,
+          "canon": 7
+        },
+        "projects": [
+          {
+            "title": "觉醒纪元",
+            "genre": "科幻",
+            "status": "草稿中",
+            "words": 12430,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none",
+              "core"
+            ]
+          },
+          {
+            "title": "星空彼岸",
+            "genre": "奇幻",
+            "status": "构思中",
+            "words": 3800,
+            "canonDots": [
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "江湖行",
+            "genre": "武侠",
+            "status": "修改中",
+            "words": 28987,
+            "canonDots": [
+              "core",
+              "core",
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "迷雾之城",
+            "genre": "悬疑",
+            "status": "草稿中",
+            "words": 8700,
+            "canonDots": [
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "深渊回响",
+            "genre": "科幻",
+            "status": "修改中",
+            "words": 15320,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "龙渊记",
+            "genre": "武侠",
+            "status": "已完成",
+            "words": 45600,
+            "canonDots": [
+              "core",
+              "core",
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "星穹之下",
+            "genre": "科幻",
+            "status": "构思中",
+            "words": 2100,
+            "canonDots": [
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "山海异闻录",
+            "genre": "奇幻",
+            "status": "草稿中",
+            "words": 6780,
+            "canonDots": [
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "血色黎明",
+            "genre": "悬疑",
+            "status": "修改中",
+            "words": 22150,
+            "canonDots": [
+              "core",
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "时光旅人",
+            "genre": "科幻",
+            "status": "已完成",
+            "words": 52300,
+            "canonDots": [
+              "core",
+              "core",
+              "core",
+              "project",
+              "draft"
+            ]
+          }
+        ],
+        "filters": [
+          {
+            "id": "genreFilter",
+            "options": [
+              {
+                "value": "all",
+                "label": "全部体裁"
+              },
+              {
+                "value": "科幻",
+                "label": "科幻"
+              },
+              {
+                "value": "奇幻",
+                "label": "奇幻"
+              },
+              {
+                "value": "武侠",
+                "label": "武侠"
+              },
+              {
+                "value": "悬疑",
+                "label": "悬疑"
+              }
+            ]
+          },
+          {
+            "id": "statusFilter",
+            "options": [
+              {
+                "value": "all",
+                "label": "全部状态"
+              },
+              {
+                "value": "构思中",
+                "label": "构思中"
+              },
+              {
+                "value": "草稿中",
+                "label": "草稿中"
+              },
+              {
+                "value": "修改中",
+                "label": "修改中"
+              },
+              {
+                "value": "已完成",
+                "label": "已完成"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "shelf-empty",
+      "description": "空书架引导页",
+      "sections": [
+        "nav",
+        "page-header",
+        "filterbar",
+        "statsbar",
+        "empty-state",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "1",
+      "title": "书架空状态",
+      "num": "02",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批",
+        "stats": {
+          "count": 0,
+          "words": 0,
+          "canon": 0
+        },
+        "emptyTitle": "开始你的创作之旅",
+        "emptySub": "创建你的第一个作品，探索织梦机的世界构建工具",
+        "emptyBtnText": "+ 创建第一个作品"
+      }
+    },
+    {
+      "id": "shelf-search",
+      "description": "搜索+体裁/状态筛选+排序",
+      "sections": [
+        "nav",
+        "page-header",
+        "filterbar",
+        "statsbar",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "1",
+      "title": "搜索与筛选",
+      "num": "03",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批",
+        "searchPlaceholder": "搜索作品名、角色、设定...",
+        "stats": {
+          "count": 10,
+          "words": 198167,
+          "canon": 7
+        },
+        "projects": [
+          {
+            "title": "觉醒纪元",
+            "genre": "科幻",
+            "status": "草稿中",
+            "words": 12430,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none",
+              "core"
+            ]
+          },
+          {
+            "title": "星空彼岸",
+            "genre": "奇幻",
+            "status": "构思中",
+            "words": 3800,
+            "canonDots": [
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "江湖行",
+            "genre": "武侠",
+            "status": "修改中",
+            "words": 28987,
+            "canonDots": [
+              "core",
+              "core",
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "迷雾之城",
+            "genre": "悬疑",
+            "status": "草稿中",
+            "words": 8700,
+            "canonDots": [
+              "project",
+              "draft"
+            ]
+          }
+        ],
+        "filters": [
+          {
+            "id": "genreFilter",
+            "options": [
+              {
+                "value": "all",
+                "label": "全部体裁"
+              },
+              {
+                "value": "科幻",
+                "label": "科幻"
+              },
+              {
+                "value": "奇幻",
+                "label": "奇幻"
+              },
+              {
+                "value": "武侠",
+                "label": "武侠"
+              },
+              {
+                "value": "悬疑",
+                "label": "悬疑"
+              }
+            ]
+          },
+          {
+            "id": "statusFilter",
+            "options": [
+              {
+                "value": "all",
+                "label": "全部状态"
+              },
+              {
+                "value": "构思中",
+                "label": "构思中"
+              },
+              {
+                "value": "草稿中",
+                "label": "草稿中"
+              },
+              {
+                "value": "修改中",
+                "label": "修改中"
+              },
+              {
+                "value": "已完成",
+                "label": "已完成"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "shelf-card-menu",
+      "description": "卡片右键菜单：重命名/更换体裁/删除",
+      "sections": [
+        "nav",
+        "page-header",
+        "statsbar",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "1",
+      "title": "卡片右键菜单",
+      "num": "04",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批",
+        "stats": {
+          "count": 10,
+          "words": 198167,
+          "canon": 7
+        },
+        "projects": [
+          {
+            "title": "觉醒纪元",
+            "genre": "科幻",
+            "status": "草稿中",
+            "words": 12430,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none",
+              "core"
+            ]
+          },
+          {
+            "title": "星空彼岸",
+            "genre": "奇幻",
+            "status": "构思中",
+            "words": 3800,
+            "canonDots": [
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "江湖行",
+            "genre": "武侠",
+            "status": "修改中",
+            "words": 28987,
+            "canonDots": [
+              "core",
+              "core",
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "迷雾之城",
+            "genre": "悬疑",
+            "status": "草稿中",
+            "words": 8700,
+            "canonDots": [
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "深渊回响",
+            "genre": "科幻",
+            "status": "修改中",
+            "words": 15320,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "龙渊记",
+            "genre": "武侠",
+            "status": "已完成",
+            "words": 45600,
+            "canonDots": [
+              "core",
+              "core",
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "星穹之下",
+            "genre": "科幻",
+            "status": "构思中",
+            "words": 2100,
+            "canonDots": [
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "山海异闻录",
+            "genre": "奇幻",
+            "status": "草稿中",
+            "words": 6780,
+            "canonDots": [
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "血色黎明",
+            "genre": "悬疑",
+            "status": "修改中",
+            "words": 22150,
+            "canonDots": [
+              "core",
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "时光旅人",
+            "genre": "科幻",
+            "status": "已完成",
+            "words": 52300,
+            "canonDots": [
+              "core",
+              "core",
+              "core",
+              "project",
+              "draft"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "shelf-cover-edit",
+      "description": "悬停圆形编辑按钮切换渐变",
+      "sections": [
+        "nav",
+        "page-header",
+        "statsbar",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "1",
+      "title": "封面颜色编辑",
+      "num": "05",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批",
+        "stats": {
+          "count": 10,
+          "words": 198167,
+          "canon": 7
+        },
+        "projects": [
+          {
+            "title": "觉醒纪元",
+            "genre": "科幻",
+            "status": "草稿中",
+            "words": 12430,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none",
+              "core"
+            ]
+          },
+          {
+            "title": "星空彼岸",
+            "genre": "奇幻",
+            "status": "构思中",
+            "words": 3800,
+            "canonDots": [
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "江湖行",
+            "genre": "武侠",
+            "status": "修改中",
+            "words": 28987,
+            "canonDots": [
+              "core",
+              "core",
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "迷雾之城",
+            "genre": "悬疑",
+            "status": "草稿中",
+            "words": 8700,
+            "canonDots": [
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "深渊回响",
+            "genre": "科幻",
+            "status": "修改中",
+            "words": 15320,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "龙渊记",
+            "genre": "武侠",
+            "status": "已完成",
+            "words": 45600,
+            "canonDots": [
+              "core",
+              "core",
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "星穹之下",
+            "genre": "科幻",
+            "status": "构思中",
+            "words": 2100,
+            "canonDots": [
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "山海异闻录",
+            "genre": "奇幻",
+            "status": "草稿中",
+            "words": 6780,
+            "canonDots": [
+              "project",
+              "draft",
+              "none"
+            ]
+          },
+          {
+            "title": "血色黎明",
+            "genre": "悬疑",
+            "status": "修改中",
+            "words": 22150,
+            "canonDots": [
+              "core",
+              "project",
+              "draft"
+            ]
+          },
+          {
+            "title": "时光旅人",
+            "genre": "科幻",
+            "status": "已完成",
+            "words": 52300,
+            "canonDots": [
+              "core",
+              "core",
+              "core",
+              "project",
+              "draft"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard",
+      "description": "作品名/体裁/模板选择模态框",
+      "modals": [
+        "wizard"
+      ],
+      "sections": [
+        "nav",
+        "page-header",
+        "statsbar",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "2",
+      "title": "创建向导",
+      "num": "06",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批",
+        "stats": {
+          "count": 10,
+          "words": 198167,
+          "canon": 7
+        },
+        "projects": [
+          {
+            "title": "觉醒纪元",
+            "genre": "科幻",
+            "status": "草稿中",
+            "words": 12430,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none",
+              "core"
+            ]
+          },
+          {
+            "title": "迷雾之城",
+            "genre": "悬疑",
+            "status": "草稿中",
+            "words": 8700,
+            "canonDots": [
+              "project",
+              "draft"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard-template-preview",
+      "description": "选择模板时展示预设对象列表",
+      "modals": [
+        "wizard"
+      ],
+      "sections": [
+        "nav",
+        "page-header",
+        "statsbar",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "2",
+      "title": "模板预览",
+      "num": "07",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批",
+        "stats": {
+          "count": 10,
+          "words": 198167,
+          "canon": 7
+        },
+        "projects": [
+          {
+            "title": "觉醒纪元",
+            "genre": "科幻",
+            "status": "草稿中",
+            "words": 12430,
+            "canonDots": [
+              "core",
+              "project",
+              "draft",
+              "none",
+              "core"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "first-launch-guide",
+      "description": "3步覆盖引导：正典/WikiLink/画板",
+      "overlays": [
+        "guide"
+      ],
+      "sections": [
+        "nav",
+        "page-header",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "2",
+      "title": "首次引导",
+      "num": "08",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "canon-guide",
+      "description": "4级正典等级说明弹出框",
+      "overlays": [
+        "canon"
+      ],
+      "sections": [
+        "nav",
+        "page-header",
+        "card-grid",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "2",
+      "title": "正典引导弹出",
+      "num": "09",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "workspace-shell",
+      "description": "3栏布局：左侧栏+主内容+右侧检查器",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "3",
+      "title": "工作区外壳",
+      "num": "10",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI",
+          "判断记录"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "觉醒纪元 — 项目概览",
+        "infoFields": [
+          {
+            "label": "总对象数",
+            "value": 26
+          },
+          {
+            "label": "关联链接",
+            "value": 47
+          },
+          {
+            "label": "总字数",
+            "value": "12,840"
+          },
+          {
+            "label": "最高正典",
+            "value": "4 金"
+          },
+          {
+            "label": "当前对象",
+            "value": "林北辰"
+          },
+          {
+            "label": "正典层级",
+            "value": "金 (核心设定)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nav-bar",
+      "description": "返回书架/项目名/标签/模式/搜索/徽章",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "3",
+      "title": "导航栏",
+      "num": "11",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI",
+          "判断记录"
+        ],
+        "activeTab": "文档",
+        "projectName": "觉醒纪元",
+        "infoTitle": "导航状态",
+        "infoFields": [
+          {
+            "label": "当前项目",
+            "value": "觉醒纪元"
+          },
+          {
+            "label": "活动标签",
+            "value": "文档"
+          },
+          {
+            "label": "当前对象",
+            "value": "楔子 · 迷雾之城"
+          },
+          {
+            "label": "保存状态",
+            "value": "已保存"
+          }
+        ]
+      }
+    },
+    {
+      "id": "status-bar-screen",
+      "description": "保存状态/同步队列/字数/链接/正典",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "3",
+      "title": "底部状态栏",
+      "num": "12",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI",
+          "判断记录"
+        ],
+        "activeTab": "文档",
+        "stats": {
+          "words": 12840,
+          "links": 47
+        },
+        "infoTitle": "状态栏",
+        "infoFields": [
+          {
+            "label": "保存状态",
+            "value": "已保存"
+          },
+          {
+            "label": "字数",
+            "value": "12,840"
+          },
+          {
+            "label": "链接",
+            "value": 47
+          },
+          {
+            "label": "正典分布",
+            "value": "金4 蓝9 紫8 灰5"
+          }
+        ]
+      }
+    },
+    {
+      "id": "offline-banner",
+      "description": "黄色离线警告条",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "3",
+      "title": "离线横幅",
+      "num": "13",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI",
+          "判断记录"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "离线状态",
+        "infoFields": [
+          {
+            "label": "网络状态",
+            "value": "离线"
+          },
+          {
+            "label": "待同步",
+            "value": "3 项更改"
+          },
+          {
+            "label": "上次在线",
+            "value": "15 分钟前"
+          },
+          {
+            "label": "缓存版本",
+            "value": "v2.0.1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "loading-screen",
+      "description": "加载项目时的旋转动画",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "3",
+      "title": "加载屏幕",
+      "num": "14",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI",
+          "判断记录"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "加载状态",
+        "infoFields": [
+          {
+            "label": "状态",
+            "value": "加载中"
+          },
+          {
+            "label": "项目",
+            "value": "觉醒纪元"
+          },
+          {
+            "label": "进度",
+            "value": "73%"
+          },
+          {
+            "label": "对象数",
+            "value": "26"
+          }
+        ]
+      }
+    },
+    {
+      "id": "workspace-mode",
+      "description": "写作/审阅/协作模式切换",
+      "sections": [
+        "nav",
+        "page-header",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "4",
+      "title": "模式切换",
+      "num": "15",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI",
+          "判断记录"
+        ],
+        "activeTab": "文档",
+        "activeMode": "source",
+        "infoTitle": "编辑模式",
+        "infoFields": [
+          {
+            "label": "当前模式",
+            "value": "源码编辑"
+          },
+          {
+            "label": "可用模式",
+            "value": "源码 / 预览 / 富文本"
+          },
+          {
+            "label": "字数",
+            "value": 342
+          },
+          {
+            "label": "正典层级",
+            "value": "金"
+          }
+        ]
+      }
+    },
+    {
+      "id": "quick-action",
+      "description": "Ctrl+K 命令面板",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "4",
+      "title": "快速操作",
+      "num": "16",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI",
+          "判断记录"
+        ],
+        "activeTab": "文档",
+        "commands": [
+          {
+            "id": "search",
+            "label": "全局搜索",
+            "shortcut": "Ctrl+K"
+          },
+          {
+            "id": "create",
+            "label": "创建对象",
+            "shortcut": "Ctrl+N"
+          }
+        ],
+        "listTitle": "快捷键",
+        "listItems": [
+          {
+            "name": "全局搜索",
+            "meta": "Ctrl+K"
+          },
+          {
+            "name": "创建对象",
+            "meta": "Ctrl+N"
+          },
+          {
+            "name": "插入 WikiLink",
+            "meta": "Ctrl+L"
+          },
+          {
+            "name": "设定正典",
+            "meta": "Ctrl+Shift+C"
+          }
+        ]
+      }
+    },
+    {
+      "id": "editor-source",
+      "description": "Markdown编辑区，语法高亮",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "5",
+      "title": "源码编辑",
+      "num": "17",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "wordCount": 342,
+        "linkCount": 6,
+        "infoTitle": "编辑状态",
+        "infoFields": [
+          {
+            "label": "对象",
+            "value": "楔子 · 迷雾之城"
+          },
+          {
+            "label": "类型",
+            "value": "章节"
+          },
+          {
+            "label": "字数",
+            "value": 342
+          },
+          {
+            "label": "链接数",
+            "value": 6
+          },
+          {
+            "label": "正典层级",
+            "value": "金"
+          },
+          {
+            "label": "最后更新",
+            "value": "10 分钟前"
+          }
+        ]
+      }
+    },
+    {
+      "id": "editor-preview",
+      "description": "渲染HTML预览，可点击WikiLink",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "5",
+      "title": "预览模式",
+      "num": "18",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "预览",
+        "infoFields": [
+          {
+            "label": "对象",
+            "value": "楔子 · 迷雾之城"
+          },
+          {
+            "label": "模式",
+            "value": "渲染预览"
+          },
+          {
+            "label": "标题级别",
+            "value": "H1 + H2"
+          },
+          {
+            "label": "链接可点击",
+            "value": "是 (WikiLink)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "editor-wysiwyg",
+      "description": "TipTap富文本编辑，WikiLink扩展",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "5",
+      "title": "富文本编辑",
+      "num": "19",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "富文本模式",
+        "infoFields": [
+          {
+            "label": "对象",
+            "value": "第一章 · 暗潮涌动"
+          },
+          {
+            "label": "模式",
+            "value": "TipTap 富文本"
+          },
+          {
+            "label": "正典层级",
+            "value": "蓝"
+          },
+          {
+            "label": "扩展",
+            "value": "WikiLink / 图片 / 表格"
+          }
+        ]
+      }
+    },
+    {
+      "id": "editor-toolbar",
+      "description": "H1-H3/B/I/U/S/引用/代码/链接，正典徽章",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "5",
+      "title": "统一工具栏",
+      "num": "20",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "工具栏",
+        "infoFields": [
+          {
+            "label": "对象",
+            "value": "林北辰"
+          },
+          {
+            "label": "类型",
+            "value": "人物"
+          },
+          {
+            "label": "正典层级",
+            "value": "金"
+          },
+          {
+            "label": "活动按钮",
+            "value": "H1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "wiki-create-bubble",
+      "description": "点击不存在的[[链接]]弹出创建",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "5",
+      "title": "WikiLink创建气泡",
+      "num": "21",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "missingLink": "深渊之门",
+        "infoTitle": "缺失链接",
+        "infoFields": [
+          {
+            "label": "链接文本",
+            "value": "[[深渊之门]]"
+          },
+          {
+            "label": "建议类型",
+            "value": "地点"
+          },
+          {
+            "label": "相关对象",
+            "value": "林北辰, 苏晚晴"
+          },
+          {
+            "label": "状态",
+            "value": "未创建"
+          }
+        ]
+      }
+    },
+    {
+      "id": "editor-empty",
+      "description": "空对象引导创建内容",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "5",
+      "title": "编辑空状态",
+      "num": "22",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "emptyTitle": "开始你的第一个设定",
+        "emptySub": "从空白开始构建你的世界",
+        "emptyBtnText": "创建第一个设定",
+        "infoTitle": "空状态",
+        "infoFields": [
+          {
+            "label": "提示",
+            "value": "开始创建第一个设定"
+          },
+          {
+            "label": "建议操作",
+            "value": "创建人物 / 地点 / 组织 / 规则"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outline-tree",
+      "description": "可折叠、可搜索、正典颜色编码",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "6",
+      "title": "大纲树",
+      "num": "23",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "groups": [
+          {
+            "name": "正文",
+            "count": 3
+          },
+          {
+            "name": "人物",
+            "count": 8
+          },
+          {
+            "name": "设定",
+            "count": 12
+          },
+          {
+            "name": "草稿",
+            "count": 2
+          }
+        ],
+        "listTitle": "大纲分组",
+        "listItems": [
+          {
+            "name": "正文",
+            "meta": "3 章",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "人物",
+            "meta": "8 个",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "设定",
+            "meta": "12 项",
+            "dot": "dot-purple"
+          },
+          {
+            "name": "草稿",
+            "meta": "2 项",
+            "dot": "dot-gray"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outline-search",
+      "description": "按名称过滤大纲项目",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "6",
+      "title": "大纲搜索",
+      "num": "24",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "listTitle": "搜索结果",
+        "listItems": [
+          {
+            "name": "林北辰",
+            "meta": "人物 · 金",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "苏晚晴",
+            "meta": "人物 · 蓝",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "天启城",
+            "meta": "地点 · 金",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "星月阁",
+            "meta": "组织 · 蓝",
+            "dot": "dot-blue"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outline-smart-group",
+      "description": "按类型自动分组",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "6",
+      "title": "智能分组",
+      "num": "25",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "smartGroups": [
+          {
+            "name": "最近编辑",
+            "count": 3
+          },
+          {
+            "name": "高正典 (金/蓝)",
+            "count": 7
+          },
+          {
+            "name": "待处理 (紫/灰)",
+            "count": 5
+          }
+        ],
+        "listTitle": "智能分组",
+        "listItems": [
+          {
+            "name": "最近编辑",
+            "meta": "3 个对象"
+          },
+          {
+            "name": "高正典 (金/蓝)",
+            "meta": "7 个"
+          },
+          {
+            "name": "待处理 (紫/灰)",
+            "meta": "5 个"
+          },
+          {
+            "name": "未链接对象",
+            "meta": "2 个"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outline-recent",
+      "description": "最近访问的对象列表",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "6",
+      "title": "最近项目",
+      "num": "26",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "recentItems": [
+          {
+            "name": "林北辰",
+            "time": "2 分钟前"
+          },
+          {
+            "name": "楔子",
+            "time": "10 分钟前"
+          },
+          {
+            "name": "苏晚晴",
+            "time": "35 分钟前"
+          }
+        ],
+        "listTitle": "最近访问",
+        "listItems": [
+          {
+            "name": "林北辰",
+            "meta": "2 分钟前"
+          },
+          {
+            "name": "楔子 · 迷雾之城",
+            "meta": "10 分钟前"
+          },
+          {
+            "name": "苏晚晴",
+            "meta": "35 分钟前"
+          },
+          {
+            "name": "灵脉体系",
+            "meta": "1 小时前"
+          },
+          {
+            "name": "深渊裂隙",
+            "meta": "3 小时前"
+          },
+          {
+            "name": "墨离",
+            "meta": "昨天"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inspector-summary",
+      "description": "未选择对象时的项目统计数据",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "7",
+      "title": "项目概要",
+      "num": "27",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "projectStats": {
+          "objects": 26,
+          "links": 47,
+          "words": 12840
+        },
+        "infoTitle": "项目统计",
+        "infoFields": [
+          {
+            "label": "总对象数",
+            "value": 26
+          },
+          {
+            "label": "关联链接",
+            "value": 47
+          },
+          {
+            "label": "总字数",
+            "value": "12,840"
+          },
+          {
+            "label": "人物",
+            "value": 8
+          },
+          {
+            "label": "地点",
+            "value": 5
+          },
+          {
+            "label": "组织",
+            "value": 3
+          },
+          {
+            "label": "规则",
+            "value": 4
+          },
+          {
+            "label": "章节",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "inspector-detail",
+      "description": "类型/正典/状态/时间戳",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "7",
+      "title": "对象检查器",
+      "num": "28",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "对象详情",
+        "infoFields": [
+          {
+            "label": "名称",
+            "value": "林北辰"
+          },
+          {
+            "label": "类型",
+            "value": "人物"
+          },
+          {
+            "label": "正典层级",
+            "value": "金 (核心设定)"
+          },
+          {
+            "label": "状态",
+            "value": "已发布"
+          },
+          {
+            "label": "创建时间",
+            "value": "2026-06-12"
+          },
+          {
+            "label": "最后修改",
+            "value": "2026-07-08"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inspector-linked",
+      "description": "引用/被引用对象列表",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "7",
+      "title": "关联对象",
+      "num": "29",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "listTitle": "关联对象",
+        "listItems": [
+          {
+            "name": "楔子 · 迷雾之城",
+            "meta": "章 · 金",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "天启城",
+            "meta": "地点 · 金",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "星月阁",
+            "meta": "组织 · 蓝",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "灵脉体系",
+            "meta": "规则 · 蓝",
+            "dot": "dot-blue"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inspector-judgment",
+      "description": "对象操作时间线",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "7",
+      "title": "判断历程",
+      "num": "30",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "timeline": [
+          {
+            "date": "2026-07-08",
+            "action": "锁定为金层设定"
+          },
+          {
+            "date": "2026-07-01",
+            "action": "从蓝层提升至金层"
+          }
+        ],
+        "listTitle": "判断历程",
+        "listItems": [
+          {
+            "name": "2026-07-08",
+            "meta": "锁定为金层设定"
+          },
+          {
+            "name": "2026-07-01",
+            "meta": "从蓝层提升至金层"
+          },
+          {
+            "name": "2026-06-28",
+            "meta": "内容修订 +120字"
+          },
+          {
+            "name": "2026-06-20",
+            "meta": "审核通过 (顾长生)"
+          },
+          {
+            "name": "2026-06-12",
+            "meta": "创建对象"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inspector-canon-popup",
+      "description": "4级正典下拉选择",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "7",
+      "title": "正典弹出",
+      "num": "31",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "currentLevel": "金",
+        "levels": [
+          {
+            "name": "金",
+            "count": 4
+          },
+          {
+            "name": "蓝",
+            "count": 9
+          },
+          {
+            "name": "紫",
+            "count": 8
+          },
+          {
+            "name": "灰",
+            "count": 5
+          }
+        ],
+        "listTitle": "正典层级",
+        "listItems": [
+          {
+            "name": "金 (核心设定)",
+            "meta": "4 个对象",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "蓝 (权威设定)",
+            "meta": "9 个对象",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "紫 (试行设定)",
+            "meta": "8 个对象",
+            "dot": "dot-purple"
+          },
+          {
+            "name": "灰 (草稿)",
+            "meta": "5 个对象",
+            "dot": "dot-gray"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inspector-board",
+      "description": "画板分配界面",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "7",
+      "title": "添加到画板",
+      "num": "32",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "listTitle": "可用画板",
+        "listItems": [
+          {
+            "name": "角色关系图",
+            "meta": "6 个节点"
+          },
+          {
+            "name": "剧情脉络",
+            "meta": "12 个事件"
+          },
+          {
+            "name": "势力分布",
+            "meta": "4 个组织"
+          },
+          {
+            "name": "新建画板...",
+            "meta": "+"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inspector-reason",
+      "description": "锁定/弃置/提升需要输入原因",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "7",
+      "title": "原因对话框",
+      "num": "33",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "确认操作",
+        "infoFields": [
+          {
+            "label": "对象",
+            "value": "林北辰"
+          },
+          {
+            "label": "操作",
+            "value": "提升层级 (紫 → 蓝)"
+          },
+          {
+            "label": "当前层级",
+            "value": "紫 (试行设定)"
+          },
+          {
+            "label": "目标层级",
+            "value": "蓝 (权威设定)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-relation",
+      "description": "节点关系图",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "关系图",
+      "num": "34",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "stats": {
+          "nodes": 16,
+          "edges": 23
+        },
+        "infoTitle": "关系图",
+        "infoFields": [
+          {
+            "label": "节点数",
+            "value": 16
+          },
+          {
+            "label": "连线数",
+            "value": 23
+          },
+          {
+            "label": "视图模式",
+            "value": "关系图"
+          },
+          {
+            "label": "比例",
+            "value": "100%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-timeline",
+      "description": "水平时间线",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "时间线",
+      "num": "35",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "stats": {
+          "events": 24,
+          "sorted": 18,
+          "unsorted": 6
+        },
+        "infoTitle": "时间线",
+        "infoFields": [
+          {
+            "label": "总事件",
+            "value": 24
+          },
+          {
+            "label": "已排期",
+            "value": 18
+          },
+          {
+            "label": "未排期",
+            "value": 6
+          },
+          {
+            "label": "时代跨度",
+            "value": "3 个纪元"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-deduction",
+      "description": "分区推演：问题/候选/验证/锁定",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "推演图",
+      "num": "36",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "zones": {
+          "question": 3,
+          "candidate": 5,
+          "verified": 2,
+          "locked": 1
+        },
+        "infoTitle": "推演图",
+        "infoFields": [
+          {
+            "label": "问题",
+            "value": 3
+          },
+          {
+            "label": "候选方案",
+            "value": 5
+          },
+          {
+            "label": "已验证",
+            "value": 2
+          },
+          {
+            "label": "已锁定",
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-tool-panel",
+      "description": "选择/框选/连线/对象池/模板",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "工具面板",
+      "num": "37",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "tools": [
+          "select",
+          "marquee",
+          "connect",
+          "sticky",
+          "pool",
+          "template"
+        ],
+        "activeTool": "select",
+        "listTitle": "工具面板",
+        "listItems": [
+          {
+            "name": "选择",
+            "meta": "V"
+          },
+          {
+            "name": "框选",
+            "meta": "M"
+          },
+          {
+            "name": "连线",
+            "meta": "L"
+          },
+          {
+            "name": "便签",
+            "meta": "S"
+          },
+          {
+            "name": "对象池",
+            "meta": "P"
+          },
+          {
+            "name": "模板",
+            "meta": "T"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-zoom",
+      "description": "+/-/百分比/适应",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "缩放控制",
+      "num": "38",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "zoomLevel": 100,
+        "infoTitle": "缩放控制",
+        "infoFields": [
+          {
+            "label": "当前缩放",
+            "value": "100%"
+          },
+          {
+            "label": "最小",
+            "value": "25%"
+          },
+          {
+            "label": "最大",
+            "value": "400%"
+          },
+          {
+            "label": "适合视图",
+            "value": "快捷键 F"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-pool",
+      "description": "右侧对象列表，可按类型搜索拖拽",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "对象池",
+      "num": "39",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "poolItems": [
+          {
+            "name": "林北辰",
+            "type": "人物",
+            "canon": "金"
+          },
+          {
+            "name": "苏晚晴",
+            "type": "人物",
+            "canon": "蓝"
+          },
+          {
+            "name": "天启城",
+            "type": "地点",
+            "canon": "金"
+          }
+        ],
+        "listTitle": "对象池",
+        "listItems": [
+          {
+            "name": "林北辰",
+            "meta": "人物 · 金",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "苏晚晴",
+            "meta": "人物 · 蓝",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "天启城",
+            "meta": "地点 · 金",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "星月阁",
+            "meta": "组织 · 蓝",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "深渊裂隙",
+            "meta": "地点 · 紫",
+            "dot": "dot-purple"
+          },
+          {
+            "name": "灵脉体系",
+            "meta": "规则 · 蓝",
+            "dot": "dot-blue"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-marquee",
+      "description": "矩形多选",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "框选",
+      "num": "40",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "框选",
+        "infoFields": [
+          {
+            "label": "状态",
+            "value": "框选模式 (已激活)"
+          },
+          {
+            "label": "快捷键",
+            "value": "M"
+          },
+          {
+            "label": "已选对象",
+            "value": "3"
+          },
+          {
+            "label": "操作",
+            "value": "拖拽 / 批量移动"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-layout-lock",
+      "description": "切换开关保护手动布局",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "布局锁定",
+      "num": "41",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "layoutLocked": true,
+        "infoTitle": "布局锁定",
+        "infoFields": [
+          {
+            "label": "状态",
+            "value": "已锁定"
+          },
+          {
+            "label": "保护",
+            "value": "手动布局不会被自动排列覆盖"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-connect",
+      "description": "点击源拖拽到目标创建连线",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "连线绘制",
+      "num": "42",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "连线绘制",
+        "infoFields": [
+          {
+            "label": "源节点",
+            "value": "林北辰"
+          },
+          {
+            "label": "目标",
+            "value": "点击选择"
+          },
+          {
+            "label": "关系类型",
+            "value": "关联 / 包含 / 对立"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-sticky",
+      "description": "自由浮动文本注释",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "便签",
+      "num": "43",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "便签",
+        "infoFields": [
+          {
+            "label": "便签数",
+            "value": 2
+          },
+          {
+            "label": "颜色",
+            "value": "黄 / 蓝"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-timeline-unsorted",
+      "description": "未排期事件侧栏，可拖入时间线",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "待排事件池",
+      "num": "44",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "unsortedEvents": [
+          {
+            "name": "林北辰晋升"
+          },
+          {
+            "name": "星月阁密会"
+          },
+          {
+            "name": "深渊之门开启"
+          },
+          {
+            "name": "白鹤登场"
+          },
+          {
+            "name": "旧神苏醒"
+          },
+          {
+            "name": "灵脉暴走"
+          }
+        ],
+        "listTitle": "待排事件",
+        "listItems": [
+          {
+            "name": "林北辰晋升",
+            "meta": "待定"
+          },
+          {
+            "name": "星月阁密会",
+            "meta": "待定"
+          },
+          {
+            "name": "深渊之门开启",
+            "meta": "待定"
+          },
+          {
+            "name": "白鹤登场",
+            "meta": "待定"
+          },
+          {
+            "name": "旧神苏醒",
+            "meta": "待定"
+          },
+          {
+            "name": "灵脉暴走",
+            "meta": "待定"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas-hint",
+      "description": "底部居中平移/缩放提示",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "8",
+      "title": "画布提示",
+      "num": "45",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "infoTitle": "画布提示",
+        "infoFields": [
+          {
+            "label": "平移",
+            "value": "Space + 拖拽"
+          },
+          {
+            "label": "缩放",
+            "value": "滚轮 / Ctrl++"
+          },
+          {
+            "label": "适应视图",
+            "value": "F"
+          },
+          {
+            "label": "选择",
+            "value": "点击节点"
+          }
+        ]
+      }
+    },
+    {
+      "id": "setting-collection",
+      "description": "正典对象集合，可过滤搜索",
+      "sections": [
+        "nav",
+        "page-header",
+        "filterbar",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "9",
+      "title": "设定集",
+      "num": "46",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "stats": {
+          "objects": 26
+        },
+        "filters": [
+          {
+            "id": "genreFilter",
+            "options": [
+              {
+                "value": "all",
+                "label": "全部体裁"
+              },
+              {
+                "value": "科幻",
+                "label": "科幻"
+              },
+              {
+                "value": "奇幻",
+                "label": "奇幻"
+              },
+              {
+                "value": "武侠",
+                "label": "武侠"
+              },
+              {
+                "value": "悬疑",
+                "label": "悬疑"
+              }
+            ]
+          },
+          {
+            "id": "statusFilter",
+            "options": [
+              {
+                "value": "all",
+                "label": "全部状态"
+              },
+              {
+                "value": "构思中",
+                "label": "构思中"
+              },
+              {
+                "value": "草稿中",
+                "label": "草稿中"
+              },
+              {
+                "value": "修改中",
+                "label": "修改中"
+              },
+              {
+                "value": "已完成",
+                "label": "已完成"
+              }
+            ]
+          }
+        ],
+        "searchPlaceholder": "搜索设定对象...",
+        "infoTitle": "设定集",
+        "infoFields": [
+          {
+            "label": "总对象数",
+            "value": 26
+          },
+          {
+            "label": "核心正典 (金)",
+            "value": 4
+          },
+          {
+            "label": "权威正典 (蓝)",
+            "value": 9
+          },
+          {
+            "label": "试行 (紫)",
+            "value": 8
+          },
+          {
+            "label": "草稿 (灰)",
+            "value": 5
+          },
+          {
+            "label": "搜索",
+            "value": "可用"
+          }
+        ]
+      }
+    },
+    {
+      "id": "setting-promote",
+      "description": "正典等级变更按钮",
+      "sections": [
+        "nav",
+        "page-header",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "9",
+      "title": "正典升级",
+      "num": "47",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "recentChanges": [
+          {
+            "name": "深渊裂隙",
+            "from": "紫",
+            "to": "蓝"
+          },
+          {
+            "name": "林北辰",
+            "from": "蓝",
+            "to": "金"
+          }
+        ],
+        "listTitle": "最近升级",
+        "listItems": [
+          {
+            "name": "深渊裂隙",
+            "meta": "紫 → 蓝 (2026-07-08)"
+          },
+          {
+            "name": "林北辰",
+            "meta": "蓝 → 金 (2026-07-01)"
+          },
+          {
+            "name": "灵脉体系",
+            "meta": "紫 → 蓝 (2026-06-25)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "judgment-records",
+      "description": "操作日志+字段变更",
+      "sections": [
+        "nav",
+        "page-header",
+        "filterbar",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "9",
+      "title": "判断记录",
+      "num": "48",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "filters": [
+          {
+            "id": "actionFilter",
+            "options": [
+              {
+                "value": "all",
+                "label": "全部操作"
+              },
+              {
+                "value": "promote",
+                "label": "提升层级"
+              }
+            ]
+          }
+        ],
+        "records": [
+          {
+            "time": "2026-07-08",
+            "action": "锁定",
+            "target": "林北辰"
+          },
+          {
+            "time": "2026-07-01",
+            "action": "提升",
+            "target": "林北辰"
+          }
+        ],
+        "listTitle": "判断记录",
+        "listItems": [
+          {
+            "name": "2026-07-08",
+            "meta": "锁定林北辰为金层"
+          },
+          {
+            "name": "2026-07-01",
+            "meta": "提升林北辰至金层"
+          },
+          {
+            "name": "2026-06-28",
+            "meta": "编辑楔子 (+120字)"
+          },
+          {
+            "name": "2026-06-20",
+            "meta": "审批通过 (顾长生)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "canon-handbook",
+      "description": "4级正典参考文档",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "9",
+      "title": "正典手册",
+      "num": "49",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "sections": [
+          {
+            "name": "核心正典",
+            "count": 2,
+            "objects": [
+              "张三",
+              "乐园机制"
+            ]
+          },
+          {
+            "name": "项目正典",
+            "count": 3,
+            "objects": [
+              "李四",
+              "中央数据库",
+              "人造人组织"
+            ]
+          },
+          {
+            "name": "草案正典",
+            "count": 4,
+            "objects": [
+              "替换计划",
+              "AX系列",
+              "地下设施",
+              "赵五"
+            ]
+          },
+          {
+            "name": "未收录",
+            "count": 7,
+            "objects": [
+              "时崎",
+              "第三设施",
+              "代号X",
+              "未知组织",
+              "实验记录",
+              "废弃方案",
+              "远方来信"
+            ]
+          }
+        ],
+        "listTitle": "正典对象",
+        "listItems": [
+          {
+            "name": "核心正典",
+            "meta": "2 个: 张三, 乐园机制",
+            "dot": "dot-gold"
+          },
+          {
+            "name": "项目正典",
+            "meta": "3 个: 李四, 中央数据库, 人造人组织",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "草案正典",
+            "meta": "4 个: 替换计划, AX系列...",
+            "dot": "dot-purple"
+          },
+          {
+            "name": "未收录",
+            "meta": "7 个对象",
+            "dot": "dot-gray"
+          }
+        ]
+      }
+    },
+    {
+      "id": "global-search",
+      "description": "Ctrl+K模糊+拼音搜索",
+      "sections": [
+        "nav",
+        "page-header",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "10",
+      "title": "全局搜索",
+      "num": "50",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "recentSearches": [
+          "林北辰",
+          "灵脉",
+          "深渊",
+          "天启城"
+        ],
+        "listTitle": "最近搜索",
+        "listItems": [
+          {
+            "name": "林北辰",
+            "meta": "人物"
+          },
+          {
+            "name": "灵脉",
+            "meta": "规则"
+          },
+          {
+            "name": "深渊",
+            "meta": "地点"
+          },
+          {
+            "name": "天启城",
+            "meta": "地点"
+          }
+        ]
+      }
+    },
+    {
+      "id": "undo-redo-toast",
+      "description": "边界反馈提示",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "10",
+      "title": "撤销/重做提示",
+      "num": "51",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "lastAction": "撤销：删除段落",
+        "canUndo": true,
+        "infoTitle": "操作历史",
+        "infoFields": [
+          {
+            "label": "最后操作",
+            "value": "撤销：删除段落"
+          },
+          {
+            "label": "可撤销",
+            "value": "是"
+          },
+          {
+            "label": "可重做",
+            "value": "否"
+          },
+          {
+            "label": "历史深度",
+            "value": "50 步"
+          }
+        ]
+      }
+    },
+    {
+      "id": "error-toast",
+      "description": "操作失败通知",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "10",
+      "title": "错误提示",
+      "num": "52",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "lastError": {
+          "message": "保存失败：网络连接超时",
+          "severity": "warning"
+        },
+        "infoTitle": "错误信息",
+        "infoFields": [
+          {
+            "label": "类型",
+            "value": "网络错误"
+          },
+          {
+            "label": "消息",
+            "value": "保存失败：网络连接超时"
+          },
+          {
+            "label": "严重程度",
+            "value": "警告"
+          },
+          {
+            "label": "建议",
+            "value": "检查网络后重试"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-chat",
+      "description": "左侧大纲+对话+输入+文档卡片",
+      "sections": [
+        "nav",
+        "statusbar",
+        "conversation",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI全页对话",
+      "num": "53",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "model": "Claude 4 Sonnet",
+        "conversations": [
+          {
+            "role": "user",
+            "message": "帮我构思一个反乌托邦世界的核心冲突"
+          },
+          {
+            "role": "assistant",
+            "message": "好的，我们来构建反乌托邦世界的核心冲突。"
+          }
+        ],
+        "infoTitle": "AI 对话"
+      }
+    },
+    {
+      "id": "ai-chat-header",
+      "description": "标题/模型指示/聚焦徽章/新对话",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI对话头部",
+      "num": "54",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "activeModel": "Claude 4 Sonnet",
+        "focusMode": "世界构建",
+        "infoTitle": "对话头部",
+        "infoFields": [
+          {
+            "label": "模型",
+            "value": "Claude 4 Sonnet"
+          },
+          {
+            "label": "聚焦模式",
+            "value": "世界构建"
+          },
+          {
+            "label": "提供商",
+            "value": "Anthropic"
+          },
+          {
+            "label": "对话数",
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-doc-card",
+      "description": "类型徽章/标题/正文/编辑/保存",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI文档卡片",
+      "num": "55",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "cardData": {
+          "type": "人物",
+          "title": "林北辰",
+          "canonLevel": "金"
+        },
+        "infoTitle": "文档卡片",
+        "infoFields": [
+          {
+            "label": "类型",
+            "value": "人物"
+          },
+          {
+            "label": "名称",
+            "value": "林北辰"
+          },
+          {
+            "label": "正典",
+            "value": "金"
+          },
+          {
+            "label": "状态",
+            "value": "已保存"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-doc-card-edit",
+      "description": "可编辑标题/正文",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "文档卡片内联编辑",
+      "num": "56",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "isEditing": true,
+        "infoTitle": "文档卡片 (编辑)",
+        "infoFields": [
+          {
+            "label": "类型",
+            "value": "人物"
+          },
+          {
+            "label": "名称",
+            "value": "林北辰"
+          },
+          {
+            "label": "当前摘要",
+            "value": "天启城总务司调查员。"
+          },
+          {
+            "label": "状态",
+            "value": "编辑中"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-input-bar",
+      "description": "自动缩放输入框",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI输入栏",
+      "num": "57",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "placeholder": "输入你的创作需求...",
+        "infoTitle": "输入栏",
+        "infoFields": [
+          {
+            "label": "占位符",
+            "value": "输入你的创作需求..."
+          },
+          {
+            "label": "上下文",
+            "value": "世界构建"
+          },
+          {
+            "label": "输入模式",
+            "value": "文本 / 文件引用"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-focus",
+      "description": "头部徽章",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI聚焦指示器",
+      "num": "58",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "focusMode": "世界构建",
+        "availableModes": [
+          "写作助手",
+          "世界构建",
+          "角色塑造",
+          "大纲规划",
+          "一致性检查"
+        ],
+        "listTitle": "聚焦模式",
+        "listItems": [
+          {
+            "name": "写作助手",
+            "meta": "当前"
+          },
+          {
+            "name": "世界构建",
+            "meta": "可用"
+          },
+          {
+            "name": "角色塑造",
+            "meta": "可用"
+          },
+          {
+            "name": "大纲规划",
+            "meta": "可用"
+          },
+          {
+            "name": "一致性检查",
+            "meta": "可用"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-typing",
+      "description": "3点弹跳动画",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI打字指示器",
+      "num": "59",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "isTyping": true,
+        "infoTitle": "打字指示器",
+        "infoFields": [
+          {
+            "label": "状态",
+            "value": "AI 正在输入..."
+          },
+          {
+            "label": "动画",
+            "value": "3 点弹跳"
+          },
+          {
+            "label": "模型",
+            "value": "Claude 4 Sonnet"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-sidebar-model",
+      "description": "当前模型名称可点入设置",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI侧栏模型选择",
+      "num": "60",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "currentModel": "Claude 4 Sonnet",
+        "availableModels": [
+          {
+            "id": "claude-sonnet",
+            "name": "Claude 4 Sonnet"
+          },
+          {
+            "id": "claude-haiku",
+            "name": "Claude 4 Haiku"
+          },
+          {
+            "id": "gpt-4o",
+            "name": "GPT-4o"
+          }
+        ],
+        "listTitle": "可用模型",
+        "listItems": [
+          {
+            "name": "Claude 4 Sonnet",
+            "meta": "Anthropic · 当前"
+          },
+          {
+            "name": "Claude 4 Haiku",
+            "meta": "Anthropic · 经济"
+          },
+          {
+            "name": "GPT-4o",
+            "meta": "OpenAI · 快速"
+          },
+          {
+            "name": "GPT-4o Mini",
+            "meta": "OpenAI · 经济"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-bottom-bar",
+      "description": "连接点/Token数/用量条",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "AI底部栏",
+      "num": "61",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "connectionStatus": "connected",
+        "tokenUsage": {
+          "current": 3241,
+          "limit": 8000
+        },
+        "infoTitle": "底部栏",
+        "infoFields": [
+          {
+            "label": "连接状态",
+            "value": "已连接"
+          },
+          {
+            "label": "Token 用量",
+            "value": "3,241 / 8,000"
+          },
+          {
+            "label": "流式模式",
+            "value": "自动"
+          },
+          {
+            "label": "延迟",
+            "value": "340ms"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-new-chat",
+      "description": "清空对话前确认",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "11",
+      "title": "新对话确认",
+      "num": "62",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "文档",
+        "hasActiveChat": true,
+        "infoTitle": "新对话",
+        "infoFields": [
+          {
+            "label": "当前对话",
+            "value": "存在"
+          },
+          {
+            "label": "确认信息",
+            "value": "当前对话将丢失"
+          },
+          {
+            "label": "操作",
+            "value": "清空并开始新对话"
+          }
+        ]
+      }
+    },
+    {
+      "id": "settings-shell",
+      "description": "设置导航面板",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "12",
+      "title": "设置外壳",
+      "num": "63",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "设定集",
+        "infoTitle": "设置",
+        "infoFields": [
+          {
+            "label": "活动页面",
+            "value": "API Key 管理"
+          },
+          {
+            "label": "可用页面",
+            "value": "API Key / 模型 / 费用 / 测试"
+          }
+        ]
+      }
+    },
+    {
+      "id": "settings-api-keys",
+      "description": "多提供商密钥管理",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "12",
+      "title": "API Key管理",
+      "num": "64",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "设定集",
+        "providers": [
+          {
+            "name": "OpenAI",
+            "models": "GPT-4o, GPT-4o Mini",
+            "status": "connected"
+          },
+          {
+            "name": "Anthropic",
+            "models": "Claude 4 Sonnet, Claude 4 Haiku",
+            "status": "connected"
+          },
+          {
+            "name": "本地模型",
+            "models": "Ollama (LLaMA 3, Qwen2)",
+            "status": "disconnected"
+          }
+        ],
+        "listTitle": "提供商",
+        "listItems": [
+          {
+            "name": "OpenAI",
+            "meta": "GPT-4o, GPT-4o Mini · 已连接",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "Anthropic",
+            "meta": "Claude 4 Sonnet, Haiku · 已连接",
+            "dot": "dot-blue"
+          },
+          {
+            "name": "本地模型",
+            "meta": "Ollama (LLaMA 3, Qwen2) · 未连接"
+          }
+        ]
+      }
+    },
+    {
+      "id": "settings-models",
+      "description": "单选列表",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "12",
+      "title": "模型选择",
+      "num": "65",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "设定集",
+        "models": [
+          {
+            "name": "Claude 4 Sonnet",
+            "desc": "最佳写作质量"
+          },
+          {
+            "name": "Claude 4 Haiku",
+            "desc": "快速草稿"
+          },
+          {
+            "name": "GPT-4o",
+            "desc": "全能模型"
+          },
+          {
+            "name": "GPT-4o Mini",
+            "desc": "低成本日常"
+          }
+        ],
+        "listTitle": "模型列表",
+        "listItems": [
+          {
+            "name": "Claude 4 Sonnet",
+            "meta": "最佳写作质量 · 高成本"
+          },
+          {
+            "name": "Claude 4 Haiku",
+            "meta": "快速草稿 · 低成本"
+          },
+          {
+            "name": "GPT-4o",
+            "meta": "全能模型 · 高成本"
+          },
+          {
+            "name": "GPT-4o Mini",
+            "meta": "低成本日常 · 经济"
+          }
+        ]
+      }
+    },
+    {
+      "id": "settings-cost",
+      "description": "今日+本月费用",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "12",
+      "title": "费用估算",
+      "num": "66",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "设定集",
+        "today": {
+          "cost": 0.42,
+          "tokens": 15420,
+          "calls": 38
+        },
+        "month": {
+          "cost": 38.5,
+          "tokens": 1420000,
+          "calls": 1240
+        },
+        "budgetLimit": 100,
+        "infoTitle": "费用估算",
+        "infoFields": [
+          {
+            "label": "今日费用",
+            "value": "$0.42"
+          },
+          {
+            "label": "今日 Token",
+            "value": "15,420"
+          },
+          {
+            "label": "本月费用",
+            "value": "$38.50"
+          },
+          {
+            "label": "本月 Token",
+            "value": "1,420,000"
+          },
+          {
+            "label": "预算上限",
+            "value": "$100/月"
+          },
+          {
+            "label": "预算使用率",
+            "value": "38.5%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "settings-breakdown",
+      "description": "条状图+Token数+费用",
+      "sections": [
+        "nav",
+        "statusbar",
+        "breakdown-chart",
+        "data-display"
+      ],
+      "phase": "12",
+      "title": "各模型分解",
+      "num": "67",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "设定集",
+        "breakdown": [
+          {
+            "model": "Claude 4 Sonnet",
+            "tokens": 820000,
+            "cost": 24.6,
+            "pct": 58
+          },
+          {
+            "model": "Claude 4 Haiku",
+            "tokens": 350000,
+            "cost": 3.5,
+            "pct": 24
+          },
+          {
+            "model": "GPT-4o",
+            "tokens": 180000,
+            "cost": 9,
+            "pct": 13
+          },
+          {
+            "model": "GPT-4o Mini",
+            "tokens": 70000,
+            "cost": 1.4,
+            "pct": 5
+          }
+        ],
+        "infoTitle": "用量分解"
+      }
+    },
+    {
+      "id": "settings-sparkline",
+      "description": "7日柱状图",
+      "sections": [
+        "nav",
+        "statusbar",
+        "info-panel",
+        "data-display"
+      ],
+      "phase": "12",
+      "title": "周趋势图",
+      "num": "68",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "设定集",
+        "dailyCost": [
+          {
+            "day": "07/02",
+            "cost": 4.2
+          },
+          {
+            "day": "07/03",
+            "cost": 5.8
+          },
+          {
+            "day": "07/04",
+            "cost": 3.1
+          },
+          {
+            "day": "07/05",
+            "cost": 6.5
+          },
+          {
+            "day": "07/06",
+            "cost": 8.2
+          },
+          {
+            "day": "07/07",
+            "cost": 5.4
+          },
+          {
+            "day": "07/08",
+            "cost": 4.9
+          }
+        ],
+        "infoTitle": "周趋势",
+        "infoFields": [
+          {
+            "label": "07/02",
+            "value": "$4.20"
+          },
+          {
+            "label": "07/03",
+            "value": "$5.80"
+          },
+          {
+            "label": "07/04",
+            "value": "$3.10"
+          },
+          {
+            "label": "07/05",
+            "value": "$6.50"
+          },
+          {
+            "label": "07/06",
+            "value": "$8.20"
+          },
+          {
+            "label": "07/07",
+            "value": "$5.40"
+          },
+          {
+            "label": "07/08",
+            "value": "$4.90 (今日)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "settings-test",
+      "description": "内联结果及延迟",
+      "sections": [
+        "nav",
+        "statusbar",
+        "item-list",
+        "data-display"
+      ],
+      "phase": "12",
+      "title": "连接测试",
+      "num": "69",
+      "data": {
+        "navTabs": [
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "设定集",
+        "testResults": [
+          {
+            "model": "Claude 4 Sonnet",
+            "latency": 1240,
+            "success": true
+          },
+          {
+            "model": "Claude 4 Haiku",
+            "latency": 380,
+            "success": true
+          },
+          {
+            "model": "GPT-4o",
+            "latency": 2100,
+            "success": true
+          },
+          {
+            "model": "GPT-4o Mini",
+            "latency": 450,
+            "success": true
+          }
+        ],
+        "listTitle": "连接测试结果",
+        "listItems": [
+          {
+            "name": "Claude 4 Sonnet",
+            "meta": "1240ms · 成功"
+          },
+          {
+            "name": "Claude 4 Haiku",
+            "meta": "380ms · 成功"
+          },
+          {
+            "name": "GPT-4o",
+            "meta": "2100ms · 成功"
+          },
+          {
+            "name": "GPT-4o Mini",
+            "meta": "450ms · 成功"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ai-agent-tab",
+      "description": "Agent卡片+任务队列",
+      "sections": [
+        "nav",
+        "page-header",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "Agent控制中心",
+      "num": "70",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "agent-card",
+      "description": "图标/名称/状态/进度",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "Agent卡片",
+      "num": "71",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "task-queue",
+      "description": "可拖拽的任务列表",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "任务队列",
+      "num": "72",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "skill-marketplace",
+      "description": "可安装技能",
+      "sections": [
+        "nav",
+        "page-header",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "技能市场",
+      "num": "73",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "agent-collab",
+      "description": "实时AI写作",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "协作编辑",
+      "num": "74",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "change-history",
+      "description": "AI修改时间线",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "变更历史",
+      "num": "75",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "collaborator-list",
+      "description": "活跃Agent和用户",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "协作者列表",
+      "num": "76",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "ai-suggestions",
+      "description": "自动布局推荐",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "AI建议面板",
+      "num": "77",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "consistency-report",
+      "description": "问题列表",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "一致性扫描报告",
+      "num": "78",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "ai-layout-recommend",
+      "description": "2-3个方案",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "13",
+      "title": "AI布局推荐",
+      "num": "79",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "dashboard",
+      "description": "对象趋势/AI时长/一致性分数",
+      "sections": [
+        "nav",
+        "page-header",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "14",
+      "title": "仪表盘",
+      "num": "80",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "style-recognition",
+      "description": "类型/风格匹配百分比",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "14",
+      "title": "风格识别",
+      "num": "81",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "skill-recommend",
+      "description": "按项目推荐技能",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "14",
+      "title": "技能推荐",
+      "num": "82",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "platform-switcher",
+      "description": "桌面/Web徽章",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "15",
+      "title": "平台指示器",
+      "num": "83",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "pwa-install",
+      "description": "安装应用toast",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "15",
+      "title": "PWA安装提示",
+      "num": "84",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "cloud-sync",
+      "description": "同步开关",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "15",
+      "title": "云同步设置",
+      "num": "85",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "share-button",
+      "description": "只读分享链接",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "15",
+      "title": "分享按钮",
+      "num": "86",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "feedback",
+      "description": "Bug报告",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "16",
+      "title": "反馈按钮",
+      "num": "87",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "beta-badge",
+      "description": "版本指示器",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "16",
+      "title": "Beta/RC徽章",
+      "num": "88",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "skeleton",
+      "description": "内容占位符",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "16",
+      "title": "骨架加载",
+      "num": "89",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "crash-recovery",
+      "description": "异常退出检测",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "16",
+      "title": "崩溃恢复",
+      "num": "90",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "publish",
+      "description": "QA检查表",
+      "sections": [
+        "nav",
+        "page-header",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "17",
+      "title": "发布面板",
+      "num": "91",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "version-footprint",
+      "description": "v1.1到v2.0时间线",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "17",
+      "title": "版本足迹",
+      "num": "92",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    },
+    {
+      "id": "knowledge-base",
+      "description": "索引条目计数",
+      "sections": [
+        "nav",
+        "statusbar",
+        "data-display"
+      ],
+      "phase": "17",
+      "title": "知识库链接",
+      "num": "93",
+      "data": {
+        "navTabs": [
+          "第一批",
+          "文档",
+          "画板",
+          "设定集",
+          "AI"
+        ],
+        "activeTab": "第一批"
+      }
+    }
+  ]
+}

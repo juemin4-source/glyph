@@ -1,0 +1,43 @@
+{
+  "id": "combo-design-tokenize",
+  "version": "0.1.0",
+  "goal": {
+    "description": "设计令牌化：将组件中的 inline style 替换为 CSS 变量 + 类名",
+    "skillRefs": ["design-system", "frontend-refactor"]
+  },
+  "plan": {
+    "nodes": [
+      {
+        "id": "step-audit",
+        "softill": "code-search",
+        "input": { "pattern": "style={" },
+        "when": { "always": true },
+        "description": "统计目标文件的 inline style"
+      },
+      {
+        "id": "step-extract-css",
+        "softill": "file-patch",
+        "input": {},
+        "when": { "step-audit": "PASS" },
+        "humanCheckpoint": true,
+        "description": "提取重复 style 模式为 CSS 类"
+      },
+      {
+        "id": "step-replace",
+        "softill": "file-patch",
+        "input": {},
+        "when": { "step-extract-css": "PASS" },
+        "description": "替换 inline style 为 CSS 类引用"
+      },
+      {
+        "id": "step-verify",
+        "softill": "test-runner",
+        "input": { "command": "npx tsc -b && npm run build" },
+        "when": { "step-replace": "PASS" },
+        "description": "验证构建通过"
+      }
+    ],
+    "validation": { "requiredEvidences": ["test-runner"], "minEvidenceCount": 1 },
+    "recovery": { "maxRetries": 1, "onMaxRetries": "human" }
+  }
+}

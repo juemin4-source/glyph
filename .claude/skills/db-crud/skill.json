@@ -1,0 +1,45 @@
+{
+  "name": "db-crud",
+  "version": "0.1.0",
+  "description": "db-crud — softill",
+  "level": "L0_read_probe",
+  "type": "tool",
+  "runtime": "node",
+  "entry": "handler.js",
+  "archetype": {
+    "primary": "Diagnostic",
+    "secondary": [
+      "Delivery"
+    ]
+  },
+  "thickness": "thin",
+  "input": {
+    "type": "object",
+    "properties": {
+      "input": {
+        "type": "string",
+        "description": "输入参数"
+      }
+    },
+    "required": [
+      "input"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "result"
+    ]
+  },
+  "triggers": {
+    "keywords": [
+      "db-crud",
+      "db crud"
+    ]
+  }
+}

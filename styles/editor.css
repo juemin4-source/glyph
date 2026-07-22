@@ -1,0 +1,23 @@
+.editor-content .ProseMirror { min-height: 300px; padding: 20px 0; outline: none; color: var(--text-primary); font-family: var(--font-body); font-size: var(--text-base); line-height: var(--leading-relaxed); }
+.editor-content .ProseMirror h1 { font-size: var(--text-2xl); font-weight: var(--weight-bold); margin: 1.5em 0 0.5em; color: var(--text-heading); line-height: var(--leading-tight); }
+.editor-content .ProseMirror h2 { font-size: var(--text-xl); font-weight: var(--weight-semibold); margin: 1.2em 0 0.4em; color: var(--text-heading); }
+.editor-content .ProseMirror h3 { font-size: var(--text-lg); font-weight: var(--weight-semibold); margin: 1em 0 0.3em; color: var(--text-heading); }
+.editor-content .ProseMirror p { margin: 0 0 0.5em; }
+.editor-content .ProseMirror blockquote { border-left: 3px solid var(--accent); margin: 0.5em 0; padding: 0.3em 1em; color: var(--text-secondary); background: var(--accent-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.editor-content .ProseMirror ul, .editor-content .ProseMirror ol { padding-left: 1.5em; margin: 0.3em 0; }
+.editor-content .ProseMirror li { margin: 0.2em 0; }
+.editor-content .ProseMirror code { background: var(--bg-raised); padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono); font-size: 0.85em; color: var(--accent-text); }
+.editor-content .ProseMirror pre { background: var(--bg-raised); padding: 12px; border-radius: var(--radius-md); overflow-x: auto; margin: 0.5em 0; border: 1px solid var(--border-light); }
+.editor-content .ProseMirror pre code { background: none; padding: 0; color: var(--text-primary); }
+.editor-content .ProseMirror a { color: var(--accent-text); text-decoration: underline; cursor: pointer; }
+.editor-content .ProseMirror a:hover { color: var(--accent-hover); }
+.editor-content .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: var(--text-muted); pointer-events: none; height: 0; }
+
+.editor-source-textarea { width: 100%; height: 100%; padding: 16px; border: none; background: var(--bg-canvas); color: var(--text-primary); font-family: var(--font-mono); font-size: var(--text-sm); line-height: var(--leading-relaxed); resize: none; outline: none; }
+.editor-source-textarea:focus { outline: none; }
+/* Card manager */
+.cardManager { display: flex; height: 100%; }
+.cardSidebar { width: 240px; border-right: 1px solid var(--border-light); display: flex; flex-direction: column; }
+.cardContent { flex: 1; padding: 16px; overflow-y: auto; }
+.cardTypeTab { flex: 1; padding: 8px 4px; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; font-size: var(--text-xs); }
+.cardTypeTabActive { border-bottom-color: var(--accent); color: var(--accent-text); }

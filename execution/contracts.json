@@ -1,0 +1,630 @@
+﻿{
+  "schema": "zhimengji-v1.2-contracts",
+  "version": "1.0.0",
+  "description": "Implementation contracts for Zhimengji v1.2 — all P0 and P1 features",
+  "editorialNotes": "IPC commands use snake_case on Rust side, auto-transformed to camelCase by serde. All IPC params are passed as named objects. Frontend status is optimistic: local state updates instantly, SyncManager handles persistence.",
+
+  "dataSchemas": {
+    "WorldObject": {
+      "type": "object",
+      "description": "Core entity — replaces old story_nodes, setting_cards, narrative_units",
+      "extendable": true,
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "UUID v4" },
+        "projectId": { "type": "string", "required": true, "description": "Parent project FK" },
+        "name": { "type": "string", "required": true, "description": "Object display name, unique per project" },
+        "type": { "type": "enum", "values": ["人物","地点","组织","规则/机制","事件","物品","术语","章节"], "required": true },
+        "status": { "type": "enum", "values": ["占位","草稿","待定","待验证","锁定","废弃"], "required": true },
+        "canonLevel": { "type": "enum", "values": ["未收录","草案正典","项目正典","核心正典"], "required": true },
+        "tags": { "type": "array<string>", "default": "[]" },
+        "aliases": { "type": "array<string>", "default": "[]" },
+        "selectedBoards": { "type": "array<string>", "default": "[]" },
+        "content": { "type": "string", "description": "Markdown content (v1.2: canonical format)" },
+        "referencesCount": { "type": "number", "default": 0 },
+        "judgmentHistory": { "type": "array<JudgmentRecord>", "default": "[]" },
+        "createdAt": { "type": "number", "description": "Unix ms timestamp" },
+        "updatedAt": { "type": "number", "description": "Unix ms timestamp" }
+      }
+    },
+    "Project": {
+      "type": "object",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true, "mappedFrom": "name" },
+        "genre": { "type": "string", "enum": ["科幻","奇幻","武侠","悬疑","言情","历史","都市","末世","恐怖","其他","未分类"], "default": "未分类" },
+        "status": { "type": "enum", "values": ["conceiving","drafting","editing","done"] },
+        "wordCount": { "type": "number", "default": 0 },
+        "gradient": { "type": "array<2,string>", "description": "CSS gradient colors for book card" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "CanonLevel": {
+      "type": "enum",
+      "values": [
+        { "name": "未收录", "rank": 0, "color": "#666666", "dot": "○", "borderStyle": "dotted" },
+        { "name": "草案正典", "rank": 1, "color": "#CE93D8", "dot": "●", "borderStyle": "dashed" },
+        { "name": "项目正典", "rank": 2, "color": "#90CAF9", "dot": "●", "borderStyle": "solid" },
+        { "name": "核心正典", "rank": 3, "color": "#FFB74D", "dot": "●", "borderStyle": "solid double" }
+      ]
+    },
+    "Connection": {
+      "type": "object",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "projectId": { "type": "string", "required": true },
+        "sourceId": { "type": "string", "required": true, "description": "FK to world_objects.id" },
+        "targetId": { "type": "string", "required": true },
+        "type": { "type": "enum", "values": ["相关","影响","冲突","支撑","替代","属于","发生于","导致"] },
+        "label": { "type": "string", "default": "" }
+      }
+    },
+    "SaveStatus": {
+      "type": "enum",
+      "values": ["saved", "saving", "unsaved", "error", "offline"],
+      "description": "Cross-cutting save state visible in StatusBar"
+    },
+    "ChangelogEntry": {
+      "type": "object",
+      "fields": {
+        "timestamp": { "type": "number" },
+        "action": { "type": "enum", "values": ["create_object","delete_object","update_object","move_canvas_node","create_connection","delete_connection","update_canvas_state"] },
+        "objectId": { "type": "string" },
+        "snapshot": { "type": "object", "description": "Pre-operation state snapshot" }
+      }
+    },
+    "SyncOperation": {
+      "type": "object",
+      "fields": {
+        "id": { "type": "string" },
+        "type": { "type": "enum", "values": ["createObject","updateObject","deleteObject","saveCanvasState","createConnection","deleteConnection","appendJudgment"] },
+        "payload": { "type": "object" },
+        "retryCount": { "type": "number", "default": 0 },
+        "maxRetries": { "type": "number", "default": 3 },
+        "createdAt": { "type": "number" },
+        "lastAttempt": { "type": "number", "optional": true }
+      }
+    }
+  },
+
+  "contracts": [
+    {
+      "id": "P0-01",
+      "title": "Reliable API sync with retry queue",
+      "priority": "P0",
+      "status": "pending",
+      "assignee": "worker-fe",
+      "backendDependency": "none (frontend-only)",
+      "description": "Replace fire-and-forget api.* calls with SyncManager that maintains a persistent retry queue (IndexedDB). Every write operation goes through enqueue() before reaching Tauri invoke. 3-retry exponential backoff (1s, 2s, 4s). Failed operations remain in queue for manual retry.",
+      "dataStructures": ["SyncOperation", "SaveStatus"],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "writeOperation": [
+          "User action triggers optimistic local state update",
+          "SyncManager.enqueue() adds operation to IndexedDB queue",
+          "SyncManager processes queue: invoke Tauri API",
+          "On success: remove from queue, update saveStatus='saved'",
+          "On failure: increment retryCount, schedule retry (exponential backoff)",
+          "After 3 failures: mark as failed, update saveStatus='error', keep in queue",
+          "User can click retry button to re-process failed operations"
+        ]
+      },
+      "errorReturns": {
+        "network": "saveStatus='offline', queue retained",
+        "backend_error": "saveStatus='error', queue retained, retry scheduled",
+        "max_retries_exceeded": "saveStatus='error', manual retry required"
+      },
+      "acceptance": [
+        "Disconnect backend → edit object → content saved locally → reconnect → content synced automatically",
+        "3 consecutive failures shows persistent error indicator with retry button",
+        "Restart app with pending queue → queue reloaded from IndexedDB → retry on next ping success"
+      ]
+    },
+    {
+      "id": "P0-02",
+      "title": "Offline detection and handling",
+      "priority": "P0",
+      "status": "pending",
+      "assignee": "worker-fe (frontend) + worker-be (backend ping command)",
+      "description": "Frontend pings Tauri `ping` command every 3 seconds. On failure: enter offline mode (yellow banner, queue edits locally). On recovery within 5 seconds: replay queue and dismiss banner.",
+      "dataStructures": [],
+      "ipcSignatures": [
+        {
+          "command": "ping",
+          "params": {},
+          "returns": { "type": "string", "value": "pong" },
+          "errors": ["Backend unavailable → invoke rejects"],
+          "sideEffect": "None — pure health check"
+        }
+      ],
+      "stateFlows": {
+        "offlineDetection": [
+          "setInterval 3s: SyncManager invokes 'ping'",
+          "invoke rejects → set isOnline=false, emit offline event",
+          "UI shows yellow banner: '数据暂存本地，正在尝试连接…'",
+          "invoke succeeds → set isOnline=true, process pending queue",
+          "Dismiss banner within 5 seconds of recovery"
+        ]
+      },
+      "errorReturns": { "ping_failure": "isOnline=false, all writes queued locally" },
+      "acceptance": [
+        "Backend stop → within 3 seconds frontend shows offline banner",
+        "Offline editing preserves all changes in queue",
+        "Backend restart → within 5 seconds queue replayed, banner dismissed"
+      ]
+    },
+    {
+      "id": "P0-03",
+      "title": "Version history / global undo",
+      "priority": "P0",
+      "assignee": "worker-fe",
+      "backendDependency": "none (in-memory only)",
+      "description": "App-level Changelog in App.tsx memory. Undo stack for object create/delete, canvas position changes, connection create/delete. Auto-named snapshot per session. Not persisted across restarts (v1.2 boundary).",
+      "dataStructures": ["ChangelogEntry"],
+      "stateFlows": {
+        "undo": [
+          "User triggers undo (Ctrl+Z or button)",
+          "Changelog.undo() returns most recent entry",
+          "App restores object state from entry.snapshot",
+          "If canvas state: restore positions/scale/pan",
+          "Moved entry to redo stack"
+        ],
+        "redo": [
+          "User triggers redo (Ctrl+Shift+Z or button)",
+          "Changelog.redo() returns most recent undone entry",
+          "App re-applies the change"
+        ]
+      },
+      "errorReturns": {
+        "empty_stack": "no-op, visual indicator that undo is unavailable"
+      },
+      "acceptance": [
+        "Delete object → Ctrl+Z restores it",
+        "Drag canvas node → Ctrl+Z returns to previous position",
+        "Close and reopen app → undo history is empty (memory-only)"
+      ]
+    },
+    {
+      "id": "P0-04",
+      "title": "Canvas state sync with debounce and version stamp",
+      "priority": "P0",
+      "assignee": "worker-fe (frontend) + worker-be (version validation)",
+      "description": "500ms debounce on canvas save. Version stamp on each snapshot. Backend validates incoming version vs stored version. Reject if backend version is newer. Drag-end triggers one save, not per-pixel.",
+      "dataStructures": [],
+      "ipcSignatures": [
+        {
+          "command": "save_canvas_tab_state",
+          "params": {
+            "state": { "type": "CanvasTabState & { version: number }", "required": true }
+          },
+          "returns": {
+            "type": "object",
+            "properties": {
+              "state": "CanvasTabState",
+              "accepted": "boolean",
+              "currentVersion": "number"
+            }
+          },
+          "errors": ["VERSION_CONFLICT: backend version X > incoming version Y"]
+        }
+      ],
+      "stateFlows": {
+        "canvasSave": [
+          "User drags node → positions update in memory",
+          "Drag ends → debounce timer starts (500ms)",
+          "If another drag within 500ms → reset timer",
+          "Timer fires → generate version stamp (current timestamp ms)",
+          "SyncManager.enqueue({ type: 'saveCanvasState', payload: { state, version } })",
+          "Backend validates: storedVersion <= incomingVersion → accept, update storedVersion",
+          "Backend validates: storedVersion > incomingVersion → reject, return VERSION_CONFLICT",
+          "On conflict: show toast, reload canvas state from backend"
+        ]
+      },
+      "errorReturns": {
+        "VERSION_CONFLICT": "show conflict toast, reload canvas state from backend",
+        "save_failure": "queue retained, retry with exponential backoff"
+      },
+      "acceptance": [
+        "Continuous drag for 30 seconds → only 1-2 saves total (not hundreds)",
+        "Two sessions with stale state → second save rejected with VERSION_CONFLICT",
+        "Conflict resolution: reload backend state and notify user"
+      ],
+      "backendChanges": [
+        "Add version column to canvas_tab_states table",
+        "Validate version on save_canvas_tab_state"
+      ]
+    },
+    {
+      "id": "P0-05",
+      "title": "Data import/export",
+      "priority": "P0",
+      "assignee": "worker-be",
+      "description": "Export project as .zhimengji (zip: project.json + markdown files). Import: .zhimengji or plain Markdown directory. Bookshelf entry points for both operations.",
+      "dataStructures": [],
+      "ipcSignatures": [
+        {
+          "command": "export_project",
+          "params": {
+            "projectId": { "type": "string", "required": true },
+            "outputPath": { "type": "string", "required": true }
+          },
+          "returns": {
+            "type": "object",
+            "properties": {
+              "success": "boolean",
+              "path": "string",
+              "objectCount": "number",
+              "connectionCount": "number"
+            }
+          },
+          "errors": ["NOT_FOUND: project not found", "IO_ERROR: write failed"]
+        },
+        {
+          "command": "import_project",
+          "params": {
+            "inputPath": { "type": "string", "required": true }
+          },
+          "returns": {
+            "type": "object",
+            "properties": {
+              "success": "boolean",
+              "projectId": "string",
+              "projectName": "string",
+              "objectCount": "number",
+              "connectionCount": "number"
+            }
+          },
+          "errors": ["NOT_FOUND: file not found", "IO_ERROR: read / unzip failed", "IO_ERROR: invalid format"]
+        }
+      ],
+      "stateFlows": {
+        "export": [
+          "User clicks Export in Bookshelf card menu",
+          "Tauri save dialog picks output path",
+          "Backend reads all project data from SQLite",
+          "Backend assembles zip: project.json (metadata + objects + connections + canvas states) + per-object .md files",
+          "Backend writes zip to outputPath",
+          "On success: show toast with object/connection counts"
+        ],
+        "import": [
+          "User clicks Import in Bookshelf",
+          "Tauri open dialog picks .zhimengji or directory",
+          "If .zhimengji: unzip, parse project.json, upsert into SQLite",
+          "If directory: scan .md files, create objects from filenames and content",
+          "Parse [[WikiLink]] references and create connections",
+          "On success: show imported project on bookshelf"
+        ]
+      },
+      "errorReturns": {
+        "IO_ERROR ": "toast with error details, no state change",
+        "INVALID_FORMAT": "toast: '文件格式无效'"
+      },
+      "acceptance": [
+        "Export contains all objects, connections, canvas states",
+        "Re-import exported .zhimengji creates identical project",
+        "Markdown import recognizes # title as object name, [[WikiLink]] as references"
+      ],
+      "backendChanges": [
+        "Add 'zip' crate to Cargo.toml",
+        "Add export_project and import_project functions in db.rs",
+        "Add commands in commands.rs, register in lib.rs"
+      ]
+    },
+    {
+      "id": "P1-01",
+      "title": "Creation wizard (new project flow)",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "P0-05 export/import not needed for this contract",
+      "description": "Replace one-click 'new project' with two-step wizard: (1) title + genre, (2) optional template. Quick-create bypass with Ctrl+click. Genre influences initial gradient and template suggestions.",
+      "dataStructures": [],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "creationWizard": [
+          "User clicks '新建作品' → CreationWizard modal opens",
+          "Step 1: enter title, select genre (dropdown with preview gradient)",
+          "Step 2: select template (blank / three-act / character-driven / world-first) — optional",
+          "User clicks '开始创作' → api.createProject() + navigate to editor",
+          "If template selected: create preset objects via api.createWorldObject()",
+          "If Ctrl+click: skip wizard, create with last-used genre"
+        ]
+      },
+      "errorReturns": {
+        "title_empty": "button disabled, input border highlight",
+        "api_failure": "toast: '创建失败', modal stays open"
+      },
+      "acceptance": [
+        "New user can start creating within 3 clicks (including title input)",
+        "Ctrl+click creates project immediately with default/last genre",
+        "Genre selection updates gradient preview in real-time",
+        "Template creates correct preset objects"
+      ],
+      "new_files": ["src/components/CreationWizard.tsx"]
+    },
+    {
+      "id": "P1-02",
+      "title": "First-launch tutorial",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "none",
+      "description": "3-step lightbox overlay on first entry per project. Covers: object types, WikiLinks, canvas. Skip button always visible. '?' help button in sidebar reopens guide. Empty-state guide cards.",
+      "dataStructures": [],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "firstLaunch": [
+          "User enters project for first time → check localStorage flag",
+          "If no flag: show FirstLaunchGuide 3-step overlay",
+          "Step 1: '这里有8种对象类型' + example card",
+          "Step 2: '在文档中写入 [[对象名]]' + interactive demo",
+          "Step 3: '画板可以可视化你的世界结构' + screenshot",
+          "User clicks '开始使用' → dismiss, set localStorage flag",
+          "Sidebar '?' button → reopens on demand"
+        ]
+      },
+      "errorReturns": {},
+      "acceptance": [
+        "First-time user completes guide → can create object and WikiLink",
+        "Guide skipped → no functional impact",
+        "Guide only shows once per project"
+      ],
+      "new_files": ["src/components/FirstLaunchGuide.tsx"]
+    },
+    {
+      "id": "P1-03",
+      "title": "Markdown-first storage",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "none (content field already stores string, no schema change)",
+      "description": "Switch storage format from HTML to Markdown. TipTap renders Markdown via @tiptap/extension-markdown. Source mode shows raw Markdown (canonical). WYSIWYG mode demoted to optional. Auto-migrate existing HTML content on first load.",
+      "dataStructures": [],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "markdownEdit": [
+          "User types in editor → content stored as Markdown",
+          "WYSIWYG: TipTap converts Markdown→ProseMirror→HTML for display",
+          "onUpdate: TipTap serializes to Markdown, updates WorldObject.content",
+          "Source mode: shows content directly (raw Markdown)",
+          "Preview mode: renders Markdown→HTML for reading",
+          "Existing HTML on first object load: convert HTML→Markdown via turndown"
+        ]
+      },
+      "errorReturns": {
+        "conversion_failure": "keep original content, show toast: '格式转换失败，内容保持不变'"
+      },
+      "acceptance": [
+        "Source mode shows Markdown, not HTML",
+        "Edit Markdown in source → switch to WYSIWYG → format preserved",
+        "Existing HTML content auto-migrated to Markdown on first load"
+      ],
+      "new_deps": ["@tiptap/extension-markdown", "turndown (for HTML→Markdown migration)"],
+      "modified_files": ["src/components/DocumentView.tsx", "src/utils/markdown.ts"]
+    },
+    {
+      "id": "P1-04",
+      "title": "Unified toolbar",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "none",
+      "description": "Single toolbar that adapts to editing mode. WYSIWYG: active button highlighting. Source: inserts Markdown syntax. Mode switch button integrated into toolbar right side. No UI flicker on mode switch.",
+      "dataStructures": [],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "toolbarBehavior": {
+          "wysiwyg": "Buttons call editor.chain().toggleXxx().run(); 'active' class when format is active",
+          "source": "Buttons insert Markdown prefix/suffix at cursor; no active state",
+          "preview": "Toolbar hidden (only mode switch visible)",
+          "modeSwitch": "Single button group [编辑 | 预览] on toolbar right side. Transition without content re-render flicker."
+        }
+      },
+      "errorReturns": {},
+      "acceptance": [
+        "Same toolbar in both WYSIWYG and source modes — just different button behavior",
+        "No flicker when switching between modes",
+        "Mode switch button always visible in toolbar right side"
+      ],
+      "modified_files": ["src/components/DocumentView.tsx"]
+    },
+    {
+      "id": "P1-05",
+      "title": "Save status indicator",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "P0-01 (SyncManager required)",
+      "description": "Bottom status bar left side shows save status. Green=saved, yellow=saving, red=failed, gray=offline. Driven by contentDirty flag and SyncManager events. 500ms debounce auto-save. Click-to-retry on failure.",
+      "dataStructures": ["SaveStatus"],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "saveIndicator": {
+          "userTypes": "contentDirty=true, saveStatus='unsaved'",
+          "500ms_idle": "saveStatus='saving', SyncManager.enqueue",
+          "sync_success": "saveStatus='saved', auto-fade after 1.5s",
+          "sync_failure": "saveStatus='error', persistent until click-retry",
+          "offline": "saveStatus='offline', persistent until online recovery",
+          "statusBar": "Left side: colored dot + label; right side: word count"
+        }
+      },
+      "errorReturns": {
+        "save_failure_click": "SyncManager.retryFailed() re-processes queue"
+      },
+      "acceptance": [
+        "User always sees current save state in status bar",
+        "Failed save shows red indicator with click-to-retry"
+      ],
+      "new_files": ["src/hooks/useSaveStatus.ts", "src/components/StatusBar.tsx"]
+    },
+    {
+      "id": "P1-06",
+      "title": "Canvas zoom controls",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "P0-04 (debounce integration)",
+      "description": "Floating panel bottom-right: +/- buttons (25% step), percentage display, 'fit canvas', '100%' button. Range 0.2x-3.0x. Ctrl+wheel / Ctrl++ / Ctrl+-. Zoom anchors to mouse position.",
+      "dataStructures": [],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "zoom": {
+          "button_press": "+/- at 25% steps (25/50/75/100/125/150/200%)",
+          "ctrl_wheel": "0.1x steps, anchor to mouse position",
+          "fit_canvas": "calculate bounding box of all nodes, set scale to fit",
+          "100pct": "reset to scale=1.0, panX=0, panY=0"
+        }
+      },
+      "errorReturns": {},
+      "acceptance": [
+        "Zoom controls visible and functional in canvas view",
+        "Ctrl+wheel zooms smoothly with mouse position anchor",
+        "Fit canvas ensures all nodes visible",
+        "Scale persists with 500ms debounce (P0-04)"
+      ],
+      "new_files": ["src/components/ZoomControls.tsx"],
+      "modified_files": ["src/components/CanvasView.tsx"]
+    },
+    {
+      "id": "P1-07",
+      "title": "Canon system guide",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "none",
+      "description": "After 3rd object: popup suggesting canon inclusion. Info icon next to canon button shows 4-level explanation. Canon set header shows explanatory line.",
+      "dataStructures": [],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "canonGuide": [
+          "Track object count in project",
+          "count >= 3 and not dismissed → show CanonGuideCard popup",
+          "Popup explains 4 canon levels with color-coded examples",
+          "'不再显示' checkbox sets localStorage flag",
+          "Inspector '收录为设定' button gets info icon with hover tooltip"
+        ]
+      },
+      "errorReturns": {},
+      "acceptance": [
+        "After creating 3 objects, user sees canon guide popup",
+        "User can explain 4 canon levels after seeing guide",
+        "Guide suppressible with '不再显示'"
+      ],
+      "new_files": ["src/components/CanonGuideCard.tsx"],
+      "modified_files": ["src/components/Inspector.tsx"]
+    },
+    {
+      "id": "P1-08",
+      "title": "Global search",
+      "priority": "P1",
+      "assignee": "worker-fe",
+      "backendDependency": "none (frontend-local search)",
+      "description": "Ctrl+K/Cmd+K search in navbar. Search scope: object name, content, tags, aliases. Results grouped by type. Fuzzy + pinyin support (pinyin-pro). 300ms response target.",
+      "dataStructures": [],
+      "ipcSignatures": [],
+      "stateFlows": {
+        "globalSearch": [
+          "User presses Ctrl+K → GlobalSearch modal opens",
+          "Input debounce 150ms: filter objects by query",
+          "Search name (exact + fuzzy) → content (includes) → tags (includes) → aliases (fuzzy)",
+          "Results grouped by ObjectType (人物/地点/组织…)",
+          "Pinyin support: 'lisi' matches '李四' via pinyin-pro library",
+          "Click result → navigate to object document"
+        ]
+      },
+      "errorReturns": {
+        "no_results": "显示 '无匹配结果' with suggestions",
+        "api_unavailable": "offline mode still searches local state"
+      },
+      "acceptance": [
+        "Ctrl+K opens search within 100ms",
+        "Search results appear within 300ms of input",
+        "Fuzzy and pinyin search work",
+        "Click result navigates to correct object"
+      ],
+      "new_files": ["src/components/GlobalSearch.tsx", "src/hooks/useGlobalSearch.ts"],
+      "new_deps": ["pinyin-pro", "fuse.js"]
+    }
+  ],
+
+  "stateMachines": {
+    "saveStatus": {
+      "initial": "saved",
+      "states": {
+        "saved": {
+          "description": "All changes persisted to backend",
+          "transitions": {
+            "content_dirty": "unsaved",
+            "offline_detected": "offline"
+          },
+          "ui": { "dot": "green", "label": "已保存", "behavior": "auto-fade after 1.5s" }
+        },
+        "saving": {
+          "description": "Changes being written to backend",
+          "transitions": { "success": "saved", "failure": "error", "offline_detected": "offline" },
+          "ui": { "dot": "yellow", "label": "保存中…", "behavior": "persistent during save" }
+        },
+        "unsaved": {
+          "description": "Local changes not yet synced",
+          "transitions": { "sync_started": "saving", "offline_detected": "offline" },
+          "ui": { "dot": "yellow", "label": "未保存", "behavior": "persistent" }
+        },
+        "error": {
+          "description": "Sync failed after max retries",
+          "transitions": { "retry_clicked": "saving", "offline_detected": "offline" },
+          "ui": { "dot": "red", "label": "保存失败", "behavior": "persistent, clickable" }
+        },
+        "offline": {
+          "description": "Backend unreachable, changes queued locally",
+          "transitions": { "online_recovered": "unsaved", "sync_started": "saving" },
+          "ui": { "dot": "gray", "label": "离线", "behavior": "persistent banner + status" }
+        }
+      }
+    },
+
+    "canvasToolMode": {
+      "initial": "select",
+      "states": {
+        "select": { "description": "Click to select, click background to deselect" },
+        "drag": { "description": "Drag to pan canvas" },
+        "addObject": { "description": "Opens object pool on click" },
+        "text": { "description": "Click to place text annotation" },
+        "addSticky": { "description": "Opens sticky note dialog" },
+        "addConnection": { "description": "Click source node, drag to target, select type" },
+        "partition": { "description": "Click-drag to create partition zone" },
+        "template": { "description": "Opens template picker" }
+      }
+    }
+  },
+
+  "frontendBackendHandoff": {
+    "note": "SyncManager is the single routing layer for all writes. Components never call api.* directly.",
+    "handoffPoints": [
+      {
+        "where": "App.tsx → SyncManager → tauri-api → Tauri invoke → commands.rs → db.rs",
+        "what": "All write operations (create/update/delete)"
+      },
+      {
+        "where": "App.tsx → SyncManager ping → tauri-api → Tauri invoke",
+        "what": "Health check (P0-02)"
+      },
+      {
+        "where": "App.tsx → tauri-api directly → Tauri invoke → commands.rs → db.rs",
+        "what": "Read operations (list/get) — can bypass SyncManager"
+      },
+      {
+        "where": "Bookshelf button → Tauri dialog → commands.rs → db.rs → zip/unzip",
+        "what": "Import/export (P0-05)"
+      }
+    ]
+  },
+
+  "acceptanceMapping": {
+    "P0-01": ["断网编辑不丢失", "重试3次后显示错误提示", "重启应用后队列不丢失"],
+    "P0-02": ["3秒内进入离线模式", "离线编辑不丢失", "5秒内自动恢复"],
+    "P0-03": ["删除对象可通过撤销恢复", "画板拖拽可撤销", "关闭应用后撤销历史不保留"],
+    "P0-04": ["拖拽30秒只触发1-2次保存", "版本戳冲突有明确提示"],
+    "P0-05": ["导出包含所有数据", "重导入完全一致", "Markdown目录导入可识别WikiLink"],
+    "P1-01": ["3次点击内完成创建", "Ctrl+click跳过向导"],
+    "P1-02": ["引导后知道如何创建对象和链接", "引导可跳过"],
+    "P1-03": ["源码模式显示Markdown", "格式前后一致", "HTML自动迁移"],
+    "P1-04": ["同一工具栏两种模式", "模式切换无闪烁"],
+    "P1-05": ["用户始终可见保存状态", "失败可重试"],
+    "P1-06": ["缩放控件可用", "Ctrl+滚轮缩放流畅", "适应画布可用"],
+    "P1-07": ["3个对象后触发引导", "可解释4个正典等级"],
+    "P1-08": ["Ctrl+K打开搜索", "300ms内显示结果", "模糊和拼音搜索工作"]
+  }
+}
