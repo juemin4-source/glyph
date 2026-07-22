@@ -1310,6 +1310,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "glyph"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "base64 0.22.1",
+ "chrono",
+ "futures-util",
+ "rand 0.8.6",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tokio",
+ "uuid",
+ "zip",
+]
+
+[[package]]
 name = "gobject-sys"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5258,27 +5279,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.118",
-]
-
-[[package]]
-name = "zhimengji"
-version = "0.0.1"
-dependencies = [
- "aes-gcm",
- "base64 0.22.1",
- "chrono",
- "futures-util",
- "rand 0.8.6",
- "reqwest 0.12.28",
- "rusqlite",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tokio",
- "uuid",
- "zip",
 ]
 
 [[package]]
