@@ -1,16 +1,12 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import type { Project } from '../types/world';
-import QuickDraftButton from '../features/quick-draft/QuickDraftButton';
-import QuickDraftPanel from '../features/quick-draft/QuickDraftPanel';
-import { seedDemoProject, isDemoSeeded } from '../api/demoApi';
 import * as api from '../tauri-api';
 
 interface BookshelfProps {
   projects: Project[];
   onEnterProject: (project: Project) => void;
   onCreateProject?: () => void;
-  onTransferred?: (projectId: string) => void;
   onRefreshProjects?: () => Promise<void>;
 }
 
@@ -70,9 +66,46 @@ const menuItemBaseStyle: React.CSSProperties = {
   fontFamily: 'inherit',
 };
 
-function BookCard({ project, onEnter }: { project: Project; onEnter: (p: Project) => void }) {
+function BookCard({
+  project, onEnter, onRefreshProjects
+}: {
+  project: Project; onEnter: (p: Project) => void; onRefreshProjects?: () => Promise<void>;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleEditName = async () => {
+    const name = window.prompt('作品名：', project.title);
+    if (name && name !== project.title) {
+      try {
+        await api.updateProject({ id: project.id, name, genre: project.genre, status: project.status, wordCount: project.wordCount, gradient: JSON.stringify(project.gradient), createdAt: Date.now(), updatedAt: Date.now() });
+        onRefreshProjects?.();
+      } catch (e) { console.error('Failed to rename', e); }
+    }
+    setMenuOpen(false);
+  };
+
+  const handleChangeGenre = async () => {
+    const genre = window.prompt('体裁（科幻/奇幻/武侠/悬疑/历史/都市/其他）：', project.genre);
+    if (genre && genre !== project.genre) {
+      try {
+        await api.updateProject({ id: project.id, name: project.title, genre, status: project.status, wordCount: project.wordCount, gradient: JSON.stringify(project.gradient), createdAt: Date.now(), updatedAt: Date.now() });
+        onRefreshProjects?.();
+      } catch (e) { console.error('Failed to change genre', e); }
+    }
+    setMenuOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`确认删除《${project.title}》？此操作不可撤销。`)) { setMenuOpen(false); return; }
+    setDeleting(true);
+    try {
+      await api.deleteProject(project.id);
+      onRefreshProjects?.();
+    } catch (e) { console.error('Failed to delete', e); setDeleting(false); }
+    setMenuOpen(false);
+  };
 
   const genreBg = GENRE_GRADIENT_BG[project.genre] || GENRE_GRADIENT_BG['其他'];
   const genreRadial = GENRE_RADIAL_GLOW[project.genre] || '';
@@ -208,9 +241,9 @@ function BookCard({ project, onEnter }: { project: Project; onEnter: (p: Project
               boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
             }}
           >
-            <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}>&#9998; 编辑作品名</button>
-            <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}>&#9986; 更改体裁</button>
-            <button style={{ ...menuItemBaseStyle, color: '#f44336' }} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}>&#10006; 删除作品</button>
+            <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); handleEditName(); }}>&#9998; 编辑作品名</button>
+            <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); handleChangeGenre(); }}>&#9986; 更改体裁</button>
+            <button style={{ ...menuItemBaseStyle, color: deleting ? '#666' : '#f44336' }} onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={deleting}>{deleting ? '... 删除中' : '✖ 删除作品'}</button>
             <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}>&#8659; 导出</button>
           </div>
         </>
@@ -422,99 +455,19 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
             + 创建第一个作品
           </button>
         )}
-        <button
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.5rem 1.25rem',
-            borderRadius: 6,
-            background: 'transparent',
-            color: '#a0a0a0',
-            border: '1px solid #2a2a2a',
-            fontSize: '0.8125rem',
-            fontFamily: 'inherit',
-            cursor: 'pointer',
-          }}
-        >
-          从模板开始
-        </button>
-        <button
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#666',
-            fontSize: '0.8125rem',
-            fontFamily: 'inherit',
-            cursor: 'pointer',
-            textDecoration: 'underline',
-            textUnderlineOffset: 3,
-          }}
-        >
-          查看教程 &rarr;
-        </button>
       </div>
     </div>
   );
 }
 
-export default function Bookshelf({ projects, onEnterProject, onCreateProject, onTransferred, onRefreshProjects }: BookshelfProps) {
-  const [showQuickDraft, setShowQuickDraft] = useState(false);
-  const [demoSeeding, setDemoSeeding] = useState(false);
+export default function Bookshelf({ projects, onEnterProject, onCreateProject, onRefreshProjects }: BookshelfProps) {
   const isEmpty = !projects || projects.length === 0;
-
-  // Seed Demo project on first mount if it doesn't exist
-  useEffect(() => {
-    const attemptSeed = async () => {
-      try {
-        const seeded = await isDemoSeeded();
-        if (!seeded) {
-          setDemoSeeding(true);
-          await seedDemoProject();
-          if (onRefreshProjects) {
-            await onRefreshProjects();
-          }
-        }
-      } catch (err) {
-        console.error('Demo seeding failed:', err);
-      } finally {
-        setDemoSeeding(false);
-      }
-    };
-    attemptSeed();
-  }, []);
 
   const totalWordCount = useMemo(() => {
     return projects.reduce((sum, p) => sum + p.wordCount, 0);
   }, [projects]);
 
   const maxCanonCount = 5;
-
-  const handleTransferred = useCallback(async (projectId: string) => {
-    setShowQuickDraft(false);
-    // Fetch project from backend and navigate directly
-    try {
-      const dto = await api.getProject(projectId);
-      if (dto) {
-        let gradient: [string, string] = ['#6366f1', '#8b5cf6'];
-        try {
-          const g = JSON.parse(dto.gradient);
-          if (Array.isArray(g) && g.length >= 2) gradient = [g[0], g[1]];
-        } catch { /* keep default */ }
-        const project: Project = {
-          id: dto.id,
-          title: dto.name,
-          genre: dto.genre || '未分类',
-          status: (dto.status as Project['status']) || 'conceiving',
-          wordCount: dto.wordCount ?? 0,
-          gradient,
-        };
-        onEnterProject(project);
-      }
-    } catch (err) {
-      console.error('Failed to navigate to transferred project:', err);
-    }
-  }, [onEnterProject]);
 
   return (
     <div
@@ -585,7 +538,6 @@ export default function Bookshelf({ projects, onEnterProject, onCreateProject, o
               <span>+</span> 新建作品
             </button>
           )}
-          <QuickDraftButton onClick={() => setShowQuickDraft(true)} />
           <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
             <select
               aria-label="排序方式"
@@ -669,33 +621,6 @@ export default function Bookshelf({ projects, onEnterProject, onCreateProject, o
         </div>
       </div>
 
-      {/* Demo seeding indicator */}
-      {demoSeeding && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.4rem 0',
-            fontSize: '0.75rem',
-            color: '#666',
-          }}
-        >
-          <span
-            style={{
-              width: 12,
-              height: 12,
-              border: '2px solid #2a2a2a',
-              borderTopColor: '#B7FF00',
-              borderRadius: '50%',
-              display: 'inline-block',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-          准备示例作品...
-        </div>
-      )}
-
       {/* ===== Statistics Bar ===== */}
       <div
         style={{
@@ -738,17 +663,9 @@ export default function Bookshelf({ projects, onEnterProject, onCreateProject, o
           }}
         >
           {projects.map((project) => (
-            <BookCard key={project.id} project={project} onEnter={onEnterProject} />
+            <BookCard key={project.id} project={project} onEnter={onEnterProject} onRefreshProjects={onRefreshProjects} />
           ))}
         </div>
-      )}
-
-      {/* QuickDraft Panel Overlay */}
-      {showQuickDraft && (
-        <QuickDraftPanel
-          onClose={() => setShowQuickDraft(false)}
-          onTransferred={handleTransferred}
-        />
       )}
     </div>
   );

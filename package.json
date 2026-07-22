@@ -24,9 +24,11 @@
         "accept:demo": "node scripts/acceptance/accept-demo.mjs",
         "accept:ai": "node scripts/acceptance/ai-evaluation.mjs",
         "test:ai-evaluation-harness": "node scripts/acceptance/ai-evaluation.mjs",
-        "accept:ai-runtime": "node scripts/acceptance/accept-ai-runtime.mjs"
+        "accept:ai-runtime": "node scripts/acceptance/accept-ai-runtime.mjs",
+        "check:api": "node scripts/check-api-consistency.mjs"
     },
     "dependencies": {
+        "@nut-tree/nut-js": "^3.1.2",
         "@tauri-apps/api": "^2",
         "@tiptap/pm": "^2",
         "@tiptap/react": "^2",
