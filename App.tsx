@@ -235,19 +235,17 @@ function AppInner() {
   const onUpdateObject = useCallback(async (id: string, updates: Partial<WorldObject>) => {
     setObjects(prev => {
       const updated = prev.map(o => o.id === id ? { ...o, ...updates, updatedAt: Date.now() } as WorldObject : o);
-      const target = updated.find(o => o.id === id);
-      if (target && activeBookId) {
-        const obj = { ...target, projectId: activeBookId };
-        syncManager.enqueue('updateObject', obj).catch(() => {});
-        api.updateWorldObject(obj).catch(e => {
-          console.error('Failed to save', e);
-          showToast('保存失败', 'error');
-        });
-      }
       return updated;
     });
+    // Persist to backend
+    const target = objects.find(o => o.id === id);
+    if (target && activeBookId) {
+      const obj = { ...target, ...updates, projectId: activeBookId };
+      const ok = await syncManager.writeObject('updateObject', obj);
+      if (!ok) showToast('保存失败，请重试', 'error');
+    }
     triggerAutoSave();
-  }, [activeBookId, showToast]);
+  }, [activeBookId, objects, showToast]);
 
   const onCreateObject = useCallback(async (templateType: ObjectType) => {
     const now = Date.now();
@@ -263,10 +261,9 @@ function AppInner() {
     setObjects(prev => [...prev, newObj]);
     setSelectedObjectId(newObj.id);
     if (activeBookId) {
-      syncManager.enqueue('createObject', newObj).catch(() => {});
-      api.createWorldObject(newObj)
-        .then(() => showToast(`已创建${templateType}`, 'success'))
-        .catch(e => { console.error('Failed to create', e); showToast('创建失败', 'error'); });
+      const ok = await syncManager.writeObject('createObject', { ...newObj, projectId: activeBookId });
+      if (ok) showToast(`已创建${templateType}`, 'success');
+      else showToast('创建失败', 'error');
     }
   }, [activeBookId, showToast]);
 
@@ -275,10 +272,9 @@ function AppInner() {
     if (obj) pushChangelog({ timestamp: Date.now(), action: 'delete_object', objectId: id, snapshot: { ...obj } });
     setObjects(prev => prev.filter(o => o.id !== id));
     if (selectedObjectId === id) setSelectedObjectId(objects.find(o => o.id !== id)?.id || null);
-    syncManager.enqueue('deleteObject', { id }).catch(() => {});
-    api.deleteWorldObject(id)
-      .then(() => showToast('已删除', 'success'))
-      .catch(e => { console.error('Failed to delete', e); showToast('删除失败', 'error'); });
+    const ok = await syncManager.writeObject('deleteObject', { id });
+    if (ok) showToast('已删除', 'success');
+    else showToast('删除失败', 'error');
   }, [objects, selectedObjectId, showToast]);
 
   const onNavigate = useCallback((name: string, id?: string) => {

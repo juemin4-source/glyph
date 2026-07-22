@@ -99,9 +99,17 @@ export default function DocumentView({
 
   // ── Slash menu state ──
   const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const showSlashMenuRef = useRef(false);
   const [slashFilter, setSlashFilter] = useState('');
   const slashMenuRef = useRef<HTMLDivElement>(null);
   const slashPosRef = useRef({ top: 0, left: 0 });
+  const slashDocPosRef = useRef(0); // cursor position when / was pressed
+
+  // Keep ref in sync for Tiptap handleKeyDown (captured at creation time)
+  const setShowSlashMenuSync = useCallback((v: boolean) => {
+    setShowSlashMenu(v);
+    showSlashMenuRef.current = v;
+  }, []);
 
   // ── Create bubble state ──
   const [showCreateBubble, setShowCreateBubble] = useState(false);
@@ -160,30 +168,27 @@ export default function DocumentView({
         'data-placeholder': '在此输入文档内容... 使用 [[对象名]] 引用其他对象',
       },
       handleKeyDown: (view, event) => {
-        // Slash command: detect '/' typed at start of a paragraph or after a space
-        if (event.key === '/' && !showSlashMenu) {
-          const { selection } = view.state;
-          const pos = selection.from;
-          const textBefore = view.state.doc.textBetween(Math.max(0, pos - 2), pos);
-          // Show slash menu if at start of line or after space
-          if (textBefore === '/' || textBefore.endsWith('/')) {
-            // position the menu near the cursor
-            const coords = view.coordsAtPos(pos);
-            const editorEl = view.dom.parentElement?.getBoundingClientRect();
-            if (coords && editorEl) {
-              slashPosRef.current = {
-                top: coords.bottom - editorEl.top + 4,
-                left: coords.left - editorEl.left,
-              };
-            }
-            setSlashFilter('');
-            setShowSlashMenu(true);
-            return false; // Let the '/' be inserted
+        // Slash command: press '/' to show block type menu
+        // NOTE: showSlashMenu state is stale here (captured at editor creation).
+        // Use showSlashMenuRef.current instead.
+        if (event.key === '/' && !showSlashMenuRef.current) {
+          const pos = view.state.selection.from;
+          const coords = view.coordsAtPos(pos);
+          const editorEl = view.dom.closest('.doc-editor')?.getBoundingClientRect();
+          if (coords && editorEl) {
+            slashPosRef.current = {
+              top: coords.bottom - editorEl.top + 4,
+              left: coords.left - editorEl.left,
+            };
           }
+          slashDocPosRef.current = pos;
+          setSlashFilter('');
+          setShowSlashMenuSync(true);
+          return false; // Let the '/' be inserted into the document
         }
         // Escape to close slash menu
-        if (event.key === 'Escape' && showSlashMenu) {
-          setShowSlashMenu(false);
+        if (event.key === 'Escape' && showSlashMenuRef.current) {
+          setShowSlashMenuSync(false);
           return true;
         }
         return false;
@@ -499,7 +504,8 @@ export default function DocumentView({
                       if (e.key === 'Enter' && filteredSlash.length > 0) {
                         const ed = editorRef.current;
                         if (ed) {
-                          ed.chain().focus().deleteRange({ from: ed.state.selection.from - 1, to: ed.state.selection.from }).run();
+                          const from = slashDocPosRef.current;
+                          ed.chain().focus().deleteRange({ from, to: from + 1 }).run();
                           filteredSlash[0].action(ed);
                           setShowSlashMenu(false); setSlashFilter('');
                         }
@@ -511,7 +517,8 @@ export default function DocumentView({
                       <button key={item.label} className="slash-item" onClick={() => {
                         const ed = editorRef.current;
                         if (ed) {
-                          ed.chain().focus().deleteRange({ from: ed.state.selection.from - 1, to: ed.state.selection.from }).run();
+                          const from = slashDocPosRef.current;
+                          ed.chain().focus().deleteRange({ from, to: from + 1 }).run();
                           item.action(ed);
                           setShowSlashMenu(false); setSlashFilter('');
                         }
