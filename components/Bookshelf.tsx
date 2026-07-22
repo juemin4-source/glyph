@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { Search } from 'lucide-react';
 import type { Project } from '../types/world';
 import * as api from '../tauri-api';
 
@@ -270,7 +269,6 @@ function BookCard({
             <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); handleEditName(); }}>&#9998; 编辑作品名</button>
             <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); handleChangeGenre(); }}>&#9986; 更改体裁</button>
             <button style={{ ...menuItemBaseStyle, color: deleting ? '#666' : '#f44336' }} onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={deleting}>{deleting ? '... 删除中' : '✖ 删除作品'}</button>
-            <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}>&#8659; 导出</button>
           </div>
         </>
       )}
@@ -602,50 +600,6 @@ export default function Bookshelf({ projects, onEnterProject, onCreateProject, o
           </div>
         </div>
       </header>
-
-      {/* ===== Filter Bar ===== */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.65rem',
-          padding: '0.75rem 0',
-          flexWrap: 'wrap',
-          borderBottom: '1px solid #222',
-        }}
-      >
-        <div style={{ position: 'relative', flex: 1, minWidth: 180, maxWidth: 320 }}>
-          <span
-            style={{
-              position: 'absolute',
-              left: '0.75rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#666',
-              fontSize: '0.85rem',
-              pointerEvents: 'none',
-            }}
-          >
-            <Search size={14} />
-          </span>
-          <input
-            type="text"
-            placeholder="搜索作品..."
-            aria-label="搜索作品"
-            style={{
-              width: '100%',
-              background: '#0e0e0e',
-              color: '#e0e0e0',
-              border: '1px solid #2a2a2a',
-              borderRadius: 6,
-              padding: '0.5rem 0.75rem 0.5rem 2.1rem',
-              fontSize: '0.8125rem',
-              fontFamily: 'inherit',
-              outline: 'none',
-            }}
-          />
-        </div>
-      </div>
 
       {/* ===== Statistics Bar ===== */}
       <div

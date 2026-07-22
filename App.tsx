@@ -15,7 +15,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { BookOpen, Settings, PanelLeftClose, PanelLeft, Ellipsis } from 'lucide-react';
+import { BookOpen, PanelLeftClose, PanelLeft } from 'lucide-react';
 import type { WorldObject, ObjectType, ObjectStatus, CanonLevel, SaveStatus, ChangelogEntry } from './types/world';
 import { CANON_LEVELS } from './types/world';
 import type { Project } from './types/world';
@@ -392,13 +392,6 @@ function AppInner() {
           {showOutline ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />}
         </button>
 
-        <button className="glyph-topbar-btn" title="设置">
-          <Settings size={18} />
-        </button>
-
-        <button className="glyph-topbar-btn" title="更多">
-          <Ellipsis size={18} />
-        </button>
       </header>
 
       {/* Main area */}
