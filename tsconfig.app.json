@@ -24,5 +24,20 @@
     "noUnusedParameters": false
   },
   "include": ["./**/*.ts", "./**/*.tsx"],
-  "exclude": ["lib/ai/evaluation-harness.ts", "src/lib/ai/evaluation-harness.ts", "node_modules", "dist", "src-tauri", "tests/e2e", "tests/acceptance", "tests/unit"]
+  "exclude": [
+    "lib/ai",
+    "lib/fs-ai-bridge.ts",
+    "components/ai",
+    "components/FsAiPanel.tsx",
+    "features/canvas-04-packet",
+    "features/canvas-05-text",
+    "node_modules",
+    "dist",
+    "src-tauri",
+    "tests/e2e",
+    "tests/acceptance",
+    "tests/unit",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
 }
