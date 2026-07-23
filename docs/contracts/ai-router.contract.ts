@@ -7,7 +7,7 @@
  * [v2.1.1-AI] Added provider selection, tri-state enforcement, DecisionLog fields.
  */
 
-import type { AiOutputType } from '../lib/ai-output';
+import type { AiOutputType } from '../../lib/ai-output';
 
 /**
  * Enum of all possible AI route intents.

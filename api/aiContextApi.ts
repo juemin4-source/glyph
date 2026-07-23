@@ -6,8 +6,8 @@
  * routeAiMessage → lib/ai/command-router.ts
  */
 
-import type { ContextBuildInput, AiBuiltContext } from '../contracts/ai-context.contract';
-import type { RouteInput, RouteOutput } from '../contracts/ai-router.contract';
+import type { ContextBuildInput, AiBuiltContext } from '../docs/contracts/ai-context.contract';
+import type { RouteInput, RouteOutput } from '../docs/contracts/ai-router.contract';
 
 /**
  * Build AI context for a given canvas and output type.

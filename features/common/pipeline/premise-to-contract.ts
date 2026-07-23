@@ -9,8 +9,8 @@
  * - 所有映射规则集中在此文件，便于审查和调整
  */
 
-import type { PremiseFiveStepState, PremiseCard } from '../../../contracts/premise.contract';
-import type { WritingContract } from '../../../contracts/chapter-packet.contract';
+import type { PremiseFiveStepState, PremiseCard } from '../../../docs/contracts/premise.contract';
+import type { WritingContract } from '../../../docs/contracts/chapter-packet.contract';
 
 // ═══════════════════════════════════════════════
 //  Public API

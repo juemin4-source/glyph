@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import * as settingApi from '../../api/settingApi';
-import type { FactionCard, CharacterCard } from '../../contracts/setting.contract';
+import type { FactionCard, CharacterCard } from '../../docs/contracts/setting.contract';
 import { Button, Input, TextArea, EmptyState } from '../../components/ui';
 import './faction-panel.css';
 

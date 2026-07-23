@@ -15,7 +15,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { transferQuickDraft } from '../../api/quickDraftApi';
 import { generateQuickDraft as aiGenerateQuickDraft } from '../../lib/ai/quick-draft';
 import { createProject } from '../../tauri-api';
-import type { QuickDraftGenerateResult } from '../../contracts/quick-draft.contract';
+import type { QuickDraftGenerateResult } from '../../docs/contracts/quick-draft.contract';
 import DraftPreview from './DraftPreview';
 
 interface QuickDraftPanelProps {

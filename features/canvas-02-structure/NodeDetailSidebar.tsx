@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../../components/ui';
-import type { Canvas2NodeRecord, LayerType } from '../../contracts/structure.contract';
+import type { Canvas2NodeRecord, LayerType } from '../../docs/contracts/structure.contract';
 
 const LAYER_LABELS: Record<LayerType, string> = {
   book: '作品',

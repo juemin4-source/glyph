@@ -10,7 +10,7 @@ import type {
   WorldRule, CreateWorldRuleInput, UpdateWorldRuleInput,
   CharacterCard, CreateCharacterCardInput, UpdateCharacterCardInput,
   FactionCard, CreateFactionCardInput, UpdateFactionCardInput,
-} from '../contracts/setting.contract';
+} from '../docs/contracts/setting.contract';
 
 // ---- WorldRule ----
 
@@ -121,7 +121,7 @@ import type {
   SaveTianDiRenLayerInput, SaveTianDiRenLayerOutput,
   GetSparrowModuleInput, SparrowModuleResponse,
   SparrowStepState, CharacterStep3, TianDiRenLayer, SparrowStepId,
-} from '../contracts/setting.contract';
+} from '../docs/contracts/setting.contract';
 
 function parseSparrowStepRecord(data: Record<string, unknown>): SparrowStepState {
   return {

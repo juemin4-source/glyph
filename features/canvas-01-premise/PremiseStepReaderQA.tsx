@@ -9,7 +9,7 @@
 import React from 'react';
 import { TextArea } from '../../components/ui';
 import AiFillCard from '../common/method-step/AiFillCard';
-import type { ReaderQuestion } from '../../contracts/premise.contract';
+import type { ReaderQuestion } from '../../docs/contracts/premise.contract';
 
 interface PremiseStepReaderQAProps {
   questions: ReaderQuestion[];

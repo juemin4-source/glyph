@@ -5,7 +5,7 @@
  * 用于画板④ AI 生成细纲包时控制输出粒度。
  */
 
-import type { DetailMode } from '../../../contracts/chapter-packet.contract';
+import type { DetailMode } from '../../../docs/contracts/chapter-packet.contract';
 
 /**
  * 根据模式返回对应的 AI 提示词指令。

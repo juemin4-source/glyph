@@ -6,7 +6,7 @@
  */
 
 import { callLlm } from '../llm-client';
-import type { PremiseVariant, ReaderQuestion } from '../../contracts/premise.contract';
+import type { PremiseVariant, ReaderQuestion } from '../../docs/contracts/premise.contract';
 
 export interface GenerateReaderQAInput {
   variants: PremiseVariant[];

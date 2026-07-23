@@ -22,7 +22,7 @@ import * as premiseApi from '../api/premiseApi';
 import * as structureApi from '../api/structureApi';
 import * as settingApi from '../api/settingApi';
 import * as chapterPacketApi from '../api/chapterPacketApi';
-import type { CanvasStage } from '../contracts/project.contract';
+import type { CanvasStage } from '../docs/contracts/project.contract';
 
 // ── Types ──
 

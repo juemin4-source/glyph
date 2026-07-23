@@ -17,12 +17,12 @@
  * - Tri-state is enforced at Router level, not in component business logic
  */
 
-import type { RouteInput, RouteOutput, TriStateEnforcement, RouterCallLog } from '../../contracts/ai-router.contract';
+import type { RouteInput, RouteOutput, TriStateEnforcement, RouterCallLog } from '../../docs/contracts/ai-router.contract';
 import type { AiOutputType } from '../../lib/ai-output';
 import type { AiModel, Message } from '../../types/ai';
 import { listProviderConfigs } from '../../api/aiControlCenterApi';
 import { appendDecisionLog } from '../../api/decisionLogApi';
-import type { DecisionOperation } from '../../contracts/decision-log.contract';
+import type { DecisionOperation } from '../../docs/contracts/decision-log.contract';
 
 // ===== Public API =====
 

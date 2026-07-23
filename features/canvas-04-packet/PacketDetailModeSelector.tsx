@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { DetailMode } from '../../contracts/chapter-packet.contract';
+import type { DetailMode } from '../../docs/contracts/chapter-packet.contract';
 
 interface ModeOption {
   value: DetailMode;

@@ -134,14 +134,10 @@ function BookCard({
 
   // 优先使用自定义封面渐变，否则用体裁默认
   let cardGradient: string;
-  try {
-    if (project.gradient && Array.isArray(JSON.parse(project.gradient))) {
-      const g = JSON.parse(project.gradient) as string[];
-      cardGradient = `linear-gradient(145deg, ${g[0] || '#1e1e1e'}, ${g[1] || '#141416'})`;
-    } else {
-      cardGradient = GENRE_GRADIENT_BG[project.genre] || GENRE_GRADIENT_BG['其他'];
-    }
-  } catch {
+  // gradient 类型为 [string, string] 元组，直接使用
+  if (project.gradient && Array.isArray(project.gradient) && project.gradient.length >= 2) {
+    cardGradient = `linear-gradient(145deg, ${project.gradient[0]}, ${project.gradient[1]})`;
+  } else {
     cardGradient = GENRE_GRADIENT_BG[project.genre] || GENRE_GRADIENT_BG['其他'];
   }
   const genreRadial = GENRE_RADIAL_GLOW[project.genre] || '';

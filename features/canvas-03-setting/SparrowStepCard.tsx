@@ -9,7 +9,7 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '../../components/ui';
 import DoNotAskAgainToggle from '../common/method-step/DoNotAskAgainToggle';
-import type { SparrowStepId, SparrowStepState } from '../../contracts/setting.contract';
+import type { SparrowStepId, SparrowStepState } from '../../docs/contracts/setting.contract';
 import './sparrow.css';
 
 export interface SparrowStepCardProps {

@@ -8,7 +8,7 @@ import type {
   ImportResult,
   CanvasTabStateResponse,
 } from './types/world';
-import type { PipelineState } from './contracts/project.contract';
+import type { PipelineState } from './docs/contracts/project.contract';
 
 // ══════════════════════════════════════════
 //  Project API

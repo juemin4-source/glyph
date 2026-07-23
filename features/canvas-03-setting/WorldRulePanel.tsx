@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import * as settingApi from '../../api/settingApi';
-import type { WorldRule } from '../../contracts/setting.contract';
+import type { WorldRule } from '../../docs/contracts/setting.contract';
 import { Button, Input, TextArea, EmptyState } from '../../components/ui';
 import './world-rule-panel.css';
 

@@ -33,11 +33,11 @@ import type {
   ExecutionLayer,
   PacketStatus,
   DetailMode,
-} from '../../contracts/chapter-packet.contract';
-import type { PremiseCard, PremiseFiveStepState } from '../../contracts/premise.contract';
-import type { StructureNode } from '../../contracts/structure.contract';
+} from '../../docs/contracts/chapter-packet.contract';
+import type { PremiseCard, PremiseFiveStepState } from '../../docs/contracts/premise.contract';
+import type { StructureNode } from '../../docs/contracts/structure.contract';
 import { premiseToWritingContract, isPremiseReadyForContract } from '../common/pipeline/premise-to-contract';
-import type { CharacterCard, WorldRule, FactionCard } from '../../contracts/setting.contract';
+import type { CharacterCard, WorldRule, FactionCard } from '../../docs/contracts/setting.contract';
 import { Button, Input, TextArea, Select, Badge, EmptyState } from '../../components/ui';
 import { generateChapterPacketFromUpstream } from '../../lib/generateChapterPacket';
 import { testConnection } from '../../lib/llm-client';

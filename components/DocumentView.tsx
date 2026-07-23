@@ -20,7 +20,7 @@ import { OBJECT_TYPES, OBJECT_STATUSES, CANON_LEVELS, STATUS_DISPLAY, CANON_COLO
 import { TEMPLATES } from '../data/seed';
 import { markdownToHtml, ensureEditorContent, htmlToMarkdown, isHtmlContent, countWords } from '../utils/markdown';
 import { Check, RefreshCw, X, Eye } from 'lucide-react';
-import type { ChapterPacket } from '../contracts/chapter-packet.contract';
+import type { ChapterPacket } from '../docs/contracts/chapter-packet.contract';
 
 // ── Slash command items ──
 const slashItems = createSuggestionsItems([

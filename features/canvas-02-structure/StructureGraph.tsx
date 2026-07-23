@@ -22,7 +22,7 @@ import { useProjectStore } from '../../stores/projectStore';
 import { confirmStructure } from '../../stores/pipeline-helper';
 import * as structureApi from '../../api/structureApi';
 import * as chapterPacketApi from '../../api/chapterPacketApi';
-import type { Canvas2NodeRecord, LayerType } from '../../contracts/structure.contract';
+import type { Canvas2NodeRecord, LayerType } from '../../docs/contracts/structure.contract';
 import { Button, EmptyState } from '../../components/ui';
 import { useToast } from '../../components/Toast';
 import BookNode from './nodes/BookNode';

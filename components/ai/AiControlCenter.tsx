@@ -29,8 +29,8 @@ import {
   listSkills,
 } from '../../api/aiControlCenterApi';
 import type { AiProviderConfigV2, SaveProviderConfigInput } from '../../types/ai';
-import type { ConnectionTestResult } from '../../contracts/ai-registry.contract';
-import type { SkillRecord } from '../../contracts/ai-registry.contract';
+import type { ConnectionTestResult } from '../../docs/contracts/ai-registry.contract';
+import type { SkillRecord } from '../../docs/contracts/ai-registry.contract';
 import './ai-control-center.css';
 
 // ===== Preset provider definitions (same as AiSettings) =====

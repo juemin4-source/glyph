@@ -29,7 +29,7 @@ import { testConnection } from '../../lib/llm-client';
 import { DEFAULT_MODELS } from '../../types/ai';
 import type { AiModel } from '../../types/ai';
 import type { WorldObject, ObjectType, SaveStatus } from '../../types/world';
-import type { ChapterPacket } from '../../contracts/chapter-packet.contract';
+import type { ChapterPacket } from '../../docs/contracts/chapter-packet.contract';
 import { Button } from '../../components/ui';
 import { useToast } from '../../components/Toast';
 import { chapterPacketsToMarkdown, suggestExportFilename } from '../../utils/markdown';

@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import type { WritingContract, ActiveContext, NarrativeCompression, ExecutionLayer } from '../../contracts/chapter-packet.contract';
+import type { WritingContract, ActiveContext, NarrativeCompression, ExecutionLayer } from '../../docs/contracts/chapter-packet.contract';
 import { Badge } from '../../components/ui';
 
 interface PacketRefinedViewProps {

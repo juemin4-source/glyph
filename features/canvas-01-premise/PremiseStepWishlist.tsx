@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import { Button, Input, TextArea } from '../../components/ui';
 import AiFillCard from '../common/method-step/AiFillCard';
-import type { WishlistItem } from '../../contracts/premise.contract';
+import type { WishlistItem } from '../../docs/contracts/premise.contract';
 
 interface PremiseStepWishlistProps {
   wishlist: WishlistItem[];

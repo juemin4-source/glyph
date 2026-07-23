@@ -13,7 +13,7 @@ import * as settingApi from '../../api/settingApi';
 import PipelineIndicator from '../common/pipeline-indicator/PipelineIndicator';
 import type {
   SparrowStepId, SparrowStepState, CharacterStep3, TianDiRenLayer,
-} from '../../contracts/setting.contract';
+} from '../../docs/contracts/setting.contract';
 import SparrowStepCard from './SparrowStepCard';
 import SparrowProtagonistSteps from './SparrowProtagonistSteps';
 import TianDiRenSection from './TianDiRenSection';

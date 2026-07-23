@@ -6,8 +6,8 @@
  */
 
 import { callLlm } from '../llm-client';
-import type { PremiseVariant } from '../../contracts/premise.contract';
-import type { WishlistItem } from '../../contracts/premise.contract';
+import type { PremiseVariant } from '../../docs/contracts/premise.contract';
+import type { WishlistItem } from '../../docs/contracts/premise.contract';
 
 export interface GenerateVariantsInput {
   wishlist: WishlistItem[];

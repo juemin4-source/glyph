@@ -10,7 +10,7 @@ import type {
   AppendDecisionLogInput,
   ListDecisionLogsInput,
   GetDecisionLogInput,
-} from '../contracts/decision-log.contract';
+} from '../docs/contracts/decision-log.contract';
 
 export async function appendDecisionLog(input: AppendDecisionLogInput): Promise<DecisionLogEntry> {
   return invoke('append_decision_log', { input });

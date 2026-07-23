@@ -24,5 +24,5 @@
     "noUnusedParameters": false
   },
   "include": ["./**/*.ts", "./**/*.tsx"],
-  "exclude": ["lib/ai/evaluation-harness.ts", "src/lib/ai/evaluation-harness.ts", "node_modules", "dist", "src-tauri", "e2e", "acceptance", "__tests__"]
+  "exclude": ["lib/ai/evaluation-harness.ts", "src/lib/ai/evaluation-harness.ts", "node_modules", "dist", "src-tauri", "tests/e2e", "tests/acceptance", "tests/unit"]
 }

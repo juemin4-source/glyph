@@ -6,8 +6,8 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type { SkillRecord } from '../contracts/ai-registry.contract';
-import type { ConnectionTestResult } from '../contracts/ai-registry.contract';
+import type { SkillRecord } from '../docs/contracts/ai-registry.contract';
+import type { ConnectionTestResult } from '../docs/contracts/ai-registry.contract';
 import type { AiProviderConfigV2, SaveProviderConfigInput, ResolveProviderCredentialOutput } from '../types/ai';
 
 // ===== Provider Configuration =====

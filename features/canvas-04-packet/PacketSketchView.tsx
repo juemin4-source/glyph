@@ -3,7 +3,7 @@
  * 显示 L1-L3 摘要卡片
  */
 import { useState, useEffect } from 'react';
-import type { WritingContract, ActiveContext, NarrativeCompression, ChapterPacket } from '../../contracts/chapter-packet.contract';
+import type { WritingContract, ActiveContext, NarrativeCompression, ChapterPacket } from '../../docs/contracts/chapter-packet.contract';
 import { Badge, LoadingState } from '../../components/ui';
 
 interface PacketSketchViewProps {

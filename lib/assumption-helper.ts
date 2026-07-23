@@ -17,7 +17,7 @@ import {
 } from '../api/settingApi';
 import { updateChapterPacketLayers } from '../api/chapterPacketApi';
 import { appendDecisionLog } from '../api/decisionLogApi';
-import type { Assumption } from '../contracts/chapter-packet.contract';
+import type { Assumption } from '../docs/contracts/chapter-packet.contract';
 
 /**
  * 推理假设内容应创建的目标实体类型。

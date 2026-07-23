@@ -15,7 +15,7 @@
  *     → "上游已更新：前提、大纲"
  */
 import React from 'react';
-import type { UpstreamStaleEntry } from '../../../contracts/pipeline-integrator.contract';
+import type { UpstreamStaleEntry } from '../../../docs/contracts/pipeline-integrator.contract';
 import './pipeline-indicator.css';
 
 interface PipelineIndicatorProps {

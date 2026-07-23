@@ -9,11 +9,11 @@
  * Missing upstream data is handled gracefully: available data only, no throw.
  */
 
-import type { ContextBuildInput, AiBuiltContext } from '../../contracts/ai-context.contract';
-import type { PremiseCard } from '../../contracts/premise.contract';
-import type { StructureNode } from '../../contracts/structure.contract';
-import type { WorldRule, CharacterCard } from '../../contracts/setting.contract';
-import type { ChapterPacket } from '../../contracts/chapter-packet.contract';
+import type { ContextBuildInput, AiBuiltContext } from '../../docs/contracts/ai-context.contract';
+import type { PremiseCard } from '../../docs/contracts/premise.contract';
+import type { StructureNode } from '../../docs/contracts/structure.contract';
+import type { WorldRule, CharacterCard } from '../../docs/contracts/setting.contract';
+import type { ChapterPacket } from '../../docs/contracts/chapter-packet.contract';
 
 const MAX_CONTEXT_CHARS = 48_000;
 

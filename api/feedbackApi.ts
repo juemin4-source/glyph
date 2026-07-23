@@ -5,7 +5,7 @@
  * ListFeedback filters decision_logs by operation='feedback'.
  */
 import { invoke } from '@tauri-apps/api/core';
-import type { DecisionLogEntry } from '../contracts/decision-log.contract';
+import type { DecisionLogEntry } from '../docs/contracts/decision-log.contract';
 
 export interface SubmitFeedbackInput {
   projectId: string;

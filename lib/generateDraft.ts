@@ -9,7 +9,7 @@
  * - 不 mock AI
  * - 不自动覆盖正文（由调用方控制 preview + confirm）
  */
-import type { ChapterPacket } from '../contracts/chapter-packet.contract';
+import type { ChapterPacket } from '../docs/contracts/chapter-packet.contract';
 import type { AiModel } from '../types/ai';
 import type { AiOutputType } from './ai-output';
 

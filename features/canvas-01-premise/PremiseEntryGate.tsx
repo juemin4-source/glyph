@@ -18,7 +18,7 @@ import type {
   PremiseVariant,
   ReaderQuestion,
   GenreJudgment,
-} from '../../contracts/premise.contract';
+} from '../../docs/contracts/premise.contract';
 import * as premiseApi from '../../api/premiseApi';
 import { generateVariants as aiGenerateVariants } from '../../lib/ai/premise-variants';
 import { generateReaderQA as aiGenerateReaderQA } from '../../lib/ai/premise-reader-qa';

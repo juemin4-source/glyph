@@ -1,17 +1,17 @@
 import { create } from 'zustand';
-import type { PipelineState, CanvasStage, CanvasStatus } from '../contracts/project.contract';
+import type { PipelineState, CanvasStage, CanvasStatus } from '../docs/contracts/project.contract';
 import type {
   PipelineStatus,
   PipelineLink,
   UpstreamStatus,
   UpstreamStaleEntry,
-} from '../contracts/pipeline-integrator.contract';
+} from '../docs/contracts/pipeline-integrator.contract';
 import {
   DEFAULT_PIPELINE_LINKS,
   UPSTREAM_DOWNSTREAM,
   STAGE_LABELS,
   createInitialUpstreamStatus,
-} from '../contracts/pipeline-integrator.contract';
+} from '../docs/contracts/pipeline-integrator.contract';
 
 // ── State interface ──
 

@@ -9,7 +9,7 @@
 import React from 'react';
 import { Button } from '../../components/ui';
 import AiFillCard from '../common/method-step/AiFillCard';
-import type { PremiseVariant } from '../../contracts/premise.contract';
+import type { PremiseVariant } from '../../docs/contracts/premise.contract';
 
 interface PremiseStepVariantsProps {
   variants: PremiseVariant[];

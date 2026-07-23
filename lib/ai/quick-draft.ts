@@ -6,7 +6,7 @@
  */
 
 import { callLlm } from '../llm-client';
-import type { QuickDraftGenerateResult } from '../../contracts/quick-draft.contract';
+import type { QuickDraftGenerateResult } from '../../docs/contracts/quick-draft.contract';
 
 export interface QuickDraftInput {
   projectId: string;

@@ -17,7 +17,7 @@ import type {
   SetDetailModeInput,
   AutoGenerateSketchInput,
   SaveRefinedContentInput,
-} from '../contracts/chapter-packet.contract';
+} from '../docs/contracts/chapter-packet.contract';
 
 export async function createChapterPacket(input: CreateChapterPacketInput): Promise<ChapterPacket> {
   return invoke('create_chapter_packet', { input });

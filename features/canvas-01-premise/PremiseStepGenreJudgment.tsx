@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import { Input, Button } from '../../components/ui';
 import AiFillCard from '../common/method-step/AiFillCard';
-import type { GenreJudgment } from '../../contracts/premise.contract';
+import type { GenreJudgment } from '../../docs/contracts/premise.contract';
 
 interface PremiseStepGenreJudgmentProps {
   genreJudgment: GenreJudgment | null;

@@ -4,7 +4,7 @@
  * Displays current navigation path: Book > Shiwei > Hou > Zhang
  * Click any segment to jump to that layer.
  */
-import type { LayerType } from '../../contracts/structure.contract';
+import type { LayerType } from '../../docs/contracts/structure.contract';
 
 export interface BreadcrumbSegment {
   type: LayerType;

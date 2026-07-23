@@ -5,7 +5,7 @@
  * JSON 解析失败时降级显示错误信息，不阻塞 Editor。
  */
 import { useMemo } from 'react';
-import type { ChapterPacket, ActiveContext, NarrativeCompression, ExecutionLayer } from '../../contracts/chapter-packet.contract';
+import type { ChapterPacket, ActiveContext, NarrativeCompression, ExecutionLayer } from '../../docs/contracts/chapter-packet.contract';
 import './packet-reference.css';
 
 interface PacketReferencePanelProps {

@@ -6,7 +6,7 @@
  * and action buttons.
  */
 
-import type { QuickDraft, QuickDraftGenerateResult } from '../../contracts/quick-draft.contract';
+import type { QuickDraft, QuickDraftGenerateResult } from '../../docs/contracts/quick-draft.contract';
 
 interface DraftPreviewProps {
   result: QuickDraftGenerateResult;

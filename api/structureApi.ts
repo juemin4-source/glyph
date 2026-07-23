@@ -7,7 +7,7 @@ import type {
   Canvas2NodeRecord, SaveCanvas2NodeInput, StructureTreeOutput,
   UpdateNodePositionInput, ZoomToLayerInput, ZoomToLayerOutput,
   AiGenerateStructureInput, AiGenerateStructureOutput,
-} from '../contracts/structure.contract';
+} from '../docs/contracts/structure.contract';
 
 export async function createStructureNode(input: CreateStructureNodeInput): Promise<StructureNode> {
   return invoke('create_structure_node', { input });

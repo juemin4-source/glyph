@@ -6,7 +6,7 @@
  * - TS contracts use string[]; conversion happens here.
  */
 import { invoke } from '@tauri-apps/api/core';
-import type { PremiseCard, CreatePremiseInput, UpdatePremiseInput } from '../contracts/premise.contract';
+import type { PremiseCard, CreatePremiseInput, UpdatePremiseInput } from '../docs/contracts/premise.contract';
 import type {
   SaveWishlistInput, SaveWishlistOutput,
   SaveVariantSelectionInput, SaveVariantSelectionOutput,
@@ -14,7 +14,7 @@ import type {
   PremiseStepStateResponse, GetPremiseStepStateInput,
   GenerateVariantsInput, GenerateVariantsOutput,
   GenerateReaderQAInput, GenerateReaderQAOutput,
-} from '../contracts/premise.contract';
+} from '../docs/contracts/premise.contract';
 
 function parseCard(data: Record<string, unknown>): PremiseCard {
   return {

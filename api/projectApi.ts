@@ -5,7 +5,7 @@
  * so features/pipeline-* modules import from a single entry point.
  */
 import { getPipelineState, savePipelineState } from '../tauri-api';
-import type { PipelineState } from '../contracts/project.contract';
+import type { PipelineState } from '../docs/contracts/project.contract';
 
 export { getPipelineState, savePipelineState };
 export type { PipelineState };

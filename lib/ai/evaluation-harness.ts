@@ -13,9 +13,9 @@
  * backend are marked SKIPPED when backend is unavailable.
  */
 
-import type { RouteInput, RouteOutput } from '../../contracts/ai-router.contract';
-import type { ParseInput, ParseOutput } from '../../contracts/ai-parser.contract';
-import type { SkillRecord } from '../../contracts/ai-registry.contract';
+import type { RouteInput, RouteOutput } from '../../docs/contracts/ai-router.contract';
+import type { ParseInput, ParseOutput } from '../../docs/contracts/ai-parser.contract';
+import type { SkillRecord } from '../../docs/contracts/ai-registry.contract';
 import { route } from './command-router';
 import { parseStructuredOutput } from './structured-parser';
 import { getDefaults, getSkill } from './prompt-registry';

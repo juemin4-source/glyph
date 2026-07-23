@@ -11,7 +11,7 @@ import type {
   QuickDraftGenerateInput,
   QuickDraftGenerateResult,
   QuickDraftTransferInput,
-} from '../contracts/quick-draft.contract';
+} from '../docs/contracts/quick-draft.contract';
 
 export async function generateQuickDraft(
   input: QuickDraftGenerateInput,

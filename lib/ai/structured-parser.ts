@@ -11,12 +11,12 @@
  * [v2.1.1-AI] Added convenience parsers for ChapterPacket, WritingContract, TianDiRen.
  */
 
-import type { ParseInput, ParseOutput, ParserStatus } from '../../contracts/ai-parser.contract';
+import type { ParseInput, ParseOutput, ParserStatus } from '../../docs/contracts/ai-parser.contract';
 import {
   CHAPTER_PACKET_SCHEMA,
   WRITING_CONTRACT_SCHEMA,
   TIAN_DI_REN_SCHEMA,
-} from '../../contracts/ai-parser.contract';
+} from '../../docs/contracts/ai-parser.contract';
 
 /**
  * ParseResult extends ParseOutput with a status field for discrimination.

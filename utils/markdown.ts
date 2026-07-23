@@ -235,7 +235,7 @@ export function countWords(content: string): number {
 
 // ─── Markdown Export Utilities ───
 
-import type { ChapterPacket } from '../contracts/chapter-packet.contract';
+import type { ChapterPacket } from '../docs/contracts/chapter-packet.contract';
 
 /**
  * Extract readable text from a chapter packet's layer4 (final text layer).
