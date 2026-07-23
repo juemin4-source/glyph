@@ -13,6 +13,7 @@ import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { WikiLink } from '../extensions/WikiLink';
+import { Slash, SlashCmd, SlashCmdProvider, createSuggestionsItems, enableKeyboardNavigation } from '@harshtalks/slash-tiptap';
 import type { WorldObject, ObjectType, ObjectStatus, CanonLevel, SaveStatus } from '../types/world';
 import { OBJECT_TYPES, OBJECT_STATUSES, CANON_LEVELS, STATUS_DISPLAY, CANON_COLORS } from '../types/world';
 import { TEMPLATES } from '../data/seed';
@@ -20,23 +21,17 @@ import { markdownToHtml, ensureEditorContent, htmlToMarkdown, isHtmlContent, cou
 import { Check, RefreshCw, X, Eye } from 'lucide-react';
 import type { ChapterPacket } from '../contracts/chapter-packet.contract';
 
-// ── Slash command block types ──
-interface SlashItem {
-  label: string;
-  icon: string;
-  description: string;
-  action: (editor: Editor) => void;
-}
-const SLASH_ITEMS: SlashItem[] = [
-  { label: '标题 1', icon: 'H1', description: '大标题', action: (e) => e.chain().focus().toggleHeading({ level: 1 }).run() },
-  { label: '标题 2', icon: 'H2', description: '章节标题', action: (e) => e.chain().focus().toggleHeading({ level: 2 }).run() },
-  { label: '标题 3', icon: 'H3', description: '小节标题', action: (e) => e.chain().focus().toggleHeading({ level: 3 }).run() },
-  { label: '无序列表', icon: '≡', description: '圆点列表', action: (e) => e.chain().focus().toggleBulletList().run() },
-  { label: '有序列表', icon: '1.', description: '编号列表', action: (e) => e.chain().focus().toggleOrderedList().run() },
-  { label: '引用', icon: '❝', description: '块引用', action: (e) => e.chain().focus().toggleBlockquote().run() },
-  { label: '代码块', icon: '▦', description: '代码块', action: (e) => e.chain().focus().toggleCodeBlock().run() },
-  { label: '分割线', icon: '—', description: '水平分割线', action: (e) => e.chain().focus().setHorizontalRule().run() },
-];
+// ── Slash command items ──
+const slashItems = createSuggestionsItems([
+  { title: '标题 1', searchTerms: ['h1', 'heading1', '大标题'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
+  { title: '标题 2', searchTerms: ['h2', 'heading2', '章节'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
+  { title: '标题 3', searchTerms: ['h3', 'heading3', '小节'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
+  { title: '无序列表', searchTerms: ['ul', 'unordered', '列表', '圆点'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run() },
+  { title: '有序列表', searchTerms: ['ol', 'ordered', '编号'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run() },
+  { title: '引用', searchTerms: ['blockquote', 'quote', '引用'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
+  { title: '代码块', searchTerms: ['code', 'pre', '代码'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run() },
+  { title: '分割线', searchTerms: ['hr', 'divider', '分割'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run() },
+]);
 
 type EditMode = 'source' | 'wysiwyg' | 'preview';
 
@@ -97,20 +92,6 @@ export default function DocumentView({
     }
   }, [currentObject?.id]);
 
-  // ── Slash menu state ──
-  const [showSlashMenu, setShowSlashMenu] = useState(false);
-  const showSlashMenuRef = useRef(false);
-  const [slashFilter, setSlashFilter] = useState('');
-  const slashMenuRef = useRef<HTMLDivElement>(null);
-  const slashPosRef = useRef({ top: 0, left: 0 });
-  const slashDocPosRef = useRef(0); // cursor position when / was pressed
-
-  // Keep ref in sync for Tiptap handleKeyDown (captured at creation time)
-  const setShowSlashMenuSync = useCallback((v: boolean) => {
-    setShowSlashMenu(v);
-    showSlashMenuRef.current = v;
-  }, []);
-
   // ── Create bubble state ──
   const [showCreateBubble, setShowCreateBubble] = useState(false);
   const [createBubbleName, setCreateBubbleName] = useState('');
@@ -121,24 +102,7 @@ export default function DocumentView({
     return allObjects.some(o => o.name === name);
   }, [allObjects]);
 
-  // Close slash menu on blur
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (slashMenuRef.current && !slashMenuRef.current.contains(e.target as Node)) {
-        setShowSlashMenuSync(false);
-      }
-    };
-    if (showSlashMenu) {
-      document.addEventListener('mousedown', handler);
-      return () => document.removeEventListener('mousedown', handler);
-    }
-  }, [showSlashMenu]);
-
   const editorRef = useRef<Editor | null>(null);
-
-  const filteredSlash = slashFilter ? SLASH_ITEMS.filter(i =>
-    i.label.includes(slashFilter) || i.description.includes(slashFilter)
-  ) : SLASH_ITEMS;
 
   const editor = useEditor({
     extensions: [
@@ -159,6 +123,11 @@ export default function DocumentView({
           return true;
         },
       }),
+      Slash.configure({
+        suggestion: {
+          items: () => slashItems,
+        },
+      }),
     ],
     content: ensureEditorContent(currentObject?.content || ''),
     onCreate: ({ editor: ed }) => { editorRef.current = ed; },
@@ -167,31 +136,8 @@ export default function DocumentView({
         class: 'editor-content',
         'data-placeholder': '在此输入文档内容... 使用 [[对象名]] 引用其他对象',
       },
-      handleKeyDown: (view, event) => {
-        // Slash command: press '/' to show block type menu
-        // NOTE: showSlashMenu state is stale here (captured at editor creation).
-        // Use showSlashMenuRef.current instead.
-        if (event.key === '/' && !showSlashMenuRef.current) {
-          const pos = view.state.selection.from;
-          const coords = view.coordsAtPos(pos);
-          const editorEl = view.dom.closest('.doc-editor')?.getBoundingClientRect();
-          if (coords && editorEl) {
-            slashPosRef.current = {
-              top: coords.bottom - editorEl.top + 4,
-              left: coords.left - editorEl.left,
-            };
-          }
-          slashDocPosRef.current = pos;
-          setSlashFilter('');
-          setShowSlashMenuSync(true);
-          return false; // Let the '/' be inserted into the document
-        }
-        // Escape to close slash menu
-        if (event.key === 'Escape' && showSlashMenuRef.current) {
-          setShowSlashMenuSync(false);
-          return true;
-        }
-        return false;
+      handleDOMEvents: {
+        keydown: (_, v) => enableKeyboardNavigation(v),
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -479,7 +425,7 @@ export default function DocumentView({
         {/* WYSIWYG mode (Tiptap stays mounted) */}
         <div className="doc-editor tiptap-editor" style={{ display: editMode === 'wysiwyg' ? 'block' : 'none' }}>
           {editor && (
-            <>
+            <SlashCmdProvider>
               <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: 'top' }}>
                 <div className="bubble-menu">
                   <button onClick={() => editor.chain().focus().toggleBold().run()} className={`bm-btn ${editor.isActive('bold') ? 'active' : ''}`} style={{ fontWeight: 700 }}>B</button>
@@ -494,54 +440,21 @@ export default function DocumentView({
                 </div>
               </BubbleMenu>
 
-              {/* Slash command menu */}
-              {showSlashMenu && (
-                <div
-                  ref={slashMenuRef}
-                  className="slash-menu"
-                  style={{ position: 'absolute', top: slashPosRef.current.top, left: slashPosRef.current.left }}
-                >
-                  <input
-                    className="slash-search"
-                    placeholder="选择块类型..."
-                    value={slashFilter}
-                    onChange={(e) => setSlashFilter(e.target.value)}
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') { setShowSlashMenuSync(false); editorRef.current?.commands.focus(); }
-                      if (e.key === 'Enter' && filteredSlash.length > 0) {
-                        const ed = editorRef.current;
-                        if (ed) {
-                          const from = slashDocPosRef.current;
-                          ed.chain().focus().deleteRange({ from, to: from + 1 }).run();
-                          filteredSlash[0].action(ed);
-                          setShowSlashMenuSync(false); setSlashFilter('');
-                        }
-                      }
-                    }}
-                  />
-                  <div className="slash-items">
-                    {filteredSlash.map((item) => (
-                      <button key={item.label} className="slash-item" onClick={() => {
-                        const ed = editorRef.current;
-                        if (ed) {
-                          const from = slashDocPosRef.current;
-                          ed.chain().focus().deleteRange({ from, to: from + 1 }).run();
-                          item.action(ed);
-                          setShowSlashMenuSync(false); setSlashFilter('');
-                        }
-                      }}>
-                        <span className="slash-icon">{item.icon}</span>
-                        <span className="slash-label">{item.label}</span>
-                        <span className="slash-desc">{item.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <EditorContent editor={editor} />
-            </>
+
+              <SlashCmd.Root editor={editor}>
+                <SlashCmd.Cmd>
+                  <SlashCmd.Empty>没有匹配项</SlashCmd.Empty>
+                  <SlashCmd.List>
+                    {slashItems.map((item) => (
+                      <SlashCmd.Item key={item.title} value={item.title} onCommand={(val) => { item.command(val); }}>
+                        <span>{item.title}</span>
+                      </SlashCmd.Item>
+                    ))}
+                  </SlashCmd.List>
+                </SlashCmd.Cmd>
+              </SlashCmd.Root>
+            </SlashCmdProvider>
           )}
         </div>
 
