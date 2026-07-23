@@ -440,7 +440,7 @@ export default function DocumentView({
                 </div>
               </BubbleMenu>
 
-              <EditorContent editor={editor} />
+              <EditorContent editor={editor} className="glyph-editor-content" />
 
               <SlashCmd.Root editor={editor}>
                 <SlashCmd.Cmd>
