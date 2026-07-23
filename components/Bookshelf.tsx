@@ -1,12 +1,19 @@
 import { useState, useMemo } from 'react';
+import { FolderOpen, Plus } from 'lucide-react';
 import type { Project } from '../types/world';
+import type { FsProject } from '../types/fs';
 import * as api from '../tauri-api';
 
 interface BookshelfProps {
   projects: Project[];
+  fsProjects?: FsProject[];
   onEnterProject: (project: Project) => void;
+  onEnterFsProject?: (rootPath: string, name: string) => void;
   onCreateProject?: () => void;
+  onCreateFsProject?: () => void;
+  onOpenDirectory?: () => void;
   onRefreshProjects?: () => Promise<void>;
+  onExportToFs?: (project: Project) => void;
 }
 
 const STATUS_LABEL: Record<Project['status'], string> = {
@@ -66,9 +73,10 @@ const menuItemBaseStyle: React.CSSProperties = {
 };
 
 function BookCard({
-  project, onEnter, onRefreshProjects
+  project, onEnter, onRefreshProjects, onExportToFs
 }: {
   project: Project; onEnter: (p: Project) => void; onRefreshProjects?: () => Promise<void>;
+  onExportToFs?: (p: Project) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -275,6 +283,9 @@ function BookCard({
           >
             <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); handleEditName(); }}>&#9998; 编辑作品名</button>
             <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); handleChangeGenre(); }}>&#9986; 更改体裁</button>
+            {onExportToFs && (
+              <button style={menuItemBaseStyle} onClick={(e) => { e.stopPropagation(); onExportToFs(project); setMenuOpen(false); }}>&#128229; 导出为本地项目</button>
+            )}
             <button style={{ ...menuItemBaseStyle, color: deleting ? '#666' : '#f44336' }} onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={deleting}>{deleting ? '... 删除中' : '✖ 删除作品'}</button>
           </div>
         </>
@@ -491,7 +502,11 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
   );
 }
 
-export default function Bookshelf({ projects, onEnterProject, onCreateProject, onRefreshProjects }: BookshelfProps) {
+export default function Bookshelf({
+  projects, fsProjects = [], onEnterProject, onEnterFsProject,
+  onCreateProject, onCreateFsProject, onOpenDirectory,
+  onRefreshProjects, onExportToFs,
+}: BookshelfProps) {
   const isEmpty = !projects || projects.length === 0;
 
   const totalWordCount = useMemo(() => {
@@ -650,10 +665,78 @@ export default function Bookshelf({ projects, onEnterProject, onCreateProject, o
           }}
         >
           {projects.map((project) => (
-            <BookCard key={project.id} project={project} onEnter={onEnterProject} onRefreshProjects={onRefreshProjects} />
+            <BookCard key={project.id} project={project} onEnter={onEnterProject} onRefreshProjects={onRefreshProjects} onExportToFs={onExportToFs} />
           ))}
         </div>
       )}
+
+      {/* ===== FS Projects ===== */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <FolderOpen size={18} color="#B7FF00" />
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#e0e0e0' }}>本地项目</span>
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={(e) => { e.stopPropagation(); onCreateFsProject?.(); }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', border: '1px solid #3a3a3a', borderRadius: 6,
+              background: '#1e1e1e', color: '#e0e0e0', cursor: 'pointer',
+              fontSize: 13, fontFamily: 'inherit',
+            }}
+          >
+            <Plus size={14} /> 新建
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpenDirectory?.(); }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', border: '1px solid #3a3a3a', borderRadius: 6,
+              background: '#1e1e1e', color: '#e0e0e0', cursor: 'pointer',
+              fontSize: 13, fontFamily: 'inherit',
+            }}
+          >
+            <FolderOpen size={14} /> 从目录打开
+          </button>
+        </div>
+
+        {fsProjects.length === 0 ? (
+          <div style={{ padding: 16, textAlign: 'center', color: '#888', fontSize: 14 }}>
+            还没有本地项目。新建一个，或从目录打开已有作品。
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {fsProjects.map((fs) => (
+              <div
+                key={fs.projectId}
+                onClick={() => onEnterFsProject(fs.rootPath, fs.name)}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                  padding: 14, border: '1px solid #2a2a2a', borderRadius: 8,
+                  background: '#1e1e1e', cursor: 'pointer', transition: 'border-color 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#B7FF00')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#2a2a2a')}
+              >
+                <div style={{
+                  width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 8, background: '#2a2a2a', color: '#B7FF00', flexShrink: 0,
+                }}>
+                  <FolderOpen size={22} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#e0e0e0', marginBottom: 4 }}>{fs.name}</div>
+                  <div style={{ fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}>{fs.rootPath}</div>
+                  <div style={{ fontSize: 11, color: '#888' }}>
+                    {fs.genre && <span>{fs.genre} · </span>}
+                    最后打开: {new Date(fs.lastOpenedAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

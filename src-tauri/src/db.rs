@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection, Result as SqlResult};
 use std::sync::{Arc, Mutex};
 
+use crate::fs_models::FsProject;
 use crate::models::{
     CanvasStageState, CanvasTabState, CanvasTabStateRow, CharacterCard, Connection as ObjConnection,
     CreateCharacterCardInput, CreateFactionCardInput, CreatePremiseInput, CreateStructureNodeInput,
@@ -146,6 +147,7 @@ impl Database {
         init_sparrow_tables(&conn)?;
         init_packet_detail_modes_table(&conn)?;
         init_canvas2_structure_nodes_table(&conn)?;
+        init_fs_projects_table(&conn)?;
         Ok(())
     }
 
@@ -3657,6 +3659,104 @@ impl Database {
             |row| row.get(0),
         )
     }
+
+    // ============================================================================
+    //  FsProject CRUD (Gate A)
+    // ============================================================================
+
+    pub fn create_fs_project(&self, id: &str, name: &str, root_path: &str, genre: &str, now: i64) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO fs_projects (id, name, root_path, genre, last_opened_at, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![id, name, root_path, genre, now, now, now],
+        )?;
+        Ok(())
+    }
+
+    pub fn upsert_fs_project(&self, id: &str, name: &str, root_path: &str, genre: &str, created_at: i64, last_opened_at: i64, now: i64) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO fs_projects (id, name, root_path, genre, last_opened_at, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(id) DO UPDATE SET
+               name = excluded.name,
+               root_path = excluded.root_path,
+               genre = excluded.genre,
+               last_opened_at = excluded.last_opened_at,
+               updated_at = excluded.updated_at",
+            params![id, name, root_path, genre, last_opened_at, created_at, now],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_fs_projects(&self) -> SqlResult<Vec<FsProject>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, root_path, genre, created_at, last_opened_at, updated_at
+             FROM fs_projects ORDER BY last_opened_at DESC"
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(FsProject {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                root_path: row.get(2)?,
+                genre: row.get(3)?,
+                created_at: row.get(4)?,
+                last_opened_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?;
+        let mut projects = Vec::new();
+        for row in rows {
+            projects.push(row?);
+        }
+        Ok(projects)
+    }
+
+    pub fn get_fs_project(&self, id: &str) -> SqlResult<Option<FsProject>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, root_path, genre, created_at, last_opened_at, updated_at
+             FROM fs_projects WHERE id = ?"
+        )?;
+        let mut rows = stmt.query_map(params![id], |row| {
+            Ok(FsProject {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                root_path: row.get(2)?,
+                genre: row.get(3)?,
+                created_at: row.get(4)?,
+                last_opened_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?;
+        match rows.next() {
+            Some(r) => Ok(Some(r?)),
+            None => Ok(None),
+        }
+    }
+
+    pub fn remove_fs_project(&self, id: &str) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM fs_projects WHERE id = ?", params![id])?;
+        Ok(())
+    }
+}
+
+pub fn init_fs_projects_table(conn: &Connection) -> SqlResult<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS fs_projects (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          root_path TEXT NOT NULL UNIQUE,
+          genre TEXT NOT NULL DEFAULT '',
+          last_opened_at INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL DEFAULT (cast(strftime('%s','now') as integer) * 1000),
+          updated_at INTEGER NOT NULL DEFAULT (cast(strftime('%s','now') as integer) * 1000)
+        );"
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -3777,6 +3877,8 @@ mod tests {
             content: "A test character with rich backstory.".to_string(),
             references_count: 3,
             judgment_history: vec![j1, j2],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         };
@@ -3975,6 +4077,8 @@ mod tests {
             content: "".to_string(),
             references_count: 0,
             judgment_history: vec![],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         };
@@ -4045,6 +4149,8 @@ mod tests {
             content: "".to_string(),
             references_count: 0,
             judgment_history: vec![],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         }).unwrap();
@@ -4061,6 +4167,8 @@ mod tests {
             content: "".to_string(),
             references_count: 0,
             judgment_history: vec![],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         }).unwrap();
@@ -4121,6 +4229,8 @@ mod tests {
             content: "".to_string(),
             references_count: 0,
             judgment_history: vec![],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         };
@@ -4146,6 +4256,8 @@ mod tests {
             content: "".to_string(),
             references_count: 0,
             judgment_history: vec![],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         };
@@ -4229,6 +4341,8 @@ mod tests {
             content: "A test character.".to_string(),
             references_count: 0,
             judgment_history: vec![],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         };
@@ -4248,6 +4362,8 @@ mod tests {
             content: "An important location.".to_string(),
             references_count: 0,
             judgment_history: vec![],
+            parent_id: None,
+            sort_order: 0,
             created_at: 0,
             updated_at: 0,
         };

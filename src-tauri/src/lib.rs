@@ -5,6 +5,9 @@ mod chapter_packet_commands;
 mod commands;
 mod db;
 mod decision_log_commands;
+mod fs_commands;
+mod fs_models;
+mod fs_watcher;
 mod models;
 mod pipeline_commands;
 mod premise_commands;
@@ -15,6 +18,7 @@ mod export_commands;
 mod feedback_commands;
 
 use db::Database;
+use fs_watcher::FileWatcher;
 use std::fs;
 use tauri::Manager;
 
@@ -70,6 +74,7 @@ pub fn run() {
             api::start_api_server(database.clone());
 
             app.manage(database);
+            app.manage(FileWatcher::new());
             Ok(())
         })
         .plugin(tauri_plugin_dialog::init())
@@ -197,6 +202,26 @@ pub fn run() {
             ai_commands::delete_provider_config,
             ai_commands::resolve_provider_credential,
             ai_commands::test_provider_connection,
+            // Gate A: Filesystem commands
+            fs_commands::create_fs_project,
+            fs_commands::open_fs_project,
+            fs_commands::list_fs_projects,
+            fs_commands::remove_fs_project,
+            fs_commands::list_directory,
+            fs_commands::read_file,
+            // Gate B: Content search
+            fs_commands::search_file_content,
+            fs_commands::write_file,
+            fs_commands::create_file,
+            fs_commands::create_directory,
+            fs_commands::rename_file,
+            fs_commands::delete_file,
+            fs_commands::delete_directory,
+            fs_commands::get_session_state,
+            fs_commands::save_session_state,
+            fs_commands::watch_project,
+            fs_commands::unwatch_project,
+            fs_commands::export_to_fs_project,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

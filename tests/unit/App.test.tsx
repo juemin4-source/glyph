@@ -10,7 +10,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 // ── Mock child components so they don't pull in heavy deps ──
-vi.mock('../components/Bookshelf', () => {
+vi.mock('../../components/Bookshelf', () => {
   const React = require('react');
   return {
     default: function MockBookshelf(props: { projects: Array<{ id: string; title: string }>; onEnterProject: (p: unknown) => void; onCreateProject?: () => void }) {
@@ -27,30 +27,42 @@ vi.mock('../components/Bookshelf', () => {
   };
 });
 
-vi.mock('../components/DocumentView', () => {
+vi.mock('../../components/DocumentView', () => {
   const React = require('react');
   return { default: () => React.createElement('div', { 'data-testid': 'document-view' }, 'DocumentView') };
 });
 
-vi.mock('../components/CanvasView', () => {
+vi.mock('../../components/CanvasView', () => {
   const React = require('react');
   return { default: () => React.createElement('div', { 'data-testid': 'canvas-view' }, 'CanvasView') };
 });
 
-vi.mock('../components/SettingCollection', () => {
+vi.mock('../../components/SettingCollection', () => {
   const React = require('react');
   return { default: () => React.createElement('div', { 'data-testid': 'setting-collection' }, 'SettingCollection') };
 });
 
-vi.mock('../components/JudgmentRecords', () => {
+vi.mock('../../components/JudgmentRecords', () => {
   const React = require('react');
   return { default: () => React.createElement('div', { 'data-testid': 'judgment-records' }, 'JudgmentRecords') };
 });
 
-vi.mock('../components/Inspector', () => {
+vi.mock('../../components/Inspector', () => {
   const React = require('react');
   return { default: () => React.createElement('div', { 'data-testid': 'inspector' }, 'Inspector') };
 });
+
+// Mock AI modules so FsAiPanel doesn't crash in test
+vi.mock('../../api/aiControlCenterApi', () => ({
+  listProviderConfigs: () => Promise.resolve([]),
+  saveProviderConfig: () => Promise.resolve({}),
+  resolveProviderCredential: () => Promise.resolve({ apiKey: 'test-key' }),
+}));
+vi.mock('../../lib/fs-ai-bridge', () => ({
+  collectContext: () => Promise.resolve({ projectRoot: '', currentFilePath: null, currentFileContent: null, projectFiles: [] }),
+  executeFsAiTask: (task: any) => Promise.resolve({ ...task, status: 'responding' }),
+  searchProjectFiles: () => Promise.resolve([]),
+}));
 
 // ── Test Data ──
 const mockProjects = [
@@ -79,12 +91,22 @@ const mockWorldObjects = [
 
 beforeEach(() => {
   mockInvoke.mockReset();
+  mockInvoke.mockResolvedValue([]); // Default: all invoke calls return empty array
 });
+
+// Helper: set up mock with projects data and empty FS list
+function mockWithProjects(data = mockProjects) {
+  mockInvoke.mockImplementation((command: string) => {
+    if (command === 'list_fs_projects') return Promise.resolve([]);
+    return Promise.resolve(data);
+  });
+}
 
 // ── Path 1: Story Creation (App level) ──
 describe('Path 1: Story Creation (App level)', () => {
+
   it('shows loading state initially, then renders bookshelf', async () => {
-    mockInvoke.mockResolvedValue(mockProjects);
+    mockWithProjects();
     render(<App />);
 
     // Loading state initially
@@ -98,7 +120,10 @@ describe('Path 1: Story Creation (App level)', () => {
   });
 
   it('handles empty projects gracefully', async () => {
-    mockInvoke.mockResolvedValue([]);
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'list_fs_projects') return Promise.resolve([]);
+      return Promise.resolve([]);
+    });
     render(<App />);
 
     await waitFor(() => {
@@ -108,7 +133,10 @@ describe('Path 1: Story Creation (App level)', () => {
   });
 
   it('handles API error gracefully', async () => {
-    mockInvoke.mockRejectedValue(new Error('Network error'));
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'list_fs_projects') return Promise.resolve([]);
+      return Promise.reject(new Error('Network error'));
+    });
     render(<App />);
 
     await waitFor(() => {
@@ -120,8 +148,8 @@ describe('Path 1: Story Creation (App level)', () => {
 
   it('create project button triggers project creation flow', async () => {
     mockInvoke
-      .mockResolvedValueOnce('pong') // SyncManager ping
       .mockResolvedValueOnce(mockProjects) // listProjects
+      .mockResolvedValueOnce([]) // list_fs_projects
       .mockResolvedValueOnce({ // createProject
         id: 'book-3',
         name: '新作品',
@@ -165,8 +193,8 @@ describe('Path 1: Story Creation (App level)', () => {
 describe('Path 3: Canon Management (App level)', () => {
   it('loads world objects when entering a project', async () => {
     mockInvoke
-      .mockResolvedValueOnce('pong') // SyncManager ping
       .mockResolvedValueOnce(mockProjects) // listProjects
+      .mockResolvedValueOnce([]) // list_fs_projects
       .mockResolvedValueOnce(mockWorldObjects) // listWorldObjects
       .mockResolvedValueOnce([]) // listConnections
       .mockResolvedValueOnce([]); // listCanvasTabStates
@@ -227,7 +255,7 @@ describe('Path 4: Judgment Recording (App level)', () => {
 // ── Path 6: Cross-Book Isolation (App level) ──
 describe('Path 6: Cross-Book Isolation (App level)', () => {
   it('shows multiple books in bookshelf', async () => {
-    mockInvoke.mockResolvedValue(mockProjects);
+    mockWithProjects();
     render(<App />);
 
     await waitFor(() => {

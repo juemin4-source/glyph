@@ -15,10 +15,11 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { BookOpen, Maximize, Minimize } from 'lucide-react';
+import { BookOpen, Maximize, Minimize, FolderOpen, Plus } from 'lucide-react';
 import type { WorldObject, ObjectType, ObjectStatus, CanonLevel, SaveStatus, ChangelogEntry } from './types/world';
 import { CANON_LEVELS } from './types/world';
 import type { Project } from './types/world';
+import type { FsProject } from './types/fs';
 
 import * as api from './tauri-api';
 import { countWords, isHtmlContent, htmlToMarkdown } from './utils/markdown';
@@ -31,12 +32,20 @@ import DocOutline from './components/DocOutline';
 import StatusBar from './components/StatusBar';
 import CreationWizard from './components/CreationWizard';
 import GlobalSearch from './components/GlobalSearch';
+import FileTree from './components/FileTree';
+import FsDocumentView from './components/FsDocumentView';
+import FsCreateForm from './components/FsCreateForm';
+import FsAiPanel from './components/FsAiPanel';
 import { ToastProvider, useToast } from './components/Toast';
+import { useFsStore } from './stores/fsStore';
+import { useExternalChangeDetector } from './hooks/useExternalChangeDetector';
+import { useSessionPersistence } from './hooks/useSessionPersistence';
 
 import './styles/global.css';
 import './styles/variables.css';
 import './styles/editor.css';
 import './styles/ai.css';
+import './styles/fs.css';
 import './components/ui/design-tokens.css';
 
 // ── IDs ──
@@ -61,6 +70,24 @@ function AppInner() {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [activeBookTitle, setActiveBookTitle] = useState('');
+  const [isFsMode, setIsFsMode] = useState(false);
+  const [showFsCreateDialog, setShowFsCreateDialog] = useState(false);
+
+  // ── Filesystem store ──
+  const {
+    fsProjects,
+    loadFsProjects,
+    initNewProject,
+    openProject: openFsProject,
+    closeProject: closeFsProject,
+    activeFsProject,
+    openFile,
+    openFilePath,
+    fileContent,
+    fileDirty,
+    saveCurrentFile,
+    updateContent,
+  } = useFsStore();
 
   // ── Object state ──
   const [objects, setObjects] = useState<WorldObject[]>([]);
@@ -158,11 +185,190 @@ function AppInner() {
 
   // ── Load projects on mount ──
   useEffect(() => {
-    Promise.resolve(api.listProjects?.() ?? [])
-      .then(dtos => setProjects(dtos.map(mapDTOtoProject)))
-      .catch(e => console.error('Failed to load projects', e))
-      .finally(() => setProjectsLoading(false));
+    Promise.all([
+      Promise.resolve(api.listProjects?.() ?? [])
+        .then(dtos => setProjects(dtos.map(mapDTOtoProject)))
+        .catch(e => console.error('Failed to load projects', e)),
+      loadFsProjects().catch(e => console.error('Failed to load FS projects', e)),
+    ]).finally(() => setProjectsLoading(false));
   }, []);
+
+  // ── Export SQLite project to FS ──
+  const handleExportToFs = useCallback(async (project: import('./types/world').Project) => {
+    const outputPath = window.prompt(
+      `将「${project.title}」导出为本地项目\n输入目标目录路径:`,
+      project.title,
+    );
+    if (!outputPath) return;
+
+    try {
+      const { exportToFsProject } = await import('./tauri-api');
+      // Find the matching DTO (we need the original project ID from the DTO)
+      const dtos = await api.listProjects();
+      const match = dtos.find(d => d.name === project.title);
+      if (!match) {
+        showToast('找不到原始项目', 'error');
+        return;
+      }
+      const result = await exportToFsProject(match.id, outputPath);
+      // Refresh FS projects list
+      await loadFsProjects();
+      showToast(
+        `已导出为本地项目，共 ${result.fileCount} 个文件`,
+        'success',
+      );
+    } catch (e) {
+      console.error('Failed to export project', e);
+      showToast('导出失败', 'error');
+    }
+  }, [showToast, loadFsProjects]);
+
+  // ── FS project handlers ──
+  const startWatcher = useCallback(async (rootPath: string) => {
+    try {
+      const { watchProject } = await import('./tauri-api');
+      await watchProject(rootPath);
+    } catch (e) {
+      console.warn('[fs-watcher] Failed to start watcher:', e);
+    }
+  }, []);
+
+  const stopWatcher = useCallback(async (rootPath: string) => {
+    try {
+      const { unwatchProject } = await import('./tauri-api');
+      await unwatchProject(rootPath);
+    } catch (e) {
+      console.warn('[fs-watcher] Failed to stop watcher:', e);
+    }
+  }, []);
+
+  const handleOpenFsProject = useCallback(async (rootPath: string, projectName: string) => {
+    try {
+      await openFsProject(rootPath);
+      await startWatcher(rootPath);
+      setActiveBookId('fs-' + rootPath);
+      setActiveBookTitle(projectName);
+      setIsFsMode(true);
+    } catch (e) {
+      console.error('Failed to open FS project', e);
+      showToast('打开项目失败', 'error');
+    }
+  }, [openFsProject, startWatcher, showToast]);
+
+  const handleCreateFsProject = useCallback(async (name: string, rootPath: string, genre?: string) => {
+    try {
+      const project = await initNewProject(name, rootPath, genre);
+      await startWatcher(project.rootPath);
+      setActiveBookId('fs-' + project.rootPath);
+      setActiveBookTitle(project.name);
+      setIsFsMode(true);
+      setShowFsCreateDialog(false);
+      showToast(`项目「${name}」已创建`, 'success');
+    } catch (e) {
+      console.error('Failed to create FS project', e);
+      showToast('创建项目失败', 'error');
+    }
+  }, [initNewProject, startWatcher, showToast]);
+
+  const handleBackFromFsProject = useCallback(async () => {
+    if (activeFsProject?.rootPath) {
+      await stopWatcher(activeFsProject.rootPath);
+    }
+    if (fileDirty) {
+      await saveCurrentFile();
+    }
+    await closeFsProject();
+    setIsFsMode(false);
+    setActiveBookId(null);
+    setActiveBookTitle('');
+  }, [activeFsProject, fileDirty, saveCurrentFile, closeFsProject, stopWatcher]);
+
+  const handleFsFileSelect = useCallback(async (filePath: string) => {
+    if (fileDirty) {
+      await saveCurrentFile();
+    }
+    await openFile(filePath);
+  }, [fileDirty, saveCurrentFile, openFile]);
+
+  // ── Auto-save ──
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerAutoSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveStatus('unsaved');
+    saveTimerRef.current = setTimeout(() => {
+      setSaveStatus('saving');
+      setTimeout(() => { setSaveStatus('saved'); }, 800);
+    }, 500);
+  }, []);
+
+  const handleFsFileContentChange = useCallback((content: string) => {
+    updateContent(content);
+    // Trigger auto-save timer
+    triggerAutoSave();
+  }, [updateContent, triggerAutoSave]);
+
+  // FS mode auto-save timer
+  const fsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isFsMode && fileDirty) {
+      if (fsSaveTimerRef.current) clearTimeout(fsSaveTimerRef.current);
+      fsSaveTimerRef.current = setTimeout(async () => {
+        const ok = await saveCurrentFile();
+        if (ok) {
+          setSaveStatus('saved');
+        }
+      }, 1500);
+    }
+    return () => {
+      if (fsSaveTimerRef.current) clearTimeout(fsSaveTimerRef.current);
+    };
+  }, [isFsMode, fileDirty, saveCurrentFile, fileContent]);
+
+  // External change detection
+  const handleExternalChange = useCallback(async (event: { paths: string[] }) => {
+    const state = useFsStore.getState();
+    const currentFile = state.openFilePath;
+    const affected = currentFile && event.paths.some(p => p.endsWith(currentFile));
+
+    // Refresh the file tree
+    await state.refreshTree();
+
+    if (affected && !state.fileDirty) {
+      // File was modified externally, reload it
+      showToast('文件已被外部修改，已重新加载', 'info');
+      await openFile(state.openFilePath!);
+    } else if (affected && state.fileDirty) {
+      showToast('文件已被外部修改，保存时将覆盖外部更改', 'warning');
+    }
+  }, [showToast, openFile]);
+
+  useExternalChangeDetector(
+    activeFsProject?.rootPath ?? null,
+    handleExternalChange,
+  );
+
+  // Session persistence
+  const currentSessionData = useMemo(() => ({
+    lastOpenFilePath: openFilePath,
+    openFilePaths: openFilePath ? [openFilePath] : [],
+  }), [openFilePath]);
+
+  const handleSessionRestore = useCallback(async (state: import('./types/fs').SessionState) => {
+    if (state.lastOpenFilePath && activeFsProject) {
+      try {
+        await openFile(state.lastOpenFilePath);
+        showToast(`已恢复上次位置: ${state.lastOpenFilePath}`, 'info');
+      } catch {
+        // File may have been deleted
+      }
+    }
+  }, [activeFsProject, openFile, showToast]);
+
+  useSessionPersistence(
+    activeFsProject?.rootPath ?? null,
+    isFsMode ? currentSessionData : null,
+    handleSessionRestore,
+  );
 
   // ── Derived state ──
   const currentObject = useMemo(
@@ -317,17 +523,6 @@ function AppInner() {
     }
   }, [showToast]);
 
-  // ── Auto-save ──
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const triggerAutoSave = useCallback(() => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    setSaveStatus('unsaved');
-    saveTimerRef.current = setTimeout(() => {
-      setSaveStatus('saving');
-      setTimeout(() => { setSaveStatus('saved'); }, 800);
-    }, 500);
-  }, []);
-
   // ── Helpers ──
   function mapDTOtoProject(dto: api.ProjectDTO): Project {
     let gradient: [string, string] = ['#6366f1', '#8b5cf6'];
@@ -369,9 +564,20 @@ function AppInner() {
       <div className="app-layout">
         <Bookshelf
           projects={projects}
+          fsProjects={fsProjects}
           onEnterProject={handleEnterProject}
+          onEnterFsProject={handleOpenFsProject}
           onCreateProject={() => setShowCreationWizard(true)}
+          onCreateFsProject={() => setShowFsCreateDialog(true)}
+          onOpenDirectory={() => {
+            const dirPath = prompt('输入已有作品目录的完整路径:');
+            if (dirPath) {
+              const name = dirPath.split(/[\\/]/).pop() || '作品';
+              handleOpenFsProject(dirPath, name);
+            }
+          }}
           onRefreshProjects={refreshProjects}
+          onExportToFs={handleExportToFs}
         />
 
         {showCreationWizard && (
@@ -382,6 +588,21 @@ function AppInner() {
             }
             onCancel={() => setShowCreationWizard(false)}
           />
+        )}
+
+        {/* FS Create Dialog */}
+        {showFsCreateDialog && (
+          <div className="modal-overlay" onClick={() => setShowFsCreateDialog(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>创建本地项目</h3>
+              <FsCreateForm
+                onConfirm={(name, rootPath, genre) =>
+                  handleCreateFsProject(name, rootPath, genre)
+                }
+                onCancel={() => setShowFsCreateDialog(false)}
+              />
+            </div>
+          </div>
         )}
 
         <GlobalSearch
@@ -403,15 +624,32 @@ function AppInner() {
 
       {/* Top Bar */}
       <header className="glyph-topbar">
-        <button
-          className="glyph-topbar-btn"
-          onClick={handleBackToBookshelf}
-          title="返回书架"
-        >
-          <BookOpen size={18} />
-        </button>
-
-        <span className="glyph-topbar-title">{activeBookTitle}</span>
+        {isFsMode ? (
+          <>
+            <button
+              className="glyph-topbar-btn"
+              onClick={handleBackFromFsProject}
+              title="返回书架"
+            >
+              <BookOpen size={18} />
+            </button>
+            <span className="glyph-topbar-title">
+              <FolderOpen size={16} style={{ marginRight: 6, opacity: 0.6 }} />
+              {activeFsProject?.name || activeBookTitle}
+            </span>
+          </>
+        ) : (
+          <>
+            <button
+              className="glyph-topbar-btn"
+              onClick={handleBackToBookshelf}
+              title="返回书架"
+            >
+              <BookOpen size={18} />
+            </button>
+            <span className="glyph-topbar-title">{activeBookTitle}</span>
+          </>
+        )}
 
         <div className="glyph-topbar-spacer" />
 
@@ -423,48 +661,83 @@ function AppInner() {
         >
           {focusMode ? <Minimize size={18} /> : <Maximize size={18} />}
         </button>
-
       </header>
 
       {/* Main area */}
       <div className="glyph-workspace">
         {!focusMode && (
           <aside className="glyph-sidebar">
-            <DocOutline
-              allObjects={objects}
-              currentObjectId={selectedObjectId}
-              currentObjectContent={currentObject?.content}
-              onNavigate={onNavigate}
-              onCreateObject={onCreateObject}
-              onReorderOutline={onReorderOutline}
-            />
+            {isFsMode ? (
+              <FileTree
+                onFileSelect={handleFsFileSelect}
+              />
+            ) : (
+              <DocOutline
+                allObjects={objects}
+                currentObjectId={selectedObjectId}
+                currentObjectContent={currentObject?.content}
+                onNavigate={onNavigate}
+                onCreateObject={onCreateObject}
+                onReorderOutline={onReorderOutline}
+              />
+            )}
           </aside>
         )}
 
         <main className={`glyph-main ${focusMode ? 'glyph-main-focus' : ''}`}>
-          <DocumentView
-            currentObject={currentObject}
-            allObjects={objects}
-            allBoardTabs={[]}
-            onUpdateObject={onUpdateObject}
-            onNavigate={onNavigate}
-            onAddToBoard={() => {}}
-            onLockObject={() => {}}
-            onDiscardObject={() => {}}
-            onCreateObject={onCreateObject}
-            saveStatus={saveStatus}
-            onTriggerSave={triggerAutoSave}
-          />
+          {isFsMode ? (
+            <FsDocumentView
+              content={fileContent}
+              filePath={openFilePath}
+              fileName={openFileName}
+              isDirty={fileDirty}
+              onContentChange={handleFsFileContentChange}
+              onSave={saveCurrentFile}
+            />
+          ) : (
+            <DocumentView
+              currentObject={currentObject}
+              allObjects={objects}
+              allBoardTabs={[]}
+              onUpdateObject={onUpdateObject}
+              onNavigate={onNavigate}
+              onAddToBoard={() => {}}
+              onLockObject={() => {}}
+              onDiscardObject={() => {}}
+              onCreateObject={onCreateObject}
+              saveStatus={saveStatus}
+              onTriggerSave={triggerAutoSave}
+            />
+          )}
         </main>
+
+        {/* AI Panel — always visible when a project is open */}
+        {!focusMode && (
+          <aside className="glyph-ai-sidebar">
+            <FsAiPanel
+              project={activeFsProject || {
+                projectId: activeBookId || '',
+                name: activeBookTitle,
+                rootPath: '',
+                genre: '',
+                createdAt: 0,
+                lastOpenedAt: 0,
+                updatedAt: 0,
+              }}
+              currentFilePath={openFilePath}
+              currentFileContent={fileContent}
+            />
+          </aside>
+        )}
       </div>
 
       {/* Status Bar */}
       <StatusBar
-        saveStatus={saveStatus}
-        wordCount={currentObject ? countWords(currentObject.content || '') : 0}
-        totalProjectWordCount={totalWordCount}
-        linkCount={wikiLinksCount}
-        onRetrySave={() => { syncManager.retryFailed(); }}
+        saveStatus={isFsMode ? (fileDirty ? 'unsaved' : 'saved') : saveStatus}
+        wordCount={isFsMode ? (fileContent ? countWords(fileContent) : 0) : (currentObject ? countWords(currentObject.content || '') : 0)}
+        totalProjectWordCount={isFsMode ? 0 : totalWordCount}
+        linkCount={isFsMode ? 0 : wikiLinksCount}
+        onRetrySave={() => { if (isFsMode) saveCurrentFile(); else syncManager.retryFailed(); }}
         className={focusMode ? 'status-bar-focus' : ''}
       />
 

@@ -34,3 +34,6 @@ tokio = { version = "1", features = ["full"] }
 futures-util = "0.3"
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors"] }
+notify = { version = "7", features = ["macos_kqueue"] }
+walkdir = "2"
+tempfile = "3"

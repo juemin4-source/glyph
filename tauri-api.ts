@@ -9,6 +9,14 @@ import type {
   CanvasTabStateResponse,
 } from './types/world';
 import type { PipelineState } from './docs/contracts/project.contract';
+import type {
+  FsProject,
+  DirEntry,
+  SessionState,
+  CreateFsProjectOutput,
+  ExportToFsResult,
+  ContentSearchResult,
+} from './types/fs';
 
 // ══════════════════════════════════════════
 //  Project API
@@ -157,4 +165,143 @@ export function getPipelineState(projectId: string): Promise<PipelineState> {
 
 export function savePipelineState(state: PipelineState): Promise<PipelineState> {
   return invoke('save_pipeline_state', { input: { state } });
+}
+
+// ══════════════════════════════════════════
+//  Gate A: Filesystem Project API
+// ══════════════════════════════════════════
+
+export function createFsProject(
+  name: string,
+  rootPath: string,
+  genre?: string,
+): Promise<CreateFsProjectOutput> {
+  return invoke('create_fs_project', { name, rootPath, genre });
+}
+
+export function openFsProject(rootPath: string): Promise<FsProject> {
+  return invoke('open_fs_project', { rootPath });
+}
+
+export function listFsProjects(): Promise<FsProject[]> {
+  return invoke('list_fs_projects');
+}
+
+export function removeFsProject(projectId: string): Promise<void> {
+  return invoke('remove_fs_project', { projectId });
+}
+
+// ══════════════════════════════════════════
+//  Gate B: Content Search
+// ══════════════════════════════════════════
+
+export function searchFileContent(
+  projectRoot: string,
+  query: string,
+  maxResults?: number,
+  filePattern?: string,
+): Promise<ContentSearchResult> {
+  return invoke('search_file_content', { projectRoot, query, maxResults, filePattern });
+}
+
+// ══════════════════════════════════════════
+//  Gate A: File/Directory Operations
+// ══════════════════════════════════════════
+
+export function listDirectory(
+  projectRoot: string,
+  subPath?: string,
+): Promise<DirEntry[]> {
+  return invoke('list_directory', { projectRoot, subPath });
+}
+
+export function readFile(
+  projectRoot: string,
+  path: string,
+): Promise<string> {
+  return invoke('read_file', { projectRoot, path });
+}
+
+export function writeFile(
+  projectRoot: string,
+  path: string,
+  content: string,
+): Promise<void> {
+  return invoke('write_file', { projectRoot, path, content });
+}
+
+export function createFile(
+  projectRoot: string,
+  path: string,
+): Promise<void> {
+  return invoke('create_file', { projectRoot, path });
+}
+
+export function createDirectory(
+  projectRoot: string,
+  path: string,
+): Promise<void> {
+  return invoke('create_directory', { projectRoot, path });
+}
+
+export function renameFile(
+  projectRoot: string,
+  oldPath: string,
+  newPath: string,
+): Promise<void> {
+  return invoke('rename_file', { projectRoot, oldPath, newPath });
+}
+
+export function deleteFile(
+  projectRoot: string,
+  path: string,
+): Promise<void> {
+  return invoke('delete_file', { projectRoot, path });
+}
+
+export function deleteDirectory(
+  projectRoot: string,
+  path: string,
+): Promise<void> {
+  return invoke('delete_directory', { projectRoot, path });
+}
+
+// ══════════════════════════════════════════
+//  Gate A: Session State
+// ══════════════════════════════════════════
+
+export function getSessionState(
+  projectRoot: string,
+): Promise<SessionState> {
+  return invoke('get_session_state', { projectRoot });
+}
+
+export function saveSessionState(
+  projectRoot: string,
+  state: SessionState,
+): Promise<void> {
+  return invoke('save_session_state', { projectRoot, state });
+}
+
+// ══════════════════════════════════════════
+//  Gate A: File Watcher
+// ══════════════════════════════════════════
+
+export function watchProject(projectRoot: string): Promise<void> {
+  return invoke('watch_project', { projectRoot });
+}
+
+export function unwatchProject(projectRoot: string): Promise<void> {
+  return invoke('unwatch_project', { projectRoot });
+}
+
+// ══════════════════════════════════════════
+//  Gate A: Migration
+// ══════════════════════════════════════════
+
+export function exportToFsProject(
+  projectId: string,
+  outputPath: string,
+): Promise<ExportToFsResult> {
+  return invoke('export_to_fs_project', { projectId, outputPath });
 }
