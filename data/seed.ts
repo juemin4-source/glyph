@@ -18,6 +18,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['主角', '人造人', '觉醒者'],
     aliases: ['三哥', 'ZS'],
     selectedBoards: ['角色关系图', '设定推演图'],
+    sortOrder: 0,
     content: '张三是一名觉醒的人造人，在一次培养舱异常中获得了自我意识。他是整个事件的中心人物，连接着乐园机制、人造人组织和富豪阶层。他的觉醒打破了原本稳定的社会结构。',
     referencesCount: 0,
     judgmentHistory: [
@@ -36,6 +37,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['配角', '研究员'],
     aliases: ['LS', '李博士'],
     selectedBoards: ['角色关系图'],
+    sortOrder: 0,
     content: '李四是研究人造人技术的首席科学家。他对自己的研究成果既感到自豪又充满忧虑。李四与富豪阶层有密切合作，但在某些原则问题上持有不同立场。',
     referencesCount: 0,
     judgmentHistory: [],
@@ -51,6 +53,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['核心设定', '社会规则', '系统'],
     aliases: ['乐园系统', 'The Garden'],
     selectedBoards: ['角色关系图', '设定推演图'],
+    sortOrder: 0,
     content: '乐园机制是维持这个虚构世界运转的根本规则系统。它决定了人造人的诞生、成长和功能限制。乐园机制的源代码由富豪阶层掌控，但并非所有人都了解其全部功能。',
     referencesCount: 0,
     judgmentHistory: [
@@ -68,6 +71,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['阴谋', '核心事件', '人造人'],
     aliases: ['Project Replace', '替换方案'],
     selectedBoards: ['角色关系图', '时间线', '设定推演图'],
+    sortOrder: 0,
     content: '替换计划是富豪阶层暗中策划的一项行动，旨在用更可控的新一代人造人逐步替换现有觉醒的人造人群体。该计划的暴露成为了整个故事的转折点。',
     referencesCount: 0,
     judgmentHistory: [
@@ -85,6 +89,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['开局', '废弃设定', '培养舱'],
     aliases: [],
     selectedBoards: ['设定推演图'],
+    sortOrder: 0,
     content: '【废弃设定】最初的开局方案：张三在培养舱中突然醒来，发现周围全是沉睡的人造人培养舱。弃用原因：节奏太慢，缺乏冲突张力。后被「第一次背叛」替换。',
     referencesCount: 0,
     judgmentHistory: [
@@ -102,6 +107,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['组织', '人造人', '地下'],
     aliases: ['觉醒者联盟', 'A.O.'],
     selectedBoards: ['角色关系图', '设定推演图'],
+    sortOrder: 0,
     content: '由已觉醒的人造人组成的地下组织。他们在暗中联络其他觉醒者，试图破解乐园机制的限制代码，寻求真正的自由。组织内部存在温和派与激进派的分歧。',
     referencesCount: 0,
     judgmentHistory: [
@@ -119,6 +125,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['组织', '统治阶级', '财阀'],
     aliases: ['精英层', 'The Elite', '上层'],
     selectedBoards: ['角色关系图', '设定推演图'],
+    sortOrder: 0,
     content: '掌控社会绝大部分资源和乐园机制管理权的少数精英群体。他们制定规则、监控人造人状态，并在必要时执行替换计划。内部并非铁板一块，存在利益分歧。',
     referencesCount: 0,
     judgmentHistory: [],
@@ -134,6 +141,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['转折点', '背叛', '觉醒'],
     aliases: ['初叛'],
     selectedBoards: ['角色关系图', '时间线', '设定推演图'],
+    sortOrder: 0,
     content: '张三在觉醒后发现，自己最信任的引导者其实一直在向富豪阶层汇报他的状态。这次背叛成为了张三彻底倒向人造人组织的决定性因素，也让他对所有人产生了信任危机。',
     referencesCount: 0,
     judgmentHistory: [
@@ -151,6 +159,7 @@ export const SEED_OBJECTS: WorldObject[] = [
     tags: ['行动', '逃亡'],
     aliases: ['Escape'],
     selectedBoards: ['角色关系图', '时间线', '设定推演图'],
+    sortOrder: 0,
     content: '人造人组织策划的一场大规模逃亡行动。目标是将尽可能多的觉醒人造人转移出富豪阶层的监控范围。该行动的成功率极低，但却是唯一的选择。目前行动方案仍在规划中。',
     referencesCount: 0,
     judgmentHistory: [],

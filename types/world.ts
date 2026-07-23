@@ -67,6 +67,10 @@ export interface WorldObject {
   judgmentHistory: JudgmentRecord[];
   createdAt: number;
   updatedAt: number;
+  /** Glyph v0.1: Parent object ID for outline nesting (undefined = root level) */
+  parentId?: string | null;
+  /** Glyph v0.1: Sort order within parent for outline drag-reorder */
+  sortOrder?: number;
 }
 
 export interface Connection {

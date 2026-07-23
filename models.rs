@@ -49,6 +49,10 @@ pub struct WorldObject {
     pub judgment_history: Vec<JudgmentRecord>,
     pub created_at: i64,
     pub updated_at: i64,
+    /// Glyph v0.1: Parent object ID for outline nesting (None = root level)
+    pub parent_id: Option<String>,
+    /// Glyph v0.1: Sort order within parent for outline drag-reorder
+    pub sort_order: i64,
 }
 
 // 鈹€鈹€ Connection 鈹€鈹€
@@ -127,6 +131,8 @@ pub struct WorldObjectRow {
     pub references_count: i32,
     pub created_at: i64,
     pub updated_at: i64,
+    pub parent_id: Option<String>,
+    pub sort_order: i64,
 }
 
 impl WorldObjectRow {
@@ -146,6 +152,8 @@ impl WorldObjectRow {
             judgment_history: judgment_records,
             created_at: self.created_at,
             updated_at: self.updated_at,
+            parent_id: self.parent_id,
+            sort_order: self.sort_order,
         }
     }
 }

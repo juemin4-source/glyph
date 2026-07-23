@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useCallback, useRef, type ReactNode, type DragEvent } from 'react';
 import { Trash2, FileText, User, Lock, Search, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Hash, Globe } from 'lucide-react';
 import type { WorldObject, ObjectType } from '../types/world';
 
@@ -14,6 +14,8 @@ interface DocOutlineProps {
   currentObjectContent?: string;
   onNavigate: (name: string, id?: string) => void;
   onCreateObject?: (templateType: ObjectType) => void;
+  /** Glyph v0.1: Called when an outline item is dropped to reorder/nest */
+  onReorderOutline?: (objectId: string, newParentId: string | null, newSortOrder: number) => void;
 }
 
 interface GroupConfig {
@@ -101,9 +103,146 @@ function HeadingOutline({ headings }: { headings: HeadingItem[] }) {
   );
 }
 
-export default function DocOutline({ allObjects, currentObjectId, currentObjectContent, onNavigate, onCreateObject }: DocOutlineProps) {
+// ── Drag-and-drop helpers ──
+
+/** Data attributes stored in drag event */
+interface DragData {
+  objectId: string;
+  /** The group key this item was dragged from */
+  groupKey: string;
+}
+
+const DRAG_DATA_TYPE = 'application/x-glyph-outline-item';
+
+/**
+ * Build a sorted tree from flat objects list.
+ * Root items have parentId == null. Children are nested under their parent.
+ */
+function buildOutlineTree(objects: WorldObject[]): WorldObject[] {
+  const childrenMap = new Map<string | null, WorldObject[]>();
+  for (const obj of objects) {
+    const pid = obj.parentId ?? null;
+    if (!childrenMap.has(pid)) childrenMap.set(pid, []);
+    childrenMap.get(pid)!.push(obj);
+  }
+  // Sort each level by sort_order
+  for (const [, children] of childrenMap) {
+    children.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
+  // Flatten the tree in display order (root items first, then recursively children)
+  const result: WorldObject[] = [];
+  function traverse(parentId: string | null, depth: number) {
+    const children = childrenMap.get(parentId);
+    if (!children) return;
+    for (const child of children) {
+      result.push(child);
+      traverse(child.id, depth + 1);
+    }
+  }
+  traverse(null, 0);
+  return result;
+}
+
+/** Compute indent level for display purposes (not from parentId, since we flattened). */
+function getIndentLevel(object: WorldObject, allObjects: WorldObject[]): number {
+  let level = 0;
+  let current: WorldObject | undefined = object;
+  const visited = new Set<string>();
+  while (current?.parentId) {
+    if (visited.has(current.parentId)) break; // cycle guard
+    visited.add(current.parentId);
+    current = allObjects.find(o => o.id === current!.parentId);
+    level++;
+  }
+  return level;
+}
+
+// ── Sub-components ──
+
+function OutlineItem({
+  object,
+  indentLevel,
+  isActive,
+  hasChildren,
+  onNavigate,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  dragOverState,
+}: {
+  object: WorldObject;
+  indentLevel: number;
+  isActive: boolean;
+  hasChildren: boolean;
+  onNavigate: (name: string, id?: string) => void;
+  onDragStart: (e: DragEvent<HTMLDivElement>, objectId: string, groupKey: string) => void;
+  onDragOver: (e: DragEvent<HTMLDivElement>, objectId: string, zone: 'above' | 'below' | 'inside') => void;
+  onDragLeave: (e: DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: DragEvent<HTMLDivElement>, targetId: string, zone: 'above' | 'below' | 'inside') => void;
+  dragOverState: { targetId: string; zone: string } | null;
+}) {
+  const isDragOver = dragOverState?.targetId === object.id;
+  const dropZone = isDragOver ? dragOverState!.zone : null;
+  const baseLeftPad = 28; // base padding for root items
+  const leftPad = baseLeftPad + indentLevel * 16;
+
+  return (
+    <div
+      className={`
+        outline-item-wrapper
+        ${isActive ? 'active' : ''}
+        ${dropZone === 'above' ? 'drop-above' : ''}
+        ${dropZone === 'below' ? 'drop-below' : ''}
+        ${dropZone === 'inside' ? 'drop-inside' : ''}
+      `}
+      draggable
+      onDragStart={(e) => onDragStart(e, object.id, '')}
+      onDragOver={(e) => onDragOver(e, object.id, 'inside')}
+      onDragLeave={onDragLeave}
+      onDrop={(e) => onDrop(e, object.id, 'inside')}
+    >
+      {/* Indent guide lines (vertical lines for tree depth) */}
+      {indentLevel > 0 && (
+        <div className="outline-indent-guides" style={{ left: 20 }}>
+          {Array.from({ length: indentLevel }).map((_, i) => (
+            <div key={i} className="outline-indent-guide" style={{ left: i * 16 + 8 }} />
+          ))}
+        </div>
+      )}
+
+      {/* Ghost drop zones for above/below insertion */}
+      <div
+        className="outline-drop-zone outline-drop-above"
+        onDragOver={(e) => onDragOver(e, object.id, 'above')}
+        onDrop={(e) => onDrop(e, object.id, 'above')}
+      />
+      <div
+        className="outline-drop-zone outline-drop-below"
+        onDragOver={(e) => onDragOver(e, object.id, 'below')}
+        onDrop={(e) => onDrop(e, object.id, 'below')}
+      />
+
+      <div
+        className={`outline-item ${isActive ? 'active' : ''}`}
+        style={{ paddingLeft: leftPad }}
+        onClick={() => onNavigate(object.name, object.id)}
+        title={object.name}
+      >
+        <span className="outline-item-status">{statusIcon(object.status)}</span>
+        <span className="outline-item-name">{object.name}</span>
+        {hasChildren && <ChevronDown size={10} className="outline-children-indicator" />}
+      </div>
+    </div>
+  );
+}
+
+export default function DocOutline({ allObjects, currentObjectId, currentObjectContent, onNavigate, onCreateObject, onReorderOutline }: DocOutlineProps) {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [dragOverState, setDragOverState] = useState<{ targetId: string; zone: string } | null>(null);
+  const dragSourceRef = useRef<DragData | null>(null);
+  const dragCounterRef = useRef(0); // For tracking nested enter/leave
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
@@ -113,7 +252,7 @@ export default function DocOutline({ allObjects, currentObjectId, currentObjectC
     return GROUPS
       .map(g => ({
         ...g,
-        items: allObjects.filter(g.predicate).sort((a, b) => a.name.localeCompare(b.name, 'zh')),
+        items: allObjects.filter(g.predicate),
       }))
       .filter(g => g.items.length > 0);
   }, [allObjects]);
@@ -123,8 +262,96 @@ export default function DocOutline({ allObjects, currentObjectId, currentObjectC
     return parseHeadings(currentObjectContent);
   }, [currentObjectContent]);
 
+  // ── Drag handlers ──
+  const handleDragStart = useCallback((e: DragEvent<HTMLDivElement>, objectId: string, _groupKey: string) => {
+    dragSourceRef.current = { objectId, groupKey: _groupKey };
+    e.dataTransfer.setData(DRAG_DATA_TYPE, JSON.stringify(dragSourceRef.current));
+    e.dataTransfer.effectAllowed = 'move';
+    // Slight opacity feedback
+    const el = e.currentTarget as HTMLElement;
+    setTimeout(() => { el.style.opacity = '0.4'; }, 0);
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>, _targetId: string, _zone: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverState({ targetId: _targetId, zone: _zone });
+  }, []);
+
+  const handleDragLeave = useCallback((_e: DragEvent<HTMLDivElement>) => {
+    setDragOverState(null);
+  }, []);
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>, targetId: string, zone: string) => {
+    e.preventDefault();
+    setDragOverState(null);
+    // Reset source opacity
+    const items = document.querySelectorAll('.outline-item-wrapper[draggable]');
+    items.forEach(el => { (el as HTMLElement).style.opacity = '1'; });
+
+    if (!onReorderOutline) return;
+    const raw = e.dataTransfer.getData(DRAG_DATA_TYPE);
+    if (!raw) return;
+    let sourceData: DragData;
+    try { sourceData = JSON.parse(raw); } catch { return; }
+    if (!sourceData?.objectId || sourceData.objectId === targetId) return;
+
+    const draggedObj = allObjects.find(o => o.id === sourceData.objectId);
+    const targetObj = allObjects.find(o => o.id === targetId);
+    if (!draggedObj || !targetObj) return;
+
+    // Determine new parentId and sort_order based on drop zone
+    let newParentId: string | null;
+    let newSortOrder: number;
+
+    const sameParent = (a: WorldObject, b: WorldObject): boolean =>
+      (a.parentId ?? null) === (b.parentId ?? null);
+
+    if (zone === 'inside') {
+      // Drop inside target: make dragged item a child of target
+      newParentId = targetId;
+      // Count existing children of target to place at end
+      const siblings = allObjects.filter(o => (o.parentId ?? null) === targetId && o.id !== sourceData.objectId);
+      newSortOrder = siblings.length > 0 ? Math.max(...siblings.map(o => o.sortOrder ?? 0)) + 1 : 0;
+    } else if (zone === 'above') {
+      // Insert above target: same parent level, before target
+      newParentId = targetObj.parentId ?? null;
+      // Get all siblings at this level, sort by current sort_order
+      const siblings = allObjects
+        .filter(o => (o.parentId ?? null) === newParentId && o.id !== sourceData.objectId)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      const targetIdx = siblings.findIndex(o => o.id === targetId);
+      if (targetIdx <= 0) {
+        newSortOrder = 0;
+      } else {
+        newSortOrder = (siblings[targetIdx - 1]?.sortOrder ?? 0) + 1;
+      }
+    } else {
+      // below: same parent level, after target
+      newParentId = targetObj.parentId ?? null;
+      const siblings = allObjects
+        .filter(o => (o.parentId ?? null) === newParentId && o.id !== sourceData.objectId)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      const targetIdx = siblings.findIndex(o => o.id === targetId);
+      if (targetIdx < 0 || targetIdx >= siblings.length - 1) {
+        newSortOrder = (targetObj.sortOrder ?? 0) + 1;
+      } else {
+        newSortOrder = (siblings[targetIdx]?.sortOrder ?? 0) + 1;
+      }
+    }
+
+    onReorderOutline(sourceData.objectId, newParentId, newSortOrder);
+  }, [allObjects, onReorderOutline]);
+
+  const handleDragEnd = useCallback(() => {
+    dragSourceRef.current = null;
+    setDragOverState(null);
+    const items = document.querySelectorAll('.outline-item-wrapper[draggable]');
+    items.forEach(el => { (el as HTMLElement).style.opacity = '1'; });
+  }, []);
+
   return (
-    <div className={`doc-outline ${panelCollapsed ? 'collapsed' : ''}`}>
+    <div className={`doc-outline ${panelCollapsed ? 'collapsed' : ''}`} onDragEnd={handleDragEnd}>
       <div className="doc-outline-header">
         {!panelCollapsed && <span className="doc-outline-title">大纲</span>}
         <button className="doc-outline-toggle-btn" onClick={() => setPanelCollapsed(!panelCollapsed)} title={panelCollapsed ? '展开大纲' : '收起大纲'}>
@@ -151,12 +378,25 @@ export default function DocOutline({ allObjects, currentObjectId, currentObjectC
               </div>
               {!collapsedGroups[group.key] && (
                 <div className="outline-items">
-                  {group.items.map(item => (
-                    <div key={item.id} className={`outline-item ${currentObjectId === item.id ? 'active' : ''}`} onClick={() => onNavigate(item.name, item.id)} title={item.name}>
-                      <span className="outline-item-status">{statusIcon(item.status)}</span>
-                      <span className="outline-item-name">{item.name}</span>
-                    </div>
-                  ))}
+                  {group.items.map(item => {
+                    const indentLevel = getIndentLevel(item, allObjects);
+                    const hasChildren = allObjects.some(o => (o.parentId ?? null) === item.id);
+                    return (
+                      <OutlineItem
+                        key={item.id}
+                        object={item}
+                        indentLevel={indentLevel}
+                        isActive={currentObjectId === item.id}
+                        hasChildren={hasChildren}
+                        onNavigate={onNavigate}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        dragOverState={dragOverState}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>

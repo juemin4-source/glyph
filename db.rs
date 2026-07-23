@@ -1,5 +1,5 @@
 use rusqlite::{params, Connection, Result as SqlResult};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use crate::models::{
     CanvasStageState, CanvasTabState, CanvasTabStateRow, CharacterCard, Connection as ObjConnection,
@@ -28,8 +28,9 @@ use crate::models::{
     PacketDetailConfig, PacketDetailResponse, PacketDetailModeRecord,
 };
 
+#[derive(Clone)]
 pub struct Database {
-    pub conn: Mutex<Connection>,
+    pub conn: Arc<Mutex<Connection>>,
 }
 
 impl Database {
@@ -37,7 +38,7 @@ impl Database {
         let conn = Connection::open(db_path)?;
         conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")?;
         let db = Database {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
         };
         db.init_schema()?;
         Ok(db)
@@ -137,6 +138,8 @@ impl Database {
         init_ai_tables(&conn)?;
         // [v2.1.1-AI] Schema migration: add migrated_from_v1 column
         migrate_ai_provider_config_schema(&conn)?;
+        // [glyph-v0.1] Schema migration: add parent_id and sort_order columns
+        migrate_world_objects_outline_schema(&conn)?;
         // [v2.1.1-AI] Migrate v1 BYOK api_keys to v2 ai_provider_config
         migrate_v1_api_keys_to_v2(&conn)?;
         init_premise_steps_table(&conn)?;
@@ -255,8 +258,8 @@ impl Database {
             let mut stmt = conn.prepare(
                 "SELECT id, project_id, name, type, status, canon_level,
                         tags, aliases, selected_boards, content, references_count,
-                        created_at, updated_at
-                 FROM world_objects WHERE project_id = ? ORDER BY created_at",
+                        created_at, updated_at, parent_id, sort_order
+                 FROM world_objects WHERE project_id = ? ORDER BY sort_order, created_at",
             )?;
             let iter = stmt.query_map(params![project_id], |row| {
                 Ok(WorldObjectRow {
@@ -273,6 +276,8 @@ impl Database {
                     references_count: row.get(10)?,
                     created_at: row.get(11)?,
                     updated_at: row.get(12)?,
+                    parent_id: row.get(13)?,
+                    sort_order: row.get(14)?,
                 })
             })?;
             let mut rows = Vec::new();
@@ -298,7 +303,7 @@ impl Database {
             let mut stmt = conn.prepare(
                 "SELECT id, project_id, name, type, status, canon_level,
                         tags, aliases, selected_boards, content, references_count,
-                        created_at, updated_at
+                        created_at, updated_at, parent_id, sort_order
                  FROM world_objects WHERE id = ?",
             )?;
             let mut rows = stmt.query_map(params![id], |row| {
@@ -316,6 +321,8 @@ impl Database {
                     references_count: row.get(10)?,
                     created_at: row.get(11)?,
                     updated_at: row.get(12)?,
+                    parent_id: row.get(13)?,
+                    sort_order: row.get(14)?,
                 })
             })?;
             match rows.next() {
@@ -342,12 +349,14 @@ impl Database {
 
         conn.execute(
             "INSERT INTO world_objects (id, project_id, name, type, status, canon_level,
-             tags, aliases, selected_boards, content, references_count, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+             tags, aliases, selected_boards, content, references_count, created_at, updated_at,
+             parent_id, sort_order)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             params![
                 object.id, object.project_id, object.name, object.object_type,
                 object.status, object.canon_level, tags_json, aliases_json, boards_json,
                 object.content, object.references_count, now, now,
+                object.parent_id, object.sort_order,
             ],
         )?;
 
@@ -380,6 +389,8 @@ impl Database {
             judgment_history: object.judgment_history.clone(),
             created_at: now,
             updated_at: now,
+            parent_id: object.parent_id.clone(),
+            sort_order: object.sort_order,
         })
     }
 
@@ -392,12 +403,24 @@ impl Database {
         conn.execute(
             "UPDATE world_objects SET name=?1, type=?2, status=?3, canon_level=?4,
              tags=?5, aliases=?6, selected_boards=?7, content=?8, references_count=?9,
+             parent_id=?12, sort_order=?13,
              updated_at=?10 WHERE id=?11",
             params![
                 object.name, object.object_type, object.status, object.canon_level,
                 tags_json, aliases_json, boards_json, object.content, object.references_count,
-                now, object.id,
+                now, object.id, object.parent_id, object.sort_order,
             ],
+        )?;
+        Ok(())
+    }
+
+    /// [glyph-v0.1] Update only the outline position (parent_id + sort_order) of a world object.
+    pub fn update_outline_order(&self, object_id: &str, parent_id: Option<&str>, sort_order: i64) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        let now = chrono::Utc::now().timestamp_millis();
+        conn.execute(
+            "UPDATE world_objects SET parent_id=?1, sort_order=?2, updated_at=?3 WHERE id=?4",
+            params![parent_id, sort_order, now, object_id],
         )?;
         Ok(())
     }
@@ -1268,12 +1291,14 @@ impl Database {
                 conn.execute(
                     "INSERT INTO world_objects
                      (id, project_id, name, type, status, canon_level,
-                      tags, aliases, selected_boards, content, references_count, created_at, updated_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                      tags, aliases, selected_boards, content, references_count,
+                      parent_id, sort_order, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?14, ?15, ?12, ?13)",
                     params![
                         id_map[&obj.id], new_project_id, obj.name, obj.object_type,
                         obj.status, obj.canon_level, tags_json, aliases_json, boards_json,
                         obj.content, obj.references_count, obj.created_at, obj.updated_at,
+                        obj.parent_id, obj.sort_order,
                     ],
                 ).map_err(|e| format!("IO_ERROR: {}", e))?;
 
@@ -1392,11 +1417,13 @@ impl Database {
                 let conn = self.conn.lock().unwrap();
                 conn.execute(
                     "INSERT INTO world_objects (id, project_id, name, type, status, canon_level,
-                     tags, aliases, selected_boards, content, references_count, created_at, updated_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                     tags, aliases, selected_boards, content, references_count,
+                     parent_id, sort_order, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?14, ?15, ?12, ?13)",
                     params![
                         obj_id, project_id, name, "术语", "草稿", "草案正典",
                         "[]", "[]", "[]", content, 0i32, now, now,
+                        Option::<String>::None, 0i64,
                     ],
                 ).map_err(|e| format!("IO_ERROR: {}", e))?;
             }
@@ -1877,6 +1904,35 @@ pub fn migrate_ai_provider_config_schema(conn: &Connection) -> SqlResult<()> {
             "ALTER TABLE ai_provider_config ADD COLUMN migrated_from_v1 INTEGER NOT NULL DEFAULT 0;"
         )?;
     }
+    Ok(())
+}
+
+/// [glyph-v0.1] Migrate world_objects schema to add parent_id and sort_order columns.
+pub fn migrate_world_objects_outline_schema(conn: &Connection) -> SqlResult<()> {
+    let has_parent_id: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('world_objects') WHERE name='parent_id'",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(false);
+
+    if !has_parent_id {
+        conn.execute_batch(
+            "ALTER TABLE world_objects ADD COLUMN parent_id TEXT DEFAULT NULL;"
+        )?;
+    }
+
+    let has_sort_order: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('world_objects') WHERE name='sort_order'",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(false);
+
+    if !has_sort_order {
+        conn.execute_batch(
+            "ALTER TABLE world_objects ADD COLUMN sort_order INTEGER DEFAULT 0;"
+        )?;
+    }
+
     Ok(())
 }
 
@@ -3612,7 +3668,7 @@ mod tests {
         let conn = Connection::open(":memory:").unwrap();
         conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
         let db = Database {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
         };
         db.init_schema().unwrap();
         db

@@ -10,6 +10,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { TextSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { WikiLink } from '../extensions/WikiLink';
@@ -137,19 +138,26 @@ export default function DocumentView({
         'data-placeholder': '在此输入文档内容... 使用 [[对象名]] 引用其他对象',
       },
       handleDOMEvents: {
-        keydown: (_, v) => enableKeyboardNavigation(v),
+        keydown: (_, v) => {
+          if (v.isComposing || v.keyCode === 229) return false;
+          return enableKeyboardNavigation(v);
+        },
+        mousedown: (view, event) => {
+          const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (pos) {
+            view.dispatch(view.state.tr.setSelection(
+              new TextSelection(view.state.doc.resolve(pos.pos))
+            ));
+          }
+          return false;
+        },
       },
     },
     onUpdate: ({ editor: ed }) => {
       if (currentObject) {
-        // In v1.2 Markdown-first, serialize to Markdown
-        try {
-          const md = ed.getText(); // Fallback to text
-          onUpdateObject(currentObject.id, { content: md });
-        } catch {
-          // If markdown extension not available, store HTML
-          onUpdateObject(currentObject.id, { content: ed.getHTML() });
-        }
+        // Serialize to HTML for WYSIWYG fidelity
+        const html = ed.getHTML();
+        onUpdateObject(currentObject.id, { content: html });
         setContentDirty(true);
         if (onTriggerSave) onTriggerSave();
       }
@@ -530,20 +538,6 @@ export default function DocumentView({
           </div>
         )}
         {renderEditorContent()}
-
-        <div className="word-count">
-          字数: {wordCount.toLocaleString()} | [[链接]]: {wikiLinks.length}
-          {wikiLinks.length > 0 && (
-            <span style={{ marginLeft: 8 }}>
-              | 双击 [[链接]] 跳转
-            </span>
-          )}
-          {saveStatus && (
-            <span style={{ marginLeft: 12, color: saveStatus === 'saved' ? '#4CAF50' : saveStatus === 'failed' ? '#f44336' : '#888' }}>
-              {saveStatus === 'saved' ? '已保存' : saveStatus === 'saving' ? '保存中...' : saveStatus === 'failed' ? '保存失败' : saveStatus === 'offline' ? '离线' : ''}
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Create bubble for missing wiki links */}

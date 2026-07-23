@@ -476,6 +476,8 @@ export default function AIChat({ allObjects, activeBookId, onNavigate, onUpdateO
         judgmentHistory: [],
         createdAt: now,
         updatedAt: now,
+        parentId: null,
+        sortOrder: 0,
       };
       try {
         await api.createWorldObject(newObj);

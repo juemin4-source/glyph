@@ -69,6 +69,7 @@ function AppInner() {
   // ── UI state ──
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [showOutline, setShowOutline] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
@@ -109,6 +110,11 @@ function AppInner() {
       if ((isCtrl && e.key === 'z' && e.shiftKey) || (isCtrl && e.key === 'Z')) {
         e.preventDefault();
         handleRedo();
+      }
+      // Glyph v0.1: Ctrl+Shift+F toggles focus mode
+      if (isCtrl && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setFocusMode(prev => !prev);
       }
     };
     window.addEventListener('keydown', handler);
@@ -164,6 +170,17 @@ function AppInner() {
     () => objects.find(o => o.id === selectedObjectId) || null,
     [objects, selectedObjectId]
   );
+
+  const wikiLinksCount = useMemo(() => {
+    if (!currentObject?.content) return 0;
+    const matches = currentObject.content.match(/\[\[([^\]]+)\]\]/g);
+    return matches ? matches.length : 0;
+  }, [currentObject?.content]);
+
+  // Glyph v0.1: Total word count across all objects in the project
+  const totalWordCount = useMemo(() => {
+    return objects.reduce((sum, obj) => sum + countWords(obj.content || ''), 0);
+  }, [objects]);
 
   // ── Load project data ──
   const loadProjectData = useCallback(async (projectId: string) => {
@@ -255,6 +272,7 @@ function AppInner() {
       tags: [], aliases: [], selectedBoards: [],
       content: '', referencesCount: 0, judgmentHistory: [],
       createdAt: now, updatedAt: now,
+      parentId: null, sortOrder: 0,
     };
     pushChangelog({ timestamp: now, action: 'create_object', objectId: newObj.id, snapshot: newObj });
     setObjects(prev => [...prev, newObj]);
@@ -284,6 +302,21 @@ function AppInner() {
   const onSelectObject = useCallback((id: string | null) => {
     setSelectedObjectId(id);
   }, []);
+
+  // ── Glyph v0.1: Outline reorder handler ──
+  const onReorderOutline = useCallback(async (objectId: string, newParentId: string | null, newSortOrder: number) => {
+    // Optimistic local update
+    setObjects(prev => prev.map(o =>
+      o.id === objectId ? { ...o, parentId: newParentId, sortOrder: newSortOrder, updatedAt: Date.now() } as WorldObject : o
+    ));
+    // Persist to backend
+    try {
+      await api.reorderOutline(objectId, newParentId, newSortOrder);
+    } catch (e) {
+      console.error('Failed to reorder outline', e);
+      showToast('排序保存失败', 'error');
+    }
+  }, [showToast]);
 
   // ── Auto-save ──
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -364,7 +397,7 @@ function AppInner() {
 
   // ── Workspace ──
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${focusMode ? 'focus-mode' : ''}`}>
       {isOffline && (
         <div className="offline-banner">离线 ● 当前处于离线状态</div>
       )}
@@ -385,6 +418,15 @@ function AppInner() {
 
         <button
           className="glyph-topbar-btn"
+          onClick={() => setFocusMode(v => !v)}
+          title={`专注模式 (Ctrl+Shift+F) ${focusMode ? '(已开启)' : ''}`}
+          style={{ color: focusMode ? 'var(--accent, #B7FF00)' : undefined }}
+        >
+          {focusMode ? '✎' : '📝'}
+        </button>
+
+        <button
+          className="glyph-topbar-btn"
           onClick={() => setShowOutline(v => !v)}
           title={showOutline ? '隐藏大纲' : '显示大纲'}
         >
@@ -395,7 +437,7 @@ function AppInner() {
 
       {/* Main area */}
       <div className="glyph-workspace">
-        {showOutline && (
+        {showOutline && !focusMode && (
           <aside className="glyph-sidebar">
             <DocOutline
               allObjects={objects}
@@ -403,11 +445,12 @@ function AppInner() {
               currentObjectContent={currentObject?.content}
               onNavigate={onNavigate}
               onCreateObject={onCreateObject}
+              onReorderOutline={onReorderOutline}
             />
           </aside>
         )}
 
-        <main className="glyph-main">
+        <main className={`glyph-main ${focusMode ? 'glyph-main-focus' : ''}`}>
           <DocumentView
             currentObject={currentObject}
             allObjects={objects}
@@ -428,8 +471,10 @@ function AppInner() {
       <StatusBar
         saveStatus={saveStatus}
         wordCount={currentObject ? countWords(currentObject.content || '') : 0}
-        linkCount={0}
+        totalProjectWordCount={totalWordCount}
+        linkCount={wikiLinksCount}
         onRetrySave={() => { syncManager.retryFailed(); }}
+        className={focusMode ? 'status-bar-focus' : ''}
       />
 
       {/* Modals */}

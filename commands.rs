@@ -80,6 +80,18 @@ pub fn delete_world_object(
     db.delete_world_object(&id).map_err(|e| e.to_string())
 }
 
+/// [glyph-v0.1] Reorder a world object in the outline (update parent_id and sort_order).
+#[tauri::command]
+pub fn reorder_outline(
+    db: State<'_, Database>,
+    object_id: String,
+    parent_id: Option<String>,
+    sort_order: i64,
+) -> Result<(), String> {
+    db.update_outline_order(&object_id, parent_id.as_deref(), sort_order)
+        .map_err(|e| e.to_string())
+}
+
 // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?//  JudgmentRecord Commands
 // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 #[tauri::command]

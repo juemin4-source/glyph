@@ -19,6 +19,10 @@ interface StatusBarProps {
   onSaveClick?: () => void;
   canonLabel?: string;
   lastUpdateText?: string;
+  /** Glyph v0.1: Total word count across entire project */
+  totalProjectWordCount?: number;
+  /** Glyph v0.1: Optional extra class name */
+  className?: string;
 }
 
 const STATUS_CONFIG: Record<SaveStatus, { text: ReactNode; color: string; cls: string }> = {
@@ -46,6 +50,8 @@ export default function StatusBar({
   linkCount = 0,
   canonLabel = '',
   lastUpdateText = '',
+  totalProjectWordCount,
+  className = '',
 }: StatusBarProps) {
   const config = STATUS_CONFIG[saveStatus] || STATUS_CONFIG.saved;
   const syncQueue = SYNC_QUEUE[saveStatus];
@@ -58,6 +64,7 @@ export default function StatusBar({
 
   return (
     <div
+      className={className}
       style={{
         height: 28,
         background: 'var(--bg-header, #0e0e0e)',
@@ -116,10 +123,15 @@ export default function StatusBar({
 
       {/* Right: metadata */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Glyph v0.1: Two-level word count */}
         <span>
-          字数:{' '}
+          本篇:{' '}
           <span style={{ color: 'var(--text-secondary, #a0a0a0)' }}>
             {wordCount.toLocaleString()}
+          </span>
+          {' · '}项目:{' '}
+          <span style={{ color: 'var(--text-secondary, #a0a0a0)' }}>
+            {(totalProjectWordCount ?? wordCount).toLocaleString()}
           </span>
         </span>
         <span style={{ color: 'var(--border-default, #2a2a2a)' }}>|</span>

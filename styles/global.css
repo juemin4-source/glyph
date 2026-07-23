@@ -53,7 +53,11 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #555; }
 
 /* ===== App Layout ===== */
-.app-layout { display: flex; flex-direction: column; height: 100vh; }
+.app-layout {
+  display: flex; flex-direction: column; height: 100vh;
+  user-select: none; /* UI 元素不可框选 */
+}
+.doc-editor, .editor-content, .doc-editor textarea { user-select: text; } /* 编辑器区域保持可选中 */
 
 /* ===== Glyph Top Bar ===== */
 .glyph-topbar {
@@ -307,6 +311,68 @@ body {
 .preview-content pre code { background: none; padding: 0; color: #ccc; }
 .preview-content a { color: #90CAF9; text-decoration: underline; cursor: pointer; }
 .preview-content a:hover { color: #64B5F6; }
+
+/* ===== Glyph v0.1: Focus Mode ===== */
+.focus-mode .glyph-sidebar { display: none; }
+.focus-mode .glyph-topbar-btn:first-child { display: none; }
+.focus-mode .glyph-topbar-title { display: none; }
+.focus-mode .glyph-topbar-spacer { display: none; }
+.glyph-main-focus { flex: 1; }
+.focus-mode .status-bar-focus { display: flex; }
+.status-bar-focus { }
+
+/* ===== Glyph v0.1: Drag-and-Drop Outline ===== */
+.outline-item-wrapper {
+  position: relative;
+  user-select: none;
+  transition: opacity 0.15s, background 0.15s;
+  cursor: grab;
+}
+.outline-item-wrapper:active { cursor: grabbing; }
+.outline-item-wrapper.active { background: #1a1a2e; }
+.outline-item-wrapper.drop-above .outline-drop-above { display: block; }
+.outline-item-wrapper.drop-below .outline-drop-below { display: block; }
+.outline-item-wrapper.drop-inside {
+  outline: 2px solid #B7FF00;
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+/* Ghost drop zones (hidden by default, shown on drag-over) */
+.outline-drop-zone {
+  position: absolute;
+  left: 0; right: 0;
+  height: 6px;
+  z-index: 10;
+  display: none;
+  pointer-events: auto;
+}
+.outline-drop-above { top: -3px; }
+.outline-drop-below { bottom: -3px; }
+.outline-drop-above.active-drop, .outline-drop-below.active-drop {
+  display: block;
+  background: rgba(183,255,0,0.3);
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Indent guide lines */
+.outline-indent-guides {
+  position: absolute;
+  top: 0; bottom: 0;
+  pointer-events: none;
+}
+.outline-indent-guide {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.06);
+}
+.outline-children-indicator {
+  color: #555;
+  margin-left: auto;
+  flex-shrink: 0;
+}
 
 /* ===== Loading Spinner ===== */
 .app-loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; gap: 12px; }

@@ -76,6 +76,14 @@ export function deleteWorldObject(id: string): Promise<void> {
 }
 
 // ══════════════════════════════════════════
+//  Glyph v0.1: Outline Reorder API
+// ══════════════════════════════════════════
+
+export function reorderOutline(objectId: string, parentId: string | null, sortOrder: number): Promise<void> {
+  return invoke('reorder_outline', { objectId, parentId, sortOrder });
+}
+
+// ══════════════════════════════════════════
 //  JudgmentRecord API
 // ══════════════════════════════════════════
 

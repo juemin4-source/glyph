@@ -1,5 +1,6 @@
 ﻿mod ai;
 mod ai_commands;
+mod api;
 mod chapter_packet_commands;
 mod commands;
 mod db;
@@ -48,6 +49,9 @@ pub fn run() {
                 }
             }
 
+            #[cfg(debug_assertions)]
+            api::start_api_server(database.clone());
+
             app.manage(database);
             Ok(())
         })
@@ -65,6 +69,8 @@ pub fn run() {
             commands::create_world_object,
             commands::update_world_object,
             commands::delete_world_object,
+            // [glyph-v0.1] Outline drag-reorder
+            commands::reorder_outline,
             // JudgmentRecord
             commands::list_judgment_records,
             commands::append_judgment_record,
