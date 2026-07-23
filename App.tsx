@@ -1,58 +1,64 @@
-/**
- * Glyph App v0.1 — Writing-first experience.
- *
- * Screens:
- *   1. Bookshelf (project list)
- *   2. Workspace: TopBar + [DocOutline | DocumentView] + StatusBar
- *
- * Explicitly NOT in this version:
- *   - AI (Chat, CanvasAiBar, Settings)
- *   - Writing pipeline (5-stage canvas, PipelineNav)
- *   - Setting Collection
- *   - Judgment Records
- *   - Canvas board view
- *   - Quick Draft, Feedback
- */
-
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { BookOpen, Maximize, Minimize, FolderOpen, Plus } from 'lucide-react';
-import type { WorldObject, ObjectType, ObjectStatus, CanonLevel, SaveStatus, ChangelogEntry } from './types/world';
-import { CANON_LEVELS } from './types/world';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BookOpen, Maximize, Minimize } from 'lucide-react';
 import type { Project } from './types/world';
-import type { FsProject } from './types/fs';
-
+import type { FileSyncStatus, FsProject } from './types/fs';
 import * as api from './tauri-api';
-import { countWords, isHtmlContent, htmlToMarkdown } from './utils/markdown';
-import { SyncManager } from './lib/SyncManager';
-import { Changelog } from './lib/Changelog';
-
-import Bookshelf from './components/Bookshelf';
-import DocumentView from './components/DocumentView';
-import DocOutline from './components/DocOutline';
-import StatusBar from './components/StatusBar';
-import CreationWizard from './components/CreationWizard';
-import GlobalSearch from './components/GlobalSearch';
+import { countWords } from './utils/markdown';
+import { ToastProvider, useToast } from './components/Toast';
+import FsWelcome from './components/FsWelcome';
+import FsProjectCreateDialog from './components/FsProjectCreateDialog';
 import FileTree from './components/FileTree';
 import FsDocumentView from './components/FsDocumentView';
-import FsCreateForm from './components/FsCreateForm';
-import FsAiPanel from './components/FsAiPanel';
-import { ToastProvider, useToast } from './components/Toast';
 import { useFsStore } from './stores/fsStore';
 import { useExternalChangeDetector } from './hooks/useExternalChangeDetector';
-import { useSessionPersistence } from './hooks/useSessionPersistence';
 
 import './styles/global.css';
 import './styles/variables.css';
 import './styles/editor.css';
-import './styles/ai.css';
 import './styles/fs.css';
 import './components/ui/design-tokens.css';
 
-// ── IDs ──
-function uid(): string { return `obj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
+function mapLegacyProject(dto: api.ProjectDTO): Project {
+  let gradient: [string, string] = ['#6366f1', '#8b5cf6'];
+  try {
+    const parsed = JSON.parse(dto.gradient);
+    if (Array.isArray(parsed) && parsed.length >= 2) gradient = [parsed[0], parsed[1]];
+  } catch {
+    // Keep the fallback cover colors. Migration does not depend on cover metadata.
+  }
+  return {
+    id: dto.id,
+    title: dto.name,
+    genre: dto.genre || '未分类',
+    status: (dto.status as Project['status']) || 'conceiving',
+    wordCount: dto.wordCount || 0,
+    gradient,
+  };
+}
 
-const syncManager = new SyncManager();
-const changelog = new Changelog();
+function safeFolderName(name: string): string {
+  return name.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').replace(/[. ]+$/g, '') || '未命名作品';
+}
+
+function joinPath(parent: string, child: string): string {
+  return `${parent.replace(/[\\/]+$/, '')}/${child}`;
+}
+
+function normalizeRoot(path: string): string {
+  const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '');
+  return /^[A-Za-z]:\//.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
+function statusLabel(status: FileSyncStatus): string {
+  switch (status) {
+    case 'clean': return '已保存';
+    case 'dirty': return '未保存';
+    case 'saving': return '正在保存';
+    case 'save-error': return '保存失败';
+    case 'conflict': return '外部冲突';
+    case 'missing': return '文件已丢失';
+  }
+}
 
 export default function App() {
   return (
@@ -64,700 +70,331 @@ export default function App() {
 
 function AppInner() {
   const { showToast } = useToast();
-
-  // ── Project state ──
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(true);
-  const [activeBookId, setActiveBookId] = useState<string | null>(null);
-  const [activeBookTitle, setActiveBookTitle] = useState('');
-  const [isFsMode, setIsFsMode] = useState(false);
-  const [showFsCreateDialog, setShowFsCreateDialog] = useState(false);
-
-  // ── Filesystem store ──
   const {
     fsProjects,
-    loadFsProjects,
-    initNewProject,
-    openProject: openFsProject,
-    closeProject: closeFsProject,
-    activeFsProject,
-    openFile,
+    loading,
+    error,
+    activeProject,
     openFilePath,
+    openFileName,
     fileContent,
-    fileDirty,
+    fileStatus,
+    externalConflict,
+    contentRevision,
+    viewport,
+    loadProjects,
+    createProject,
+    openProject,
+    closeProject,
+    removeProject,
     saveCurrentFile,
+    handleExternalChanges,
+    useExternalVersion,
+    overwriteExternalVersion,
+    saveConflictCopy,
+    saveMissingCopy,
     updateContent,
+    updateViewport,
+    persistSession,
+    clearError,
   } = useFsStore();
 
-  // ── Object state ──
-  const [objects, setObjects] = useState<WorldObject[]>([]);
-  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
-
-  // ── UI state ──
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+  const [legacyProjects, setLegacyProjects] = useState<Project[]>([]);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [showCreationWizard, setShowCreationWizard] = useState(false);
-  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
-  const [lastGenre, setLastGenre] = useState('科幻');
-  const [changelogEntries, setChangelogEntries] = useState<ChangelogEntry[]>([]);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── SyncManager ──
   useEffect(() => {
-    syncManager.startPing();
-    syncManager.onSaveStatusChange((status) => setSaveStatus(status));
-    return () => { syncManager.stopPing(); };
-  }, []);
+    void loadProjects();
+    void api.listProjects()
+      .then((projects) => setLegacyProjects(projects.map(mapLegacyProject)))
+      .catch(() => setLegacyProjects([]));
+  }, [loadProjects]);
 
-  // ── Online/offline ──
   useEffect(() => {
-    const goOnline = () => setIsOffline(false);
-    const goOffline = () => setIsOffline(true);
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
+    if (!error) return;
+    showToast(error, fileStatus === 'conflict' || fileStatus === 'missing' ? 'warning' : 'error');
+    clearError();
+  }, [error, fileStatus, showToast, clearError]);
+
+  useEffect(() => {
+    const root = activeProject?.rootPath;
+    if (!root) return;
+    void api.watchProject(root).catch((watchError) => {
+      console.warn('[watcher] failed to start', watchError);
+      showToast('无法监控外部文件变化', 'warning');
+    });
     return () => {
-      window.removeEventListener('online', goOnline);
-      window.removeEventListener('offline', goOffline);
+      void api.unwatchProject(root).catch(() => undefined);
     };
-  }, []);
+  }, [activeProject?.rootPath, showToast]);
 
-  // ── Keyboard shortcuts ──
+  const onExternalChange = useCallback(async (event: { projectRoot: string; paths: string[] }) => {
+    if (!activeProject || normalizeRoot(event.projectRoot) !== normalizeRoot(activeProject.rootPath)) return;
+    const result = await handleExternalChanges(event.paths);
+    if (result === 'reloaded') showToast('文件已被外部修改，已重新加载', 'info');
+    if (result === 'conflict') showToast('检测到外部修改，自动保存已暂停', 'warning');
+    if (result === 'missing') showToast('当前文件已被移动或删除', 'warning');
+  }, [activeProject, handleExternalChanges, showToast]);
+
+  useExternalChangeDetector(activeProject?.rootPath ?? null, onExternalChange);
+
+  // One owner for automatic saves. Conflict and missing states never auto-write.
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const isCtrl = e.ctrlKey || e.metaKey;
-      if (isCtrl && e.key === 'k') {
-        e.preventDefault();
-        setShowGlobalSearch(prev => !prev);
-      }
-      if (isCtrl && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      }
-      if ((isCtrl && e.key === 'z' && e.shiftKey) || (isCtrl && e.key === 'Z')) {
-        e.preventDefault();
-        handleRedo();
-      }
-      // Glyph v0.1: Ctrl+Shift+F toggles focus mode
-      if (isCtrl && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
-        e.preventDefault();
-        setFocusMode(prev => !prev);
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    if (fileStatus !== 'dirty') return;
+    autoSaveTimer.current = setTimeout(() => {
+      void saveCurrentFile();
+    }, 1_500);
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [fileStatus, fileContent, saveCurrentFile]);
+
+  // Session state is auxiliary and persisted independently from document content.
+  useEffect(() => {
+    if (!activeProject) return;
+    if (sessionTimer.current) clearTimeout(sessionTimer.current);
+    sessionTimer.current = setTimeout(() => void persistSession(), 700);
+    return () => {
+      if (sessionTimer.current) clearTimeout(sessionTimer.current);
+    };
+  }, [activeProject, openFilePath, viewport, persistSession]);
+
+  useEffect(() => {
+    if (!activeProject) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') void persistSession();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [activeProject, persistSession]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+
+    void import('@tauri-apps/api/window')
+      .then(async ({ getCurrentWindow }) => {
+        const appWindow = getCurrentWindow();
+        const stop = await appWindow.onCloseRequested(async (event) => {
+          const state = useFsStore.getState();
+          if (!state.activeProject) return;
+
+          event.preventDefault();
+          if (state.fileStatus === 'conflict' || state.fileStatus === 'missing') {
+            showToast('作品仍有未处理的外部冲突，请先保留或选择一个版本。', 'warning');
+            return;
+          }
+
+          if (state.fileStatus === 'dirty' || state.fileStatus === 'saving' || state.fileStatus === 'save-error') {
+            const saved = await state.saveCurrentFile();
+            if (!saved || useFsStore.getState().fileStatus !== 'clean') {
+              showToast('当前正文尚未安全保存，已取消关闭。', 'error');
+              return;
+            }
+          }
+
+          await useFsStore.getState().persistSession();
+          await appWindow.destroy();
+        });
+        if (disposed) stop();
+        else unlisten = stop;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [showToast]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        setFocusMode((value) => !value);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [objects, selectedObjectId]);
-
-  // ── Undo/Redo ──
-  const handleUndo = () => {
-    const entry = changelog.undo();
-    if (!entry) { showToast('没有可撤销的操作', 'info'); return; }
-    switch (entry.action) {
-      case 'delete_object':
-        setObjects(prev => [...prev, entry.snapshot as WorldObject]);
-        setSelectedObjectId(entry.objectId);
-        break;
-      case 'create_object':
-        setObjects(prev => prev.filter(o => o.id !== entry.objectId));
-        if (selectedObjectId === entry.objectId) setSelectedObjectId(null);
-        break;
-    }
-  };
-
-  const handleRedo = () => {
-    const entry = changelog.redo();
-    if (!entry) { showToast('没有可重做的操作', 'info'); return; }
-    switch (entry.action) {
-      case 'delete_object':
-        setObjects(prev => prev.filter(o => o.id !== entry.objectId));
-        if (selectedObjectId === entry.objectId) setSelectedObjectId(null);
-        break;
-      case 'create_object':
-        setObjects(prev => [...prev, entry.snapshot as WorldObject]);
-        setSelectedObjectId(entry.objectId);
-        break;
-    }
-  };
-
-  const pushChangelog = useCallback((entry: ChangelogEntry) => {
-    changelog.push(entry);
-    setChangelogEntries(prev => [...prev, entry]);
   }, []);
 
-  // ── Load projects on mount ──
-  useEffect(() => {
-    Promise.all([
-      Promise.resolve(api.listProjects?.() ?? [])
-        .then(dtos => setProjects(dtos.map(mapDTOtoProject)))
-        .catch(e => console.error('Failed to load projects', e)),
-      loadFsProjects().catch(e => console.error('Failed to load FS projects', e)),
-    ]).finally(() => setProjectsLoading(false));
-  }, []);
-
-  // ── Export SQLite project to FS ──
-  const handleExportToFs = useCallback(async (project: import('./types/world').Project) => {
-    const outputPath = window.prompt(
-      `将「${project.title}」导出为本地项目\n输入目标目录路径:`,
-      project.title,
-    );
-    if (!outputPath) return;
-
+  const handleOpenDirectory = useCallback(async () => {
+    const selected = await api.pickDirectory('选择已有作品目录');
+    if (!selected) return;
     try {
-      const { exportToFsProject } = await import('./tauri-api');
-      // Find the matching DTO (we need the original project ID from the DTO)
-      const dtos = await api.listProjects();
-      const match = dtos.find(d => d.name === project.title);
-      if (!match) {
-        showToast('找不到原始项目', 'error');
-        return;
-      }
-      const result = await exportToFsProject(match.id, outputPath);
-      // Refresh FS projects list
-      await loadFsProjects();
-      showToast(
-        `已导出为本地项目，共 ${result.fileCount} 个文件`,
-        'success',
-      );
-    } catch (e) {
-      console.error('Failed to export project', e);
-      showToast('导出失败', 'error');
+      await openProject(selected);
+      showToast('作品已接入，原有目录结构保持不变', 'success');
+    } catch (openError) {
+      showToast(`打开失败：${String(openError)}`, 'error');
     }
-  }, [showToast, loadFsProjects]);
+  }, [openProject, showToast]);
 
-  // ── FS project handlers ──
-  const startWatcher = useCallback(async (rootPath: string) => {
+  const handleOpenRecent = useCallback(async (project: FsProject) => {
     try {
-      const { watchProject } = await import('./tauri-api');
-      await watchProject(rootPath);
-    } catch (e) {
-      console.warn('[fs-watcher] Failed to start watcher:', e);
+      await openProject(project.rootPath);
+    } catch (openError) {
+      showToast(`无法打开最近项目：${String(openError)}`, 'error');
     }
-  }, []);
+  }, [openProject, showToast]);
 
-  const stopWatcher = useCallback(async (rootPath: string) => {
+  const handleCreate = useCallback(async (name: string, rootPath: string) => {
     try {
-      const { unwatchProject } = await import('./tauri-api');
-      await unwatchProject(rootPath);
-    } catch (e) {
-      console.warn('[fs-watcher] Failed to stop watcher:', e);
+      await createProject(name, rootPath);
+      setShowCreateDialog(false);
+      showToast(`作品“${name}”已创建`, 'success');
+    } catch (createError) {
+      showToast(`创建失败：${String(createError)}`, 'error');
     }
-  }, []);
+  }, [createProject, showToast]);
 
-  const handleOpenFsProject = useCallback(async (rootPath: string, projectName: string) => {
+  const handleMigrateLegacy = useCallback(async (project: Project) => {
+    const parent = await api.pickDirectory(`选择“${project.title}”的迁移位置`);
+    if (!parent) return;
+    const outputPath = joinPath(parent, safeFolderName(project.title));
     try {
-      await openFsProject(rootPath);
-      await startWatcher(rootPath);
-      setActiveBookId('fs-' + rootPath);
-      setActiveBookTitle(projectName);
-      setIsFsMode(true);
-    } catch (e) {
-      console.error('Failed to open FS project', e);
-      showToast('打开项目失败', 'error');
+      const result = await api.exportToFsProject(project.id, outputPath);
+      await loadProjects();
+      await openProject(result.project.rootPath);
+      showToast(`已迁移 ${result.fileCount} 个文件`, 'success');
+    } catch (migrationError) {
+      showToast(`迁移失败：${String(migrationError)}`, 'error');
     }
-  }, [openFsProject, startWatcher, showToast]);
+  }, [loadProjects, openProject, showToast]);
 
-  const handleCreateFsProject = useCallback(async (name: string, rootPath: string, genre?: string) => {
-    try {
-      const project = await initNewProject(name, rootPath, genre);
-      await startWatcher(project.rootPath);
-      setActiveBookId('fs-' + project.rootPath);
-      setActiveBookTitle(project.name);
-      setIsFsMode(true);
-      setShowFsCreateDialog(false);
-      showToast(`项目「${name}」已创建`, 'success');
-    } catch (e) {
-      console.error('Failed to create FS project', e);
-      showToast('创建项目失败', 'error');
+  const handleBack = useCallback(async () => {
+    const closed = await closeProject();
+    if (!closed) {
+      showToast('请先处理当前文件的保存失败或外部冲突', 'warning');
     }
-  }, [initNewProject, startWatcher, showToast]);
+  }, [closeProject, showToast]);
 
-  const handleBackFromFsProject = useCallback(async () => {
-    if (activeFsProject?.rootPath) {
-      await stopWatcher(activeFsProject.rootPath);
-    }
-    if (fileDirty) {
-      await saveCurrentFile();
-    }
-    await closeFsProject();
-    setIsFsMode(false);
-    setActiveBookId(null);
-    setActiveBookTitle('');
-  }, [activeFsProject, fileDirty, saveCurrentFile, closeFsProject, stopWatcher]);
+  const handleConflictCopy = useCallback(async () => {
+    const path = await saveConflictCopy();
+    if (path) showToast(`本地草稿已另存为 ${path}`, 'success');
+  }, [saveConflictCopy, showToast]);
 
-  const handleFsFileSelect = useCallback(async (filePath: string) => {
-    if (fileDirty) {
-      await saveCurrentFile();
-    }
-    await openFile(filePath);
-  }, [fileDirty, saveCurrentFile, openFile]);
+  const handleMissingCopy = useCallback(async () => {
+    const path = await saveMissingCopy();
+    if (path) showToast(`编辑缓存已保存为 ${path}`, 'success');
+  }, [saveMissingCopy, showToast]);
 
-  // ── Auto-save ──
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const triggerAutoSave = useCallback(() => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    setSaveStatus('unsaved');
-    saveTimerRef.current = setTimeout(() => {
-      setSaveStatus('saving');
-      setTimeout(() => { setSaveStatus('saved'); }, 800);
-    }, 500);
-  }, []);
+  const handleUseExternal = useCallback(() => {
+    const confirmed = window.confirm('使用外部版本后，织梦机中尚未保存的本地内容会被放弃。确认继续？');
+    if (confirmed) useExternalVersion();
+  }, [useExternalVersion]);
 
-  const handleFsFileContentChange = useCallback((content: string) => {
-    updateContent(content);
-    // Trigger auto-save timer
-    triggerAutoSave();
-  }, [updateContent, triggerAutoSave]);
+  const handleOverwriteExternal = useCallback(async () => {
+    const confirmed = window.confirm('确认用织梦机中的当前内容覆盖外部版本？系统不会再自动判断。');
+    if (!confirmed) return;
+    const ok = await overwriteExternalVersion();
+    if (ok) showToast('已用当前内容覆盖外部版本', 'success');
+  }, [overwriteExternalVersion, showToast]);
 
-  // FS mode auto-save timer
-  const fsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (isFsMode && fileDirty) {
-      if (fsSaveTimerRef.current) clearTimeout(fsSaveTimerRef.current);
-      fsSaveTimerRef.current = setTimeout(async () => {
-        const ok = await saveCurrentFile();
-        if (ok) {
-          setSaveStatus('saved');
-        }
-      }, 1500);
-    }
-    return () => {
-      if (fsSaveTimerRef.current) clearTimeout(fsSaveTimerRef.current);
-    };
-  }, [isFsMode, fileDirty, saveCurrentFile, fileContent]);
+  const wordCount = useMemo(() => countWords(fileContent || ''), [fileContent]);
 
-  // External change detection
-  const handleExternalChange = useCallback(async (event: { paths: string[] }) => {
-    const state = useFsStore.getState();
-    const currentFile = state.openFilePath;
-    const affected = currentFile && event.paths.some(p => p.endsWith(currentFile));
-
-    // Refresh the file tree
-    await state.refreshTree();
-
-    if (affected && !state.fileDirty) {
-      // File was modified externally, reload it
-      showToast('文件已被外部修改，已重新加载', 'info');
-      await openFile(state.openFilePath!);
-    } else if (affected && state.fileDirty) {
-      showToast('文件已被外部修改，保存时将覆盖外部更改', 'warning');
-    }
-  }, [showToast, openFile]);
-
-  useExternalChangeDetector(
-    activeFsProject?.rootPath ?? null,
-    handleExternalChange,
-  );
-
-  // Session persistence
-  const currentSessionData = useMemo(() => ({
-    lastOpenFilePath: openFilePath,
-    openFilePaths: openFilePath ? [openFilePath] : [],
-  }), [openFilePath]);
-
-  const handleSessionRestore = useCallback(async (state: import('./types/fs').SessionState) => {
-    if (state.lastOpenFilePath && activeFsProject) {
-      try {
-        await openFile(state.lastOpenFilePath);
-        showToast(`已恢复上次位置: ${state.lastOpenFilePath}`, 'info');
-      } catch {
-        // File may have been deleted
-      }
-    }
-  }, [activeFsProject, openFile, showToast]);
-
-  useSessionPersistence(
-    activeFsProject?.rootPath ?? null,
-    isFsMode ? currentSessionData : null,
-    handleSessionRestore,
-  );
-
-  // ── Derived state ──
-  const currentObject = useMemo(
-    () => objects.find(o => o.id === selectedObjectId) || null,
-    [objects, selectedObjectId]
-  );
-
-  const wikiLinksCount = useMemo(() => {
-    if (!currentObject?.content) return 0;
-    const matches = currentObject.content.match(/\[\[([^\]]+)\]\]/g);
-    return matches ? matches.length : 0;
-  }, [currentObject?.content]);
-
-  // Glyph v0.1: Total word count across all objects in the project
-  const totalWordCount = useMemo(() => {
-    return objects.reduce((sum, obj) => sum + countWords(obj.content || ''), 0);
-  }, [objects]);
-
-  // ── Load project data ──
-  const loadProjectData = useCallback(async (projectId: string) => {
-    try {
-      const objs = await api.listWorldObjects(projectId);
-      const migratedObjs = objs.map(obj =>
-        isHtmlContent(obj.content) ? { ...obj, content: htmlToMarkdown(obj.content) } : obj
-      );
-      setObjects(migratedObjs);
-      setSelectedObjectId(migratedObjs.length > 0 ? migratedObjs[0].id : null);
-      changelog.clear();
-      setChangelogEntries([]);
-    } catch (e) {
-      console.error('Failed to load project data', e);
-      showToast('加载项目数据失败', 'error');
-      setObjects([]);
-      setSelectedObjectId(null);
-    }
-  }, [showToast]);
-
-  // ── Refresh projects ──
-  const refreshProjects = useCallback(async () => {
-    try {
-      const dtos = await api.listProjects();
-      setProjects(dtos.map(mapDTOtoProject));
-    } catch (e) {
-      console.error('Failed to refresh projects', e);
-      showToast('刷新项目列表失败', 'error');
-    }
-  }, [showToast]);
-
-  // ── Enter/leave project ──
-  const handleEnterProject = useCallback(async (project: Project) => {
-    setActiveBookId(project.id);
-    setActiveBookTitle(project.title);
-    await loadProjectData(project.id);
-  }, [loadProjectData]);
-
-  const handleBackToBookshelf = useCallback(() => {
-    setActiveBookId(null);
-    setSelectedObjectId(null);
-    setObjects([]);
-    setActiveBookTitle('');
-    changelog.clear();
-    setChangelogEntries([]);
-  }, []);
-
-  // ── Create project ──
-  const handleCreateProjectFromWizard = useCallback(async (title: string, genre: string, _templateId: string | null) => {
-    try {
-      setLastGenre(genre);
-      const dto = await mapProjectToCreate(title, genre);
-      const project = mapDTOtoProject(dto);
-      await refreshProjects();
-      setShowCreationWizard(false);
-      setActiveBookId(project.id);
-      setActiveBookTitle(project.title);
-      setObjects([]);
-      setSelectedObjectId(null);
-      showToast(`作品「${title}」已创建`, 'success');
-    } catch (e) {
-      console.error('Failed to create project', e);
-      showToast('创建作品失败', 'error');
-    }
-  }, [refreshProjects, showToast]);
-
-  // ── Object CRUD ──
-  const onUpdateObject = useCallback(async (id: string, updates: Partial<WorldObject>) => {
-    setObjects(prev => {
-      const updated = prev.map(o => o.id === id ? { ...o, ...updates, updatedAt: Date.now() } as WorldObject : o);
-      return updated;
-    });
-    // Persist to backend
-    const target = objects.find(o => o.id === id);
-    if (target && activeBookId) {
-      const obj = { ...target, ...updates, projectId: activeBookId };
-      const ok = await syncManager.writeObject('updateObject', obj);
-      if (!ok) showToast('保存失败，请重试', 'error');
-    }
-    triggerAutoSave();
-  }, [activeBookId, objects, showToast]);
-
-  const onCreateObject = useCallback(async (templateType: ObjectType) => {
-    const now = Date.now();
-    const newObj: WorldObject = {
-      id: uid(), projectId: activeBookId || '', name: `新${templateType}`,
-      type: templateType, status: '草稿' as ObjectStatus,
-      canonLevel: '未收录' as CanonLevel,
-      tags: [], aliases: [], selectedBoards: [],
-      content: '', referencesCount: 0, judgmentHistory: [],
-      createdAt: now, updatedAt: now,
-      parentId: null, sortOrder: 0,
-    };
-    pushChangelog({ timestamp: now, action: 'create_object', objectId: newObj.id, snapshot: newObj });
-    setObjects(prev => [...prev, newObj]);
-    setSelectedObjectId(newObj.id);
-    if (activeBookId) {
-      const ok = await syncManager.writeObject('createObject', { ...newObj, projectId: activeBookId });
-      if (ok) showToast(`已创建${templateType}`, 'success');
-      else showToast('创建失败', 'error');
-    }
-  }, [activeBookId, showToast]);
-
-  const onDeleteObject = useCallback(async (id: string) => {
-    const obj = objects.find(o => o.id === id);
-    if (obj) pushChangelog({ timestamp: Date.now(), action: 'delete_object', objectId: id, snapshot: { ...obj } });
-    setObjects(prev => prev.filter(o => o.id !== id));
-    if (selectedObjectId === id) setSelectedObjectId(objects.find(o => o.id !== id)?.id || null);
-    const ok = await syncManager.writeObject('deleteObject', { id });
-    if (ok) showToast('已删除', 'success');
-    else showToast('删除失败', 'error');
-  }, [objects, selectedObjectId, showToast]);
-
-  const onNavigate = useCallback((name: string, id?: string) => {
-    const target = id ? objects.find(o => o.id === id) : objects.find(o => o.name === name);
-    if (target) setSelectedObjectId(target.id);
-  }, [objects]);
-
-  const onSelectObject = useCallback((id: string | null) => {
-    setSelectedObjectId(id);
-  }, []);
-
-  // ── Glyph v0.1: Outline reorder handler ──
-  const onReorderOutline = useCallback(async (objectId: string, newParentId: string | null, newSortOrder: number) => {
-    // Optimistic local update
-    setObjects(prev => prev.map(o =>
-      o.id === objectId ? { ...o, parentId: newParentId, sortOrder: newSortOrder, updatedAt: Date.now() } as WorldObject : o
-    ));
-    // Persist to backend
-    try {
-      await api.reorderOutline(objectId, newParentId, newSortOrder);
-    } catch (e) {
-      console.error('Failed to reorder outline', e);
-      showToast('排序保存失败', 'error');
-    }
-  }, [showToast]);
-
-  // ── Helpers ──
-  function mapDTOtoProject(dto: api.ProjectDTO): Project {
-    let gradient: [string, string] = ['#6366f1', '#8b5cf6'];
-    try {
-      const g = JSON.parse(dto.gradient);
-      if (Array.isArray(g) && g.length >= 2) gradient = [g[0], g[1]];
-    } catch {}
-    return {
-      id: dto.id,
-      title: dto.name,
-      genre: dto.genre || '未分类',
-      status: (dto.status as Project['status']) || 'conceiving',
-      wordCount: dto.wordCount ?? 0,
-      gradient,
-    };
-  }
-
-  function mapProjectToCreate(name: string, genre?: string): Promise<api.ProjectDTO> {
-    return api.createProject(name, genre || '未分类', 'conceiving', 0, '["#6366f1","#8b5cf6"]');
-  }
-
-  // ════════════════════════════════════════════
-  //  RENDER
-  // ════════════════════════════════════════════
-
-  // ── Loading ──
-  if (projectsLoading) {
+  if (!activeProject) {
     return (
-      <div className="app-layout app-loading">
-        <div className="spinner" />
-        <p style={{ color: '#888' }}>加载中...</p>
-      </div>
-    );
-  }
-
-  // ── Bookshelf ──
-  if (activeBookId === null) {
-    return (
-      <div className="app-layout">
-        <Bookshelf
-          projects={projects}
-          fsProjects={fsProjects}
-          onEnterProject={handleEnterProject}
-          onEnterFsProject={handleOpenFsProject}
-          onCreateProject={() => setShowCreationWizard(true)}
-          onCreateFsProject={() => setShowFsCreateDialog(true)}
-          onOpenDirectory={() => {
-            const dirPath = prompt('输入已有作品目录的完整路径:');
-            if (dirPath) {
-              const name = dirPath.split(/[\\/]/).pop() || '作品';
-              handleOpenFsProject(dirPath, name);
-            }
-          }}
-          onRefreshProjects={refreshProjects}
-          onExportToFs={handleExportToFs}
+      <div className="app-layout fs-first-app">
+        <FsWelcome
+          projects={fsProjects}
+          legacyProjects={legacyProjects}
+          loading={loading}
+          onCreate={() => setShowCreateDialog(true)}
+          onOpenDirectory={() => void handleOpenDirectory()}
+          onOpenRecent={(project) => void handleOpenRecent(project)}
+          onRemoveRecent={(project) => void removeProject(project.id)}
+          onMigrateLegacy={(project) => void handleMigrateLegacy(project)}
         />
-
-        {showCreationWizard && (
-          <CreationWizard
-            lastGenre={lastGenre}
-            onConfirm={(title, genre, templateId) =>
-              handleCreateProjectFromWizard(title, genre, templateId)
-            }
-            onCancel={() => setShowCreationWizard(false)}
+        {showCreateDialog && (
+          <FsProjectCreateDialog
+            onChooseParent={() => api.pickDirectory('选择作品保存位置')}
+            onConfirm={handleCreate}
+            onCancel={() => setShowCreateDialog(false)}
           />
         )}
-
-        {/* FS Create Dialog */}
-        {showFsCreateDialog && (
-          <div className="modal-overlay" onClick={() => setShowFsCreateDialog(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>创建本地项目</h3>
-              <FsCreateForm
-                onConfirm={(name, rootPath, genre) =>
-                  handleCreateFsProject(name, rootPath, genre)
-                }
-                onCancel={() => setShowFsCreateDialog(false)}
-              />
-            </div>
-          </div>
-        )}
-
-        <GlobalSearch
-          objects={objects}
-          isOpen={showGlobalSearch}
-          onClose={() => setShowGlobalSearch(false)}
-          onNavigate={onNavigate}
-        />
       </div>
     );
   }
 
-  // ── Workspace ──
   return (
-    <div className={`app-layout ${focusMode ? 'focus-mode' : ''}`}>
-      {isOffline && (
-        <div className="offline-banner">离线 ● 当前处于离线状态</div>
-      )}
-
-      {/* Top Bar */}
+    <div className={`app-layout fs-first-app ${focusMode ? 'focus-mode' : ''}`}>
       <header className="glyph-topbar">
-        {isFsMode ? (
-          <>
-            <button
-              className="glyph-topbar-btn"
-              onClick={handleBackFromFsProject}
-              title="返回书架"
-            >
-              <BookOpen size={18} />
-            </button>
-            <span className="glyph-topbar-title">
-              <FolderOpen size={16} style={{ marginRight: 6, opacity: 0.6 }} />
-              {activeFsProject?.name || activeBookTitle}
-            </span>
-          </>
-        ) : (
-          <>
-            <button
-              className="glyph-topbar-btn"
-              onClick={handleBackToBookshelf}
-              title="返回书架"
-            >
-              <BookOpen size={18} />
-            </button>
-            <span className="glyph-topbar-title">{activeBookTitle}</span>
-          </>
-        )}
-
+        <button className="glyph-topbar-btn" onClick={() => void handleBack()} title="返回作品入口">
+          <BookOpen size={18} />
+        </button>
+        <div className="glyph-topbar-project">
+          <strong>{activeProject.name}</strong>
+          <span>{activeProject.rootPath}</span>
+        </div>
         <div className="glyph-topbar-spacer" />
-
         <button
           className="glyph-topbar-btn"
-          onClick={() => setFocusMode(v => !v)}
-          title={`专注模式 (Ctrl+Shift+F) ${focusMode ? '(已开启)' : ''}`}
-          style={{ color: focusMode ? 'var(--accent, #B7FF00)' : undefined }}
+          onClick={() => setFocusMode((value) => !value)}
+          title="专注模式（Ctrl+Shift+F）"
         >
           {focusMode ? <Minimize size={18} /> : <Maximize size={18} />}
         </button>
       </header>
 
-      {/* Main area */}
-      <div className="glyph-workspace">
+      <div className="glyph-workspace fs-workspace">
         {!focusMode && (
-          <aside className="glyph-sidebar">
-            {isFsMode ? (
-              <FileTree
-                onFileSelect={handleFsFileSelect}
-              />
-            ) : (
-              <DocOutline
-                allObjects={objects}
-                currentObjectId={selectedObjectId}
-                currentObjectContent={currentObject?.content}
-                onNavigate={onNavigate}
-                onCreateObject={onCreateObject}
-                onReorderOutline={onReorderOutline}
-              />
-            )}
+          <aside className="glyph-sidebar fs-sidebar">
+            <FileTree />
           </aside>
         )}
 
-        <main className={`glyph-main ${focusMode ? 'glyph-main-focus' : ''}`}>
-          {isFsMode ? (
-            <FsDocumentView
-              content={fileContent}
-              filePath={openFilePath}
-              fileName={openFileName}
-              isDirty={fileDirty}
-              onContentChange={handleFsFileContentChange}
-              onSave={saveCurrentFile}
-            />
-          ) : (
-            <DocumentView
-              currentObject={currentObject}
-              allObjects={objects}
-              allBoardTabs={[]}
-              onUpdateObject={onUpdateObject}
-              onNavigate={onNavigate}
-              onAddToBoard={() => {}}
-              onLockObject={() => {}}
-              onDiscardObject={() => {}}
-              onCreateObject={onCreateObject}
-              saveStatus={saveStatus}
-              onTriggerSave={triggerAutoSave}
-            />
+        <main className="glyph-main fs-main">
+          {fileStatus === 'conflict' && externalConflict && (
+            <section className="fs-conflict-banner" role="alert">
+              <div>
+                <strong>文件在其他软件中发生了变化</strong>
+                <span>自动保存已暂停。当前编辑内容和外部版本都还在。</span>
+              </div>
+              <div className="fs-conflict-actions">
+                <button onClick={handleUseExternal}>使用外部版本</button>
+                <button onClick={() => void handleConflictCopy()}>本地草稿另存后重载</button>
+                <button className="danger" onClick={() => void handleOverwriteExternal()}>覆盖外部版本</button>
+              </div>
+            </section>
           )}
-        </main>
+          {fileStatus === 'missing' && (
+            <section className="fs-conflict-banner" role="alert">
+              <div>
+                <strong>原文件已经不存在</strong>
+                <span>编辑缓存仍保留在当前窗口，可以立即保存为恢复副本。</span>
+              </div>
+              <div className="fs-conflict-actions">
+                <button onClick={() => void handleMissingCopy()}>保存恢复副本</button>
+              </div>
+            </section>
+          )}
 
-        {/* AI Panel — always visible when a project is open */}
-        {!focusMode && (
-          <aside className="glyph-ai-sidebar">
-            <FsAiPanel
-              project={activeFsProject || {
-                projectId: activeBookId || '',
-                name: activeBookTitle,
-                rootPath: '',
-                genre: '',
-                createdAt: 0,
-                lastOpenedAt: 0,
-                updatedAt: 0,
-              }}
-              currentFilePath={openFilePath}
-              currentFileContent={fileContent}
-            />
-          </aside>
-        )}
+          <FsDocumentView
+            content={fileContent}
+            filePath={openFilePath}
+            fileName={openFileName}
+            status={fileStatus}
+            contentRevision={contentRevision}
+            cursorLine={viewport.cursorLine}
+            cursorColumn={viewport.cursorColumn}
+            scrollPosition={viewport.scrollPosition}
+            onContentChange={updateContent}
+            onSave={saveCurrentFile}
+            onViewportChange={updateViewport}
+          />
+        </main>
       </div>
 
-      {/* Status Bar */}
-      <StatusBar
-        saveStatus={isFsMode ? (fileDirty ? 'unsaved' : 'saved') : saveStatus}
-        wordCount={isFsMode ? (fileContent ? countWords(fileContent) : 0) : (currentObject ? countWords(currentObject.content || '') : 0)}
-        totalProjectWordCount={isFsMode ? 0 : totalWordCount}
-        linkCount={isFsMode ? 0 : wikiLinksCount}
-        onRetrySave={() => { if (isFsMode) saveCurrentFile(); else syncManager.retryFailed(); }}
-        className={focusMode ? 'status-bar-focus' : ''}
-      />
-
-      {/* Modals */}
-      {showCreationWizard && (
-        <CreationWizard
-          lastGenre={lastGenre}
-          onConfirm={(title, genre, templateId) =>
-            handleCreateProjectFromWizard(title, genre, templateId)
-          }
-          onCancel={() => setShowCreationWizard(false)}
-        />
-      )}
-
-      <GlobalSearch
-        objects={objects}
-        isOpen={showGlobalSearch}
-        onClose={() => setShowGlobalSearch(false)}
-        onNavigate={onNavigate}
-      />
+      <footer className="fs-status-bar">
+        <span className={`fs-status-${fileStatus}`}>{statusLabel(fileStatus)}</span>
+        <span>{openFilePath || '未打开文件'}</span>
+        <span className="fs-status-spacer" />
+        <span>{wordCount.toLocaleString()} 字</span>
+        <span>Markdown</span>
+      </footer>
     </div>
   );
 }

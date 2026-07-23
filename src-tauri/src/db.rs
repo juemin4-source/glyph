@@ -3676,6 +3676,13 @@ impl Database {
 
     pub fn upsert_fs_project(&self, id: &str, name: &str, root_path: &str, genre: &str, created_at: i64, last_opened_at: i64, now: i64) -> SqlResult<()> {
         let conn = self.conn.lock().unwrap();
+        // A repaired or re-adopted .glyph directory may receive a new id while
+        // keeping the same real root. The recent-project registry must follow
+        // the real directory instead of accumulating a stale duplicate.
+        conn.execute(
+            "DELETE FROM fs_projects WHERE root_path = ?1 AND id <> ?2",
+            params![root_path, id],
+        )?;
         conn.execute(
             "INSERT INTO fs_projects (id, name, root_path, genre, last_opened_at, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)

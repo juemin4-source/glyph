@@ -37,3 +37,6 @@ tower-http = { version = "0.5", features = ["cors"] }
 notify = { version = "7", features = ["macos_kqueue"] }
 walkdir = "2"
 tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }

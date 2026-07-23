@@ -1417,6 +1417,7 @@ dependencies = [
  "tower-http 0.5.2",
  "uuid",
  "walkdir",
+ "windows-sys 0.59.0",
  "zip",
 ]
 

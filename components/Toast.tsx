@@ -1,10 +1,10 @@
-﻿import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
 import type { ToastConfig } from '../types/toast';
 import { DEFAULT_TOAST_CONFIG } from '../types/toast';
 import { Check, X, RefreshCw, Info } from 'lucide-react';
 
 // ===== Types =====
-type ToastType = 'info' | 'success' | 'error' | 'loading';
+type ToastType = 'info' | 'success' | 'warning' | 'error' | 'loading';
 
 interface ToastItem {
   id: string;

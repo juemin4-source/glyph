@@ -49,7 +49,7 @@ import type { FsProject, DirEntry } from '../../types/fs';
 
 // ── Test Fixtures ──
 const mockProject: FsProject = {
-  projectId: 'proj-1',
+  id: 'proj-1',
   name: '测试小说',
   rootPath: 'C:/novels/test-novel',
   genre: '科幻',

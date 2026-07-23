@@ -1,7 +1,7 @@
-// Glyph Gate A: Filesystem types
+// Filesystem-first workspace types.
 
 export interface FsProject {
-  projectId: string;
+  id: string;
   name: string;
   rootPath: string;
   genre: string;
@@ -12,12 +12,38 @@ export interface FsProject {
 
 export interface DirEntry {
   name: string;
-  /** Path relative to project root */
+  /** Path relative to project root, always using forward slashes. */
   path: string;
   isDir: boolean;
   extension: string;
   size: number;
   modifiedAt: number;
+}
+
+export interface FileReadResult {
+  content: string;
+  modifiedAt: number;
+  /** Stable content fingerprint used for conflict-safe writes. */
+  version: string;
+}
+
+export interface FileWriteResult {
+  modifiedAt: number;
+  version: string;
+}
+
+export type FileSyncStatus =
+  | 'clean'
+  | 'dirty'
+  | 'saving'
+  | 'save-error'
+  | 'conflict'
+  | 'missing';
+
+export interface ExternalConflict {
+  content: string;
+  modifiedAt: number;
+  version: string;
 }
 
 export interface SessionState {
@@ -33,17 +59,11 @@ export interface SessionState {
 }
 
 export interface FileChangeEvent {
+  /** Canonical project root that emitted the event. */
+  projectRoot: string;
+  /** Paths relative to that project root. */
   paths: string[];
   timestamp: number;
-}
-
-export interface FileTab {
-  path: string;
-  name: string;
-  isDirty: boolean;
-  content: string | null;
-  cursorLine?: number;
-  cursorColumn?: number;
 }
 
 export interface CreateFsProjectOutput {

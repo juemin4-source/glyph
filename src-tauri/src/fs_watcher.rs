@@ -1,152 +1,169 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use notify::{EventKind, Watcher};
 use tauri::{AppHandle, Emitter};
-use notify::Watcher;
 
 use crate::fs_models::FileChangeEvent;
 
-/// A managed file watcher that monitors project directories for external changes.
-/// Uses notify crate's RecommendedWatcher with event debouncing.
+fn now_millis() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64
+}
+
+fn normalize_absolute(path: &Path) -> String {
+    let normalized = path
+        .canonicalize()
+        .unwrap_or_else(|_| path.to_path_buf())
+        .to_string_lossy()
+        .replace('\\', "/");
+    #[cfg(windows)]
+    {
+        normalized.to_lowercase()
+    }
+    #[cfg(not(windows))]
+    {
+        normalized
+    }
+}
+
+fn relative_display_path(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+fn is_internal_path(root: &Path, path: &Path) -> bool {
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    relative.components().any(|component| {
+        matches!(
+            component.as_os_str().to_string_lossy().as_ref(),
+            ".glyph" | ".glyph-trash"
+        )
+    }) || path
+        .file_name()
+        .map(|name| name.to_string_lossy().starts_with(".glyph-write-"))
+        .unwrap_or(false)
+}
+
+/// Watches real project directories. Glyph's own writes are deliberately not
+/// hidden here: the frontend compares content versions, so a self-generated
+/// event becomes a harmless no-op. This avoids swallowing a real external edit
+/// that happens shortly after Glyph saves the same file.
 pub struct FileWatcher {
-    /// Active watchers keyed by project root path.
     watchers: Arc<Mutex<HashMap<String, notify::RecommendedWatcher>>>,
-    /// Whether the watcher system is initialized.
-    initialized: bool,
 }
 
 impl FileWatcher {
     pub fn new() -> Self {
-        FileWatcher {
+        Self {
             watchers: Arc::new(Mutex::new(HashMap::new())),
-            initialized: false,
         }
     }
 
-    /// Start watching a project directory.
-    /// Events are emitted to the frontend via Tauri's event system.
     pub fn start_watching(
         &self,
         app_handle: AppHandle,
         project_root: &str,
     ) -> Result<(), String> {
-        let root = Path::new(project_root);
-        if !root.exists() {
-            return Err(format!("WATCH_ERROR: project root not found: {}", project_root));
+        let root = PathBuf::from(project_root)
+            .canonicalize()
+            .map_err(|e| format!("WATCH_ERROR: invalid project root: {}", e))?;
+        if !root.is_dir() {
+            return Err(format!(
+                "WATCH_ERROR: project root is not a directory: {}",
+                project_root
+            ));
+        }
+
+        let watcher_key = normalize_absolute(&root);
+        {
+            let watchers = self
+                .watchers
+                .lock()
+                .map_err(|_| "WATCH_ERROR: lock poisoned".to_string())?;
+            if watchers.contains_key(&watcher_key) {
+                return Ok(());
+            }
         }
 
         let (tx, rx) = mpsc::channel::<notify::Result<notify::Event>>();
-
         let mut watcher = notify::RecommendedWatcher::new(tx, notify::Config::default())
             .map_err(|e| format!("WATCH_ERROR: {}", e))?;
-
         watcher
-            .watch(root, notify::RecursiveMode::Recursive)
+            .watch(&root, notify::RecursiveMode::Recursive)
             .map_err(|e| format!("WATCH_ERROR: {}", e))?;
 
-        let root_clone = project_root.to_string();
         let app_clone = app_handle.clone();
+        let root_clone = root.clone();
+        let project_root_for_event = root.to_string_lossy().replace('\\', "/");
 
-        // Spawn a thread to handle file events with debouncing
         std::thread::spawn(move || {
-            let debounce_ms = 300u64;
-            let mut pending_changes: HashMap<String, FileChangeEvent> = HashMap::new();
-            let mut last_flush = SystemTime::now();
+            let debounce = Duration::from_millis(250);
+            let mut pending: HashMap<String, i64> = HashMap::new();
 
             loop {
-                // Check for new events with a short timeout
-                match rx.recv_timeout(Duration::from_millis(debounce_ms)) {
+                match rx.recv_timeout(debounce) {
                     Ok(Ok(event)) => {
-                        // Filter: only track .md and .markdown files, skip .glyph/ and .tmp
-                        let relevant_paths: Vec<String> = event.paths.iter()
-                            .filter(|p| {
-                                let path_str = p.to_string_lossy().to_lowercase();
-                                let ext = p.extension()
-                                    .map(|e| e.to_string_lossy().to_lowercase())
-                                    .unwrap_or_default();
-                                // Only .md and .markdown files
-                                (ext == "md" || ext == "markdown")
-                                // Skip .glyph directory
-                                && !path_str.contains("\\.glyph\\")
-                                && !path_str.contains("/.glyph/")
-                                // Skip temp files
-                                && !path_str.ends_with(".tmp")
-                            })
-                            .map(|p| {
-                                // Convert to relative path
-                                p.to_string_lossy().replace('\\', "/")
-                            })
-                            .collect();
-
-                        if relevant_paths.is_empty() {
+                        if matches!(event.kind, EventKind::Access(_)) {
                             continue;
                         }
-
-                        for path in relevant_paths {
-                            let entry = pending_changes.entry(path.clone()).or_insert(FileChangeEvent {
-                                paths: Vec::new(),
-                                timestamp: SystemTime::now()
-                                    .duration_since(UNIX_EPOCH).unwrap().as_millis() as i64,
-                            });
-                            if !entry.paths.contains(&path) {
-                                entry.paths.push(path);
+                        let now = now_millis();
+                        for path in event.paths {
+                            if is_internal_path(&root_clone, &path) {
+                                continue;
                             }
+                            pending.insert(relative_display_path(&root_clone, &path), now);
                         }
                     }
                     Ok(Err(_)) => {}
                     Err(mpsc::RecvTimeoutError::Timeout) => {
-                        // Timeout — check if we need to flush pending events
-                    }
-                    Err(mpsc::RecvTimeoutError::Disconnected) => {
-                        // Watcher has been dropped
-                        break;
-                    }
-                }
-
-                // Flush pending changes if enough time has passed
-                let elapsed = SystemTime::now()
-                    .duration_since(last_flush)
-                    .unwrap_or_default();
-
-                if !pending_changes.is_empty() && elapsed >= Duration::from_millis(debounce_ms) {
-                    // Merge all pending changes into one event
-                    let mut all_paths: Vec<String> = Vec::new();
-                    let mut latest_ts: i64 = 0;
-                    for event in pending_changes.values() {
-                        for p in &event.paths {
-                            if !all_paths.contains(p) {
-                                all_paths.push(p.clone());
-                            }
+                        if pending.is_empty() {
+                            continue;
                         }
-                        if event.timestamp > latest_ts {
-                            latest_ts = event.timestamp;
-                        }
+                        let mut paths: Vec<String> = pending.keys().cloned().collect();
+                        paths.sort();
+                        let timestamp = pending
+                            .values()
+                            .copied()
+                            .max()
+                            .unwrap_or_else(now_millis);
+                        let _ = app_clone.emit(
+                            "fs:file-changed",
+                            FileChangeEvent {
+                                project_root: project_root_for_event.clone(),
+                                paths,
+                                timestamp,
+                            },
+                        );
+                        pending.clear();
                     }
-
-                    let change_event = FileChangeEvent {
-                        paths: all_paths,
-                        timestamp: latest_ts,
-                    };
-
-                    let _ = app_clone.emit("fs:file-changed", change_event);
-                    pending_changes.clear();
-                    last_flush = SystemTime::now();
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 }
             }
         });
 
-        let mut watchers = self.watchers.lock().unwrap();
-        watchers.insert(project_root.to_string(), watcher);
-
+        let mut watchers = self
+            .watchers
+            .lock()
+            .map_err(|_| "WATCH_ERROR: lock poisoned".to_string())?;
+        watchers.insert(watcher_key, watcher);
         Ok(())
     }
 
-    /// Stop watching a project directory.
     pub fn stop_watching(&self, project_root: &str) -> Result<(), String> {
-        let mut watchers = self.watchers.lock().unwrap();
-        watchers.remove(project_root);
+        let key = normalize_absolute(Path::new(project_root));
+        let mut watchers = self
+            .watchers
+            .lock()
+            .map_err(|_| "WATCH_ERROR: lock poisoned".to_string())?;
+        watchers.remove(&key);
         Ok(())
     }
 }

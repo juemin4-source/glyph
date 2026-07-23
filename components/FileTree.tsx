@@ -1,289 +1,196 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { ChevronRight, FileText, Folder, FolderOpen, MoreHorizontal, Plus, RefreshCw } from 'lucide-react';
 import type { DirEntry } from '../types/fs';
 import { useFsStore } from '../stores/fsStore';
 
-interface FileTreeProps {
-  onFileSelect: (path: string) => void;
-  onContextMenu?: (entry: DirEntry, x: number, y: number) => void;
-}
-
-interface TreeNode {
+interface TreeNodeProps {
   entry: DirEntry;
-  children: TreeNode[];
   depth: number;
 }
 
-/**
- * FileTree — Recursive file tree component for the project sidebar.
- * Shows directories and Markdown files, with expand/collapse and file selection.
- */
-const FileTree: React.FC<FileTreeProps> = ({ onFileSelect }) => {
-  const {
-    activeFsProject,
-    fileTree,
-    currentPath,
-    navigateToDir,
-    openFile,
-    openFilePath,
-    expandedPaths,
-    toggleExpanded,
-    refreshTree,
-    loading,
-  } = useFsStore();
-
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    entry: DirEntry;
-  } | null>(null);
-
-  // Build tree from flat list (current directory level)
-  const buildTree = useCallback(
-    (entries: DirEntry[], depth: number): TreeNode[] => {
-      const dirs = entries.filter((e) => e.isDir);
-      const files = entries.filter((e) => !e.isDir);
-      const nodes: TreeNode[] = [];
-
-      for (const dir of dirs) {
-        nodes.push({
-          entry: dir,
-          children: [],
-          depth,
-        });
-      }
-      for (const file of files) {
-        nodes.push({
-          entry: file,
-          children: [],
-          depth,
-        });
-      }
-      return nodes;
-    },
-    [],
-  );
-
-  const handleClick = async (entry: DirEntry) => {
-    if (entry.isDir) {
-      // Toggle expanded and navigate
-      if (expandedPaths.has(entry.path)) {
-        toggleExpanded(entry.path);
-      } else {
-        toggleExpanded(entry.path);
-        await navigateToDir(entry.path);
-      }
-    } else {
-      await openFile(entry.path);
-      onFileSelect(entry.path);
-    }
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, entry: DirEntry) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, entry });
-  };
-
-  // Close context menu on click outside
-  useEffect(() => {
-    const handleClick = () => setContextMenu(null);
-    if (contextMenu) {
-      window.addEventListener('click', handleClick);
-      return () => window.removeEventListener('click', handleClick);
-    }
-  }, [contextMenu]);
-
-  const getFileIcon = (entry: DirEntry): string => {
-    if (entry.isDir) {
-      const isExpanded = expandedPaths.has(entry.path);
-      return isExpanded ? '📂' : '📁';
-    }
-    switch (entry.extension.toLowerCase()) {
-      case 'md':
-      case 'markdown':
-        return '📝';
-      case 'txt':
-        return '📄';
-      case 'json':
-        return '⚙️';
-      default:
-        return '📄';
-    }
-  };
-
-  const nodes = buildTree(fileTree, 0);
-
-  return (
-    <div className="file-tree" onContextMenu={(e) => e.preventDefault()}>
-      {loading && nodes.length === 0 && (
-        <div className="file-tree-loading">Loading...</div>
-      )}
-
-      {!loading && nodes.length === 0 && currentPath !== '' && (
-        <div className="file-tree-empty">Empty folder</div>
-      )}
-
-      {/* Breadcrumb / current path */}
-      {currentPath && (
-        <div
-          className="file-tree-up"
-          onClick={() => {
-            const parent = currentPath.split('/').slice(0, -1).join('/');
-            navigateToDir(parent || '');
-          }}
-          title="Go up"
-        >
-          📁 ..
-        </div>
-      )}
-
-      {nodes.map((node) => (
-        <FileTreeNode
-          key={node.entry.path}
-          node={node}
-          expandedPaths={expandedPaths}
-          openFilePath={openFilePath}
-          onToggle={toggleExpanded}
-          onClick={handleClick}
-          onContextMenu={handleContextMenu}
-          onNavigate={navigateToDir}
-        />
-      ))}
-
-      {/* Context menu */}
-      {contextMenu && (
-        <div
-          className="file-tree-context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <div
-            className="file-tree-context-item"
-            onClick={async () => {
-              if (contextMenu.entry.isDir) {
-                await navigateToDir(contextMenu.entry.path);
-              } else {
-                await openFile(contextMenu.entry.path);
-                onFileSelect(contextMenu.entry.path);
-              }
-              setContextMenu(null);
-            }}
-          >
-            Open
-          </div>
-          <div
-            className="file-tree-context-item"
-            onClick={() => {
-              // Future: rename
-              setContextMenu(null);
-            }}
-          >
-            Rename
-          </div>
-          <div
-            className="file-tree-context-item danger"
-            onClick={() => {
-              // Future: delete
-              setContextMenu(null);
-            }}
-          >
-            Delete
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Individual tree node with recursive children
-interface FileTreeNodeProps {
-  node: TreeNode;
-  expandedPaths: Set<string>;
-  openFilePath: string | null;
-  onToggle: (path: string) => void;
-  onClick: (entry: DirEntry) => void;
-  onContextMenu: (e: React.MouseEvent, entry: DirEntry) => void;
-  onNavigate: (path: string) => Promise<void>;
+function parentPath(path: string): string {
+  const index = path.lastIndexOf('/');
+  return index >= 0 ? path.slice(0, index) : '';
 }
 
-const FileTreeNode: React.FC<FileTreeNodeProps> = ({
-  node,
-  expandedPaths,
-  openFilePath,
-  onToggle,
-  onClick,
-  onContextMenu,
-  onNavigate,
-}) => {
-  const isActive = node.entry.path === openFilePath;
-  const isExpanded = expandedPaths.has(node.entry.path);
-  const [children, setChildren] = useState<DirEntry[]>([]);
-  const [loaded, setLoaded] = useState(false);
+function replaceName(path: string, name: string): string {
+  const parent = parentPath(path);
+  return parent ? `${parent}/${name}` : name;
+}
 
-  const { activeFsProject } = useFsStore();
+function isEditableText(entry: DirEntry): boolean {
+  if (entry.isDir) return false;
+  const extension = entry.extension.toLowerCase();
+  return extension === 'md' || extension === 'markdown' || extension === 'txt';
+}
 
-  // Load children when expanded
+function TreeNode({ entry, depth }: TreeNodeProps) {
+  const {
+    expandedPaths,
+    childrenByPath,
+    openFilePath,
+    toggleDirectory,
+    openFile,
+    renameEntry,
+    deleteEntry,
+  } = useFsStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const expanded = entry.isDir && expandedPaths.has(entry.path);
+  const children = childrenByPath[entry.path] || [];
+  const active = !entry.isDir && openFilePath === entry.path;
+  const editable = isEditableText(entry);
+
   useEffect(() => {
-    if (isExpanded && !loaded && activeFsProject) {
-      import('../tauri-api').then(async ({ listDirectory }) => {
-        try {
-          const entries = await listDirectory(activeFsProject.rootPath, node.entry.path);
-          setChildren(entries);
-          setLoaded(true);
-        } catch {
-          // Ignore errors loading children
-        }
-      });
-    }
-  }, [isExpanded, loaded, node.entry.path, activeFsProject]);
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [menuOpen]);
+
+  const handleOpen = async () => {
+    if (entry.isDir) await toggleDirectory(entry.path);
+    else if (editable) await openFile(entry.path);
+  };
+
+  const handleRename = async () => {
+    setMenuOpen(false);
+    const nextName = window.prompt('新名称：', entry.name)?.trim();
+    if (!nextName || nextName === entry.name) return;
+    await renameEntry(entry.path, replaceName(entry.path, nextName));
+  };
+
+  const handleDelete = async () => {
+    setMenuOpen(false);
+    const confirmed = window.confirm(
+      entry.isDir
+        ? `确认删除空文件夹“${entry.name}”？`
+        : `将“${entry.name}”移入织梦机回收区？`,
+    );
+    if (!confirmed) return;
+    await deleteEntry(entry);
+  };
 
   return (
     <div className="file-tree-node">
       <div
-        className={`file-tree-item ${isActive ? 'active' : ''}`}
-        style={{ paddingLeft: `${node.depth * 16 + 8}px` }}
-        onClick={() => onClick(node.entry)}
-        onContextMenu={(e) => onContextMenu(e, node.entry)}
+        className={`file-tree-item ${active ? 'active' : ''} ${!entry.isDir && !editable ? 'unsupported' : ''}`}
+        style={{ paddingLeft: depth * 14 + 8 }}
+        aria-disabled={!entry.isDir && !editable}
+        title={!entry.isDir && !editable ? '阶段一仅编辑 Markdown 与纯文本文件' : entry.path}
+        onClick={() => void handleOpen()}
+        onContextMenu={(event: MouseEvent<HTMLDivElement>) => {
+          event.preventDefault();
+          setMenuOpen(true);
+        }}
       >
-        <span className="file-tree-icon">
-          {node.entry.isDir ? (
-            <span className={`folder-arrow ${isExpanded ? 'expanded' : ''}`}>
-              ▶
-            </span>
-          ) : null}
+        <span className={`folder-arrow ${expanded ? 'expanded' : ''}`}>
+          {entry.isDir ? <ChevronRight size={13} /> : null}
         </span>
         <span className="file-tree-icon">
-          {node.entry.isDir
-            ? (isExpanded ? '📂' : '📁')
-            : node.entry.extension === 'md' || node.entry.extension === 'markdown'
-              ? '📝'
-              : '📄'}
+          {entry.isDir ? (expanded ? <FolderOpen size={15} /> : <Folder size={15} />) : <FileText size={15} />}
         </span>
-        <span className="file-tree-name">{node.entry.name}</span>
+        <span className="file-tree-name" title={entry.path}>{entry.name}</span>
+        <button
+          className="file-tree-more"
+          aria-label={`${entry.name} 更多操作`}
+          onClick={(event: MouseEvent<HTMLButtonElement>) => {
+            event.stopPropagation();
+            setMenuOpen((value) => !value);
+          }}
+        >
+          <MoreHorizontal size={14} />
+        </button>
+        {menuOpen && (
+          <div className="file-tree-inline-menu" onClick={(event: MouseEvent<HTMLDivElement>) => event.stopPropagation()}>
+            <button onClick={() => void handleRename()}>重命名</button>
+            <button className="danger" onClick={() => void handleDelete()}>删除</button>
+          </div>
+        )}
       </div>
 
-      {/* Children (only show when expanded) */}
-      {isExpanded && (
+      {expanded && (
         <div className="file-tree-children">
-          {children.length === 0 && loaded && (
-            <div className="file-tree-empty" style={{ paddingLeft: `${(node.depth + 1) * 16 + 8}px` }}>
-              Empty
-            </div>
+          {children.length === 0 ? (
+            <div className="file-tree-empty" style={{ paddingLeft: (depth + 1) * 14 + 28 }}>空文件夹</div>
+          ) : (
+            children.map((child) => <TreeNode key={child.path} entry={child} depth={depth + 1} />)
           )}
-          {children.map((child) => (
-            <FileTreeNode
-              key={child.path}
-              node={{ entry: child, children: [], depth: node.depth + 1 }}
-              expandedPaths={expandedPaths}
-              openFilePath={openFilePath}
-              onToggle={onToggle}
-              onClick={onClick}
-              onContextMenu={onContextMenu}
-              onNavigate={onNavigate}
-            />
-          ))}
         </div>
       )}
     </div>
   );
-};
+}
 
-export default FileTree;
+export default function FileTree() {
+  const {
+    activeProject,
+    rootEntries,
+    loading,
+    refreshVisibleTree,
+    createMarkdownFile,
+    createFolder,
+    openFilePath,
+  } = useFsStore();
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    const close = () => setCreateMenuOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [createMenuOpen]);
+
+  const defaultParent = useMemo(() => openFilePath ? parentPath(openFilePath) : '', [openFilePath]);
+
+  const handleNewFile = async () => {
+    setCreateMenuOpen(false);
+    const suggested = defaultParent ? `${defaultParent}/未命名.md` : '未命名.md';
+    const path = window.prompt('新建 Markdown（项目内相对路径）：', suggested)?.trim();
+    if (path) await createMarkdownFile(path);
+  };
+
+  const handleNewFolder = async () => {
+    setCreateMenuOpen(false);
+    const suggested = defaultParent ? `${defaultParent}/新文件夹` : '新文件夹';
+    const path = window.prompt('新建文件夹（项目内相对路径）：', suggested)?.trim();
+    if (path) await createFolder(path);
+  };
+
+  return (
+    <div className="file-tree-shell">
+      <div className="file-tree-header">
+        <div className="file-tree-project" title={activeProject?.rootPath}>{activeProject?.name || '项目'}</div>
+        <div className="file-tree-actions">
+          <button title="刷新" onClick={() => void refreshVisibleTree()}><RefreshCw size={14} /></button>
+          <div className="file-tree-create-wrap">
+            <button
+              title="新建"
+              onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                event.stopPropagation();
+                setCreateMenuOpen((value) => !value);
+              }}
+            >
+              <Plus size={15} />
+            </button>
+            {createMenuOpen && (
+              <div className="file-tree-create-menu" onClick={(event: MouseEvent<HTMLDivElement>) => event.stopPropagation()}>
+                <button onClick={() => void handleNewFile()}>新建 Markdown</button>
+                <button onClick={() => void handleNewFolder()}>新建文件夹</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="file-tree" onContextMenu={(event: MouseEvent<HTMLDivElement>) => event.preventDefault()}>
+        {loading && rootEntries.length === 0 ? (
+          <div className="file-tree-loading">正在读取目录…</div>
+        ) : rootEntries.length === 0 ? (
+          <div className="file-tree-empty">项目里还没有文件</div>
+        ) : (
+          rootEntries.map((entry) => <TreeNode key={entry.path} entry={entry} depth={0} />)
+        )}
+      </div>
+    </div>
+  );
+}

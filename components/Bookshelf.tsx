@@ -708,7 +708,7 @@ export default function Bookshelf({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {fsProjects.map((fs) => (
               <div
-                key={fs.projectId}
+                key={fs.id}
                 onClick={() => onEnterFsProject(fs.rootPath, fs.name)}
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12,

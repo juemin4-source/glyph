@@ -1,4 +1,4 @@
-﻿import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import type {
   WorldObject,
   Connection,
@@ -16,6 +16,8 @@ import type {
   CreateFsProjectOutput,
   ExportToFsResult,
   ContentSearchResult,
+  FileReadResult,
+  FileWriteResult,
 } from './types/fs';
 
 // ══════════════════════════════════════════
@@ -222,12 +224,48 @@ export function readFile(
   return invoke('read_file', { projectRoot, path });
 }
 
+export function readFileState(
+  projectRoot: string,
+  path: string,
+): Promise<FileReadResult> {
+  return invoke('read_file_state', { projectRoot, path });
+}
+
 export function writeFile(
   projectRoot: string,
   path: string,
   content: string,
 ): Promise<void> {
   return invoke('write_file', { projectRoot, path, content });
+}
+
+export function writeFileChecked(
+  projectRoot: string,
+  path: string,
+  content: string,
+  expectedVersion: string | null,
+): Promise<FileWriteResult> {
+  return invoke('write_file_checked', {
+    projectRoot,
+    path,
+    content,
+    expectedVersion,
+  });
+}
+
+export async function pickDirectory(title: string): Promise<string | null> {
+  const selected = await invoke<string | null>('plugin:dialog|open', {
+    options: { directory: true, multiple: false, title },
+  });
+  return typeof selected === 'string' ? selected : null;
+}
+
+export function createTextFile(
+  projectRoot: string,
+  path: string,
+  content: string,
+): Promise<FileWriteResult> {
+  return invoke('create_text_file', { projectRoot, path, content });
 }
 
 export function createFile(

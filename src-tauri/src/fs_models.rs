@@ -76,6 +76,24 @@ pub struct FsWriteInput {
     pub content: String,
 }
 
+/// Versioned file read result used by the editor to detect external changes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileReadResult {
+    pub content: String,
+    pub modified_at: i64,
+    /// Stable content fingerprint used for conflict-safe writes.
+    pub version: String,
+}
+
+/// Result returned after a checked write.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileWriteResult {
+    pub modified_at: i64,
+    pub version: String,
+}
+
 /// Response from create_fs_project
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +107,8 @@ pub struct CreateFsProjectOutput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileChangeEvent {
+    /// Canonical project root that produced this event.
+    pub project_root: String,
     pub paths: Vec<String>,
     pub timestamp: i64,
 }

@@ -1,5 +1,6 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use tauri::State;
 use uuid::Uuid;
@@ -12,66 +13,106 @@ use crate::fs_watcher::FileWatcher;
 //  Path Validation
 // ============================================================================
 
+/// Convert a project-relative path into a safe lexical path.
+/// Gate A targets Windows and therefore rejects absolute paths, drive prefixes,
+/// parent traversal, and characters that would become drive separators there.
+fn validate_relative_path(sub_path: &str) -> Result<PathBuf, String> {
+    let normalized = sub_path.replace('\\', "/");
+    let source = Path::new(&normalized);
+    if source.is_absolute() {
+        return Err("PATH_ESCAPE: absolute paths are not allowed".to_string());
+    }
+
+    let mut relative = PathBuf::new();
+    for component in source.components() {
+        match component {
+            Component::Normal(part) => {
+                if part.to_string_lossy().contains(':') {
+                    return Err("PATH_ESCAPE: drive-prefixed paths are not allowed".to_string());
+                }
+                relative.push(part);
+            }
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err("PATH_ESCAPE: path escapes project root".to_string());
+            }
+        }
+    }
+
+    if relative.as_os_str().is_empty() {
+        return Err("INVALID_PATH: empty path".to_string());
+    }
+    Ok(relative)
+}
+
 /// Validate that `sub_path` resolves inside `project_root`.
-/// Returns the canonical absolute path, or an error if the path escapes.
+/// Non-existent nested paths are allowed when their nearest existing ancestor
+/// remains inside the canonical project root.
 fn resolve_project_path(project_root: &str, sub_path: &str) -> Result<PathBuf, String> {
     let root = fs::canonicalize(project_root)
         .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let relative = validate_relative_path(sub_path)?;
+    let joined = root.join(relative);
 
-    let target = Path::new(sub_path);
-    let target = if target.is_absolute() {
-        fs::canonicalize(target)
-            .map_err(|_| format!("PATH_NOT_FOUND: {}", sub_path))?
-    } else {
-        let joined = root.join(target);
-        // If the path doesn't exist yet (e.g. for create/write), canonicalize parent
-        if joined.exists() {
-            fs::canonicalize(&joined)
-                .map_err(|_| format!("PATH_NOT_FOUND: {}", sub_path))?
-        } else {
-            // Validate the parent exists and is within bounds
-            let parent = joined.parent().ok_or_else(|| "INVALID_PATH: no parent".to_string())?;
-            let canonical_parent = fs::canonicalize(parent)
+    if joined.exists() {
+        let target = fs::canonicalize(&joined)
+            .map_err(|_| format!("PATH_NOT_FOUND: {}", sub_path))?;
+        if !target.starts_with(&root) {
+            return Err("PATH_ESCAPE: path escapes project root".to_string());
+        }
+        return Ok(target);
+    }
+
+    let mut ancestor = joined.parent();
+    while let Some(candidate) = ancestor {
+        if candidate.exists() {
+            let canonical = fs::canonicalize(candidate)
                 .map_err(|e| format!("INVALID_PARENT_PATH: {}", e))?;
-            if !canonical_parent.starts_with(&root) {
+            if !canonical.starts_with(&root) {
                 return Err("PATH_ESCAPE: path escapes project root".to_string());
             }
-            // Return the unresolved joined path (it doesn't exist yet)
             return Ok(joined);
         }
-    };
-
-    if !target.starts_with(&root) {
-        return Err("PATH_ESCAPE: path escapes project root".to_string());
+        ancestor = candidate.parent();
     }
-    Ok(target)
+
+    Err("INVALID_PARENT_PATH: no existing ancestor".to_string())
 }
 
 /// Validate that a path exists and is within the project root.
 fn resolve_existing_path(project_root: &str, sub_path: &str) -> Result<PathBuf, String> {
     let root = fs::canonicalize(project_root)
         .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
-    let target = Path::new(sub_path);
-    let target = if target.is_absolute() {
-        fs::canonicalize(target)
-            .map_err(|_| format!("PATH_NOT_FOUND: {}", sub_path))?
-    } else {
-        fs::canonicalize(root.join(target))
-            .map_err(|_| format!("PATH_NOT_FOUND: {}", sub_path))?
-    };
+    let relative = validate_relative_path(sub_path)?;
+    let target = fs::canonicalize(root.join(relative))
+        .map_err(|_| format!("PATH_NOT_FOUND: {}", sub_path))?;
     if !target.starts_with(&root) {
         return Err("PATH_ESCAPE: path escapes project root".to_string());
     }
     Ok(target)
 }
 
-/// Get the relative path within a project root.
+/// Get the relative path within a project root using forward slashes.
 fn relative_path(project_root: &str, abs_path: &Path) -> String {
-    let root = Path::new(project_root);
-    abs_path.strip_prefix(root)
-        .unwrap_or(abs_path)
-        .to_string_lossy()
-        .replace('\\', "/")
+    let root = project_root.replace('\\', "/").trim_end_matches('/').to_string();
+    let absolute = abs_path.to_string_lossy().replace('\\', "/");
+
+    #[cfg(windows)]
+    let matches_root = absolute.to_lowercase().starts_with(&(root.to_lowercase() + "/"));
+    #[cfg(not(windows))]
+    let matches_root = absolute.starts_with(&(root.clone() + "/"));
+    #[cfg(windows)]
+    let equals_root = absolute.eq_ignore_ascii_case(&root);
+    #[cfg(not(windows))]
+    let equals_root = absolute == root;
+
+    if matches_root {
+        absolute[root.len() + 1..].to_string()
+    } else if equals_root {
+        String::new()
+    } else {
+        absolute
+    }
 }
 
 /// Get file metadata (modification time as epoch millis)
@@ -83,26 +124,212 @@ fn modified_at(metadata: &fs::Metadata) -> i64 {
         .unwrap_or(0)
 }
 
-/// Atomically write content to a file (write to .tmp then rename).
-fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
-    let tmp_path = path.with_extension("tmp");
-    // Ensure parent directory exists
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("WRITE_ERROR: cannot create parent: {}", e))?;
+/// Replace `path` with `temp_path` while keeping the operation inside one directory.
+#[cfg(windows)]
+fn replace_file(temp_path: &Path, path: &Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
+    };
+
+    let from: Vec<u16> = temp_path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let to: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let ok = unsafe {
+        MoveFileExW(
+            from.as_ptr(),
+            to.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if ok == 0 {
+        return Err(format!(
+            "REPLACE_ERROR: {}",
+            std::io::Error::last_os_error()
+        ));
     }
-    fs::write(&tmp_path, content)
-        .map_err(|e| format!("WRITE_ERROR: {}", e))?;
-    fs::rename(&tmp_path, path)
-        .map_err(|e| format!("RENAME_ERROR: {}", e))?;
     Ok(())
+}
+
+#[cfg(not(windows))]
+fn replace_file(temp_path: &Path, path: &Path) -> Result<(), String> {
+    fs::rename(temp_path, path).map_err(|e| format!("REPLACE_ERROR: {}", e))
+}
+
+fn prepare_temp_file(path: &Path, content: &str) -> Result<tempfile::NamedTempFile, String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "WRITE_ERROR: target has no parent".to_string())?;
+    fs::create_dir_all(parent)
+        .map_err(|e| format!("WRITE_ERROR: cannot create parent: {}", e))?;
+
+    let mut temp = tempfile::Builder::new()
+        .prefix(".glyph-write-")
+        .tempfile_in(parent)
+        .map_err(|e| format!("WRITE_ERROR: cannot create temp file: {}", e))?;
+    temp.write_all(content.as_bytes())
+        .map_err(|e| format!("WRITE_ERROR: {}", e))?;
+    temp.as_file()
+        .sync_all()
+        .map_err(|e| format!("WRITE_ERROR: cannot flush temp file: {}", e))?;
+    Ok(temp)
+}
+
+/// Atomically replace a file using a unique temporary file in the same directory.
+fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
+    let temp = prepare_temp_file(path, content)?;
+    let temp_path = temp.into_temp_path();
+    replace_file(temp_path.as_ref(), path)
+}
+
+/// Create a new file while refusing to overwrite a path that appeared concurrently.
+fn atomic_create(path: &Path, content: &str) -> Result<(), String> {
+    let temp = prepare_temp_file(path, content)?;
+    temp.persist_noclobber(path)
+        .map(|_| ())
+        .map_err(|error| {
+            if path.exists() {
+                "FILE_EXISTS: file already exists".to_string()
+            } else {
+                format!("CREATE_ERROR: {}", error.error)
+            }
+        })
+}
+
+/// Prepare the replacement first, then compare the current disk content as
+/// close as possible to the atomic swap. This narrows the external-editor race.
+fn atomic_write_checked(
+    path: &Path,
+    content: &str,
+    expected_version: Option<&str>,
+) -> Result<(), String> {
+    let temp = prepare_temp_file(path, content)?;
+    if let Some(expected) = expected_version {
+        if !path.exists() {
+            return Err("FILE_MISSING: target file no longer exists".to_string());
+        }
+        let current = fs::read_to_string(path)
+            .map_err(|e| format!("READ_ERROR: {}", e))?;
+        let current_version = content_version(&current);
+        if current_version != expected {
+            return Err(format!(
+                "EXTERNAL_MODIFICATION: expected {}, found {}",
+                expected, current_version
+            ));
+        }
+    }
+    let temp_path = temp.into_temp_path();
+    replace_file(temp_path.as_ref(), path)
 }
 
 // ============================================================================
 //  Project Commands
 // ============================================================================
 
-/// Create a new filesystem project at the given root path.
+fn now_millis() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64
+}
+
+
+fn safe_internal_directory(root: &Path, name: &str, create: bool) -> Result<PathBuf, String> {
+    let canonical_root = fs::canonicalize(root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let directory = canonical_root.join(name);
+
+    if directory.exists() {
+        let metadata = fs::symlink_metadata(&directory)
+            .map_err(|e| format!("METADATA_ERROR: {}", e))?;
+        if metadata.file_type().is_symlink() {
+            return Err(format!("UNSAFE_INTERNAL_PATH: {} must not be a symbolic link", name));
+        }
+        if !metadata.is_dir() {
+            return Err(format!("UNSAFE_INTERNAL_PATH: {} is not a directory", name));
+        }
+        let canonical = fs::canonicalize(&directory)
+            .map_err(|e| format!("INVALID_INTERNAL_PATH: {}", e))?;
+        if !canonical.starts_with(&canonical_root) {
+            return Err(format!("UNSAFE_INTERNAL_PATH: {} escapes project root", name));
+        }
+        return Ok(canonical);
+    }
+
+    if !create {
+        return Ok(directory);
+    }
+    fs::create_dir(&directory)
+        .map_err(|e| format!("CREATE_ERROR: cannot create {}: {}", name, e))?;
+    Ok(directory)
+}
+
+fn write_project_metadata(
+    meta_path: &Path,
+    project_id: &str,
+    name: &str,
+    genre: &str,
+    created_at: i64,
+    last_opened_at: i64,
+) -> Result<(), String> {
+    let project_meta = serde_json::json!({
+        "glyphVersion": "0.4.1",
+        "projectId": project_id,
+        "name": name,
+        "genre": genre,
+        "createdAt": created_at,
+        "lastOpenedAt": last_opened_at
+    });
+    let content = serde_json::to_string_pretty(&project_meta)
+        .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+    atomic_write(meta_path, &content)
+}
+
+fn write_default_session(project_root: &Path, last_open_file_path: Option<&str>) -> Result<(), String> {
+    let now = now_millis();
+    let session = SessionState {
+        last_open_file_path: last_open_file_path.map(str::to_string),
+        last_cursor_line: Some(0),
+        last_cursor_column: Some(0),
+        last_scroll_position: Some(0),
+        open_file_paths: last_open_file_path.map(|p| vec![p.to_string()]).unwrap_or_default(),
+        sidebar_width: None,
+        focus_mode: Some(false),
+        last_edit_mode: Some("markdown".to_string()),
+        last_session_at: now,
+    };
+    let session_path = project_root.join(".glyph").join("session.json");
+    let content = serde_json::to_string_pretty(&session)
+        .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+    atomic_write(&session_path, &content)
+}
+
+fn derive_project_name(root: &Path) -> String {
+    root.file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or_else(|| "未命名作品".to_string())
+}
+
+fn adopt_project_directory(
+    root: &Path,
+    glyph_dir: &Path,
+    meta_path: &Path,
+    now: i64,
+) -> Result<(String, String, String, i64), String> {
+    fs::create_dir_all(glyph_dir)
+        .map_err(|e| format!("CREATE_ERROR: cannot create .glyph directory: {}", e))?;
+    let project_id = Uuid::new_v4().to_string();
+    let name = derive_project_name(root);
+    let genre = String::new();
+    write_project_metadata(meta_path, &project_id, &name, &genre, now, now)?;
+    if !glyph_dir.join("session.json").exists() {
+        write_default_session(root, None)?;
+    }
+    Ok((project_id, name, genre, now))
+}
+
+/// Create a new local project. The supplied root path is the final project directory.
+/// Gate A deliberately creates only one initial Markdown document and isolated metadata.
 #[tauri::command]
 pub fn create_fs_project(
     db: State<'_, Database>,
@@ -110,137 +337,155 @@ pub fn create_fs_project(
     root_path: String,
     genre: Option<String>,
 ) -> Result<CreateFsProjectOutput, String> {
-    let root = Path::new(&root_path);
-    let glyph_dir = root.join(".glyph");
-
-    // Create .glyph directory
-    fs::create_dir_all(&glyph_dir)
-        .map_err(|e| format!("CREATE_ERROR: cannot create .glyph directory: {}", e))?;
-
-    let project_id = Uuid::new_v4().to_string();
-    let now = std::time::SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as i64;
-    let genre_val = genre.unwrap_or_default();
-
-    // Write project.json metadata
-    let project_meta = serde_json::json!({
-        "glyphVersion": "0.1.0",
-        "projectId": project_id,
-        "name": name,
-        "genre": genre_val,
-        "createdAt": now,
-        "lastOpenedAt": now,
-        "fileCount": 0,
-        "totalWordCount": 0
-    });
-    let meta_path = glyph_dir.join("project.json");
-    fs::write(&meta_path, serde_json::to_string_pretty(&project_meta).unwrap())
-        .map_err(|e| format!("WRITE_ERROR: cannot write project.json: {}", e))?;
-
-    // Create initial session.json
-    let session = serde_json::json!({
-        "lastOpenFilePath": null,
-        "lastCursorLine": null,
-        "lastCursorColumn": null,
-        "lastScrollPosition": null,
-        "openFilePaths": [],
-        "sidebarWidth": null,
-        "focusMode": false,
-        "lastEditMode": "wysiwyg",
-        "lastSessionAt": now
-    });
-    let session_path = glyph_dir.join("session.json");
-    fs::write(&session_path, serde_json::to_string_pretty(&session).unwrap())
-        .map_err(|e| format!("WRITE_ERROR: cannot write session.json: {}", e))?;
-
-    // Create initial skeleton directories
-    let mut created_dirs: Vec<String> = Vec::new();
-    let mut created_files: Vec<String> = Vec::new();
-
-    for dir_name in &["chapters", "characters", "world", "notes"] {
-        let dir_path = root.join(dir_name);
-        if !dir_path.exists() {
-            fs::create_dir(&dir_path)
-                .map_err(|e| format!("CREATE_ERROR: cannot create {}: {}", dir_name, e))?;
-            created_dirs.push(dir_name.to_string());
+    if name.trim().is_empty() {
+        return Err("INVALID_PROJECT_NAME: name cannot be empty".to_string());
+    }
+    let requested_root = PathBuf::from(&root_path);
+    if !requested_root.is_absolute() {
+        return Err("PROJECT_PATH_MUST_BE_ABSOLUTE".to_string());
+    }
+    let root_existed = requested_root.exists();
+    if root_existed {
+        if !requested_root.is_dir() {
+            return Err("PROJECT_PATH_NOT_DIRECTORY".to_string());
         }
+        let mut entries = fs::read_dir(&requested_root).map_err(|e| format!("READ_ERROR: {}", e))?;
+        if entries.next().is_some() {
+            return Err("PROJECT_DIRECTORY_NOT_EMPTY".to_string());
+        }
+    } else {
+        fs::create_dir_all(&requested_root)
+            .map_err(|e| format!("CREATE_ERROR: cannot create project directory: {}", e))?;
     }
 
-    // Register in SQLite
-    db.create_fs_project(&project_id, &name, &root_path, &genre_val, now)
-        .map_err(|e| format!("DB_ERROR: {}", e))?;
+    let operation = (|| -> Result<CreateFsProjectOutput, String> {
+        let root = requested_root
+            .canonicalize()
+            .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+        let glyph_dir = root.join(".glyph");
+        fs::create_dir_all(&glyph_dir)
+            .map_err(|e| format!("CREATE_ERROR: cannot create .glyph directory: {}", e))?;
 
-    let project = FsProject {
-        id: project_id,
-        name,
-        root_path: root_path.replace('\\', "/"),
-        genre: genre_val,
-        created_at: now,
-        last_opened_at: now,
-        updated_at: now,
-    };
+        let project_id = Uuid::new_v4().to_string();
+        let now = now_millis();
+        let genre_val = genre.unwrap_or_default();
+        write_project_metadata(
+            &glyph_dir.join("project.json"),
+            &project_id,
+            &name,
+            &genre_val,
+            now,
+            now,
+        )?;
 
-    Ok(CreateFsProjectOutput {
-        project,
-        created_directories: created_dirs,
-        created_files,
-    })
+        let initial_file = "正文.md";
+        atomic_write(&root.join(initial_file), &format!("# {}\n\n", name))?;
+        write_default_session(&root, Some(initial_file))?;
+
+        let normalized_root = root.to_string_lossy().replace('\\', "/");
+        db.create_fs_project(&project_id, &name, &normalized_root, &genre_val, now)
+            .map_err(|e| format!("DB_ERROR: {}", e))?;
+
+        let project = FsProject {
+            id: project_id,
+            name,
+            root_path: normalized_root,
+            genre: genre_val,
+            created_at: now,
+            last_opened_at: now,
+            updated_at: now,
+        };
+
+        Ok(CreateFsProjectOutput {
+            project,
+            created_directories: Vec::new(),
+            created_files: vec![initial_file.to_string()],
+        })
+    })();
+
+    if operation.is_err() {
+        let _ = fs::remove_file(requested_root.join("正文.md"));
+        let _ = fs::remove_dir_all(requested_root.join(".glyph"));
+        if !root_existed {
+            let _ = fs::remove_dir(&requested_root);
+        }
+    }
+    operation
 }
 
-/// Open and validate an existing filesystem project.
+/// Open any existing directory as a local project.
+/// If it has no Glyph metadata yet, explicit opening adopts it without restructuring user files.
 #[tauri::command]
 pub fn open_fs_project(
     db: State<'_, Database>,
     root_path: String,
 ) -> Result<FsProject, String> {
-    let root = Path::new(&root_path);
-    let meta_path = root.join(".glyph").join("project.json");
+    let root = PathBuf::from(&root_path)
+        .canonicalize()
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    if !root.is_dir() {
+        return Err("NOT_A_DIRECTORY: project root is not a directory".to_string());
+    }
 
-    let meta_content = fs::read_to_string(&meta_path)
-        .map_err(|_| "NOT_A_GLYPH_PROJECT: .glyph/project.json not found".to_string())?;
+    let glyph_dir = safe_internal_directory(&root, ".glyph", true)?;
+    let meta_path = glyph_dir.join("project.json");
+    let now = now_millis();
 
-    let meta: serde_json::Value = serde_json::from_str(&meta_content)
-        .map_err(|e| format!("INVALID_METADATA: {}", e))?;
+    let (project_id, name, genre, created_at) = if meta_path.exists() {
+        let existing = fs::read_to_string(&meta_path)
+            .ok()
+            .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+            .and_then(|mut meta| {
+                let project_id = meta.get("projectId")?.as_str()?.to_string();
+                let name = meta
+                    .get("name")
+                    .and_then(|value| value.as_str())
+                    .map(str::to_string)
+                    .unwrap_or_else(|| derive_project_name(&root));
+                let genre = meta
+                    .get("genre")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let created_at = meta
+                    .get("createdAt")
+                    .and_then(|value| value.as_i64())
+                    .unwrap_or(now);
+                meta["lastOpenedAt"] = serde_json::json!(now);
+                Some((project_id, name, genre, created_at, meta))
+            });
 
-    let project_id = meta["projectId"].as_str()
-        .ok_or_else(|| "INVALID_METADATA: missing projectId".to_string())?
-        .to_string();
-    let name = meta["name"].as_str()
-        .ok_or_else(|| "INVALID_METADATA: missing name".to_string())?
-        .to_string();
-    let genre = meta["genre"].as_str().unwrap_or("").to_string();
-    let created_at = meta["createdAt"].as_i64().unwrap_or(0);
-    let last_opened_at = meta["lastOpenedAt"].as_i64().unwrap_or(0);
+        if let Some((project_id, name, genre, created_at, meta)) = existing {
+            let updated = serde_json::to_string_pretty(&meta)
+                .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+            atomic_write(&meta_path, &updated)?;
+            (project_id, name, genre, created_at)
+        } else {
+            // Corrupt auxiliary metadata must never block the user's real work.
+            let backup = glyph_dir.join(format!("project.corrupt-{}.json", now));
+            let _ = fs::rename(&meta_path, backup);
+            adopt_project_directory(&root, &glyph_dir, &meta_path, now)?
+        }
+    } else {
+        adopt_project_directory(&root, &glyph_dir, &meta_path, now)?
+    };
 
-    let now = std::time::SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as i64;
-
-    // Update last opened timestamp
-    let updated_meta = serde_json::json!({
-        "glyphVersion": meta["glyphVersion"],
-        "projectId": project_id,
-        "name": name,
-        "genre": genre,
-        "createdAt": created_at,
-        "lastOpenedAt": now,
-        "fileCount": meta["fileCount"],
-        "totalWordCount": meta["totalWordCount"]
-    });
-    fs::write(&meta_path, serde_json::to_string_pretty(&updated_meta).unwrap())
-        .map_err(|e| format!("WRITE_ERROR: {}", e))?;
-
-    // Register in SQLite if not already
-    db.upsert_fs_project(&project_id, &name, &root_path, &genre, created_at, now, now)
-        .map_err(|e| format!("DB_ERROR: {}", e))?;
+    let normalized_root = root.to_string_lossy().replace('\\', "/");
+    db.upsert_fs_project(
+        &project_id,
+        &name,
+        &normalized_root,
+        &genre,
+        created_at,
+        now,
+        now,
+    )
+    .map_err(|e| format!("DB_ERROR: {}", e))?;
 
     Ok(FsProject {
         id: project_id,
         name,
-        root_path: root_path.replace('\\', "/"),
+        root_path: normalized_root,
         genre,
         created_at,
         last_opened_at: now,
@@ -334,40 +579,119 @@ pub fn list_directory(
 //  File Read / Write
 // ============================================================================
 
-/// Read a text file from the project (UTF-8).
-#[tauri::command]
-pub fn read_file(
-    project_root: String,
-    path: String,
-) -> Result<String, String> {
-    let target = resolve_existing_path(&project_root, &path)?;
+fn content_version(content: &str) -> String {
+    // Deterministic FNV-1a fingerprint. It avoids millisecond timestamp races
+    // without adding a cryptographic dependency to the local editor path.
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in content.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{:016x}:{}", hash, content.len())
+}
 
+fn read_text_file(project_root: &str, path: &str) -> Result<(PathBuf, String, i64, String), String> {
+    let target = resolve_existing_path(project_root, path)?;
     if !target.is_file() {
         return Err("NOT_A_FILE: path is not a file".to_string());
     }
-
-    // Check file size (reject > 10MB)
     let metadata = target.metadata().map_err(|e| format!("METADATA_ERROR: {}", e))?;
     if metadata.len() > 10 * 1024 * 1024 {
         return Err("FILE_TOO_LARGE: file exceeds 10MB limit".to_string());
     }
+    let modified = modified_at(&metadata);
+    let content = fs::read_to_string(&target).map_err(|e| format!("READ_ERROR: {}", e))?;
+    let version = content_version(&content);
+    Ok((target, content, modified, version))
+}
 
-    let content = fs::read_to_string(&target)
-        .map_err(|e| format!("READ_ERROR: {}", e))?;
-
+/// Read a text file from the project (UTF-8), retained for read-only tools.
+#[tauri::command]
+pub fn read_file(project_root: String, path: String) -> Result<String, String> {
+    let (_, content, _, _) = read_text_file(&project_root, &path)?;
     Ok(content)
 }
 
-/// Write content to a file (creates parent dirs if needed, atomic write).
+/// Read a file with its disk version for conflict-safe editing.
+#[tauri::command]
+pub fn read_file_state(
+    project_root: String,
+    path: String,
+) -> Result<FileReadResult, String> {
+    let (_, content, modified, version) = read_text_file(&project_root, &path)?;
+    Ok(FileReadResult {
+        content,
+        modified_at: modified,
+        version,
+    })
+}
+
+fn checked_write(
+    project_root: &str,
+    path: &str,
+    content: &str,
+    expected_version: Option<String>,
+) -> Result<FileWriteResult, String> {
+    let target = resolve_project_path(project_root, path)?;
+
+    atomic_write_checked(&target, content, expected_version.as_deref())?;
+    let modified = target
+        .metadata()
+        .map_err(|e| format!("METADATA_ERROR: {}", e))
+        .map(|m| modified_at(&m))?;
+    Ok(FileWriteResult {
+        modified_at: modified,
+        version: content_version(content),
+    })
+}
+
+/// Write content without a version precondition. Used by explicit creation and legacy tools.
 #[tauri::command]
 pub fn write_file(
     project_root: String,
     path: String,
     content: String,
 ) -> Result<(), String> {
-    let target = resolve_project_path(&project_root, &path)?;
+    checked_write(&project_root, &path, &content, None)?;
+    Ok(())
+}
 
-    atomic_write(&target, &content)
+/// Conflict-safe editor write. The write is rejected when the disk version changed.
+#[tauri::command]
+pub fn write_file_checked(
+    project_root: String,
+    path: String,
+    content: String,
+    expected_version: Option<String>,
+) -> Result<FileWriteResult, String> {
+    checked_write(
+        &project_root,
+        &path,
+        &content,
+        expected_version,
+    )
+}
+
+/// Create a new text file without ever overwriting an existing path.
+#[tauri::command]
+pub fn create_text_file(
+    project_root: String,
+    path: String,
+    content: String,
+) -> Result<FileWriteResult, String> {
+    let target = resolve_project_path(&project_root, &path)?;
+    if target.exists() {
+        return Err("FILE_EXISTS: file already exists".to_string());
+    }
+    atomic_create(&target, &content)?;
+    let modified = target
+        .metadata()
+        .map_err(|e| format!("METADATA_ERROR: {}", e))
+        .map(|metadata| modified_at(&metadata))?;
+    Ok(FileWriteResult {
+        modified_at: modified,
+        version: content_version(&content),
+    })
 }
 
 /// Create a new empty file.
@@ -387,8 +711,7 @@ pub fn create_file(
             .map_err(|e| format!("CREATE_ERROR: {}", e))?;
     }
 
-    fs::write(&target, "")
-        .map_err(|e| format!("CREATE_ERROR: {}", e))?;
+    atomic_create(&target, "")?;
 
     Ok(())
 }
@@ -405,7 +728,7 @@ pub fn create_directory(
         return Err("DIR_EXISTS: directory already exists".to_string());
     }
 
-    fs::create_dir(&target)
+    fs::create_dir_all(&target)
         .map_err(|e| format!("CREATE_ERROR: {}", e))?;
 
     Ok(())
@@ -455,14 +778,16 @@ pub fn delete_file(
         return Err("IS_DIRECTORY: use delete_directory for directories".to_string());
     }
 
-    let trash_dir = Path::new(&project_root).join(".glyph-trash");
-    fs::create_dir_all(&trash_dir)
+    let project_root_path = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let trash_dir = safe_internal_directory(&project_root_path, ".glyph-trash", true)
         .map_err(|e| format!("TRASH_ERROR: {}", e))?;
 
-    let trash_name = format!("{}_{}",
+    let trash_name = format!(
+        "{}_{}_{}",
         target.file_name().unwrap_or_default().to_string_lossy(),
-        std::time::SystemTime::now()
-            .duration_since(UNIX_EPOCH).unwrap().as_millis()
+        now_millis(),
+        Uuid::new_v4()
     );
     let trash_path = trash_dir.join(&trash_name);
 
@@ -501,35 +826,39 @@ pub fn delete_directory(
 //  Session State
 // ============================================================================
 
-/// Read session state from .glyph/session.json
-#[tauri::command]
-pub fn get_session_state(
-    project_root: String,
-) -> Result<SessionState, String> {
-    let session_path = Path::new(&project_root).join(".glyph").join("session.json");
+fn default_session_state() -> SessionState {
+    SessionState {
+        last_open_file_path: None,
+        last_cursor_line: Some(0),
+        last_cursor_column: Some(0),
+        last_scroll_position: Some(0),
+        open_file_paths: Vec::new(),
+        sidebar_width: None,
+        focus_mode: Some(false),
+        last_edit_mode: Some("markdown".to_string()),
+        last_session_at: 0,
+    }
+}
 
+/// Read session state. Corrupt or absent auxiliary state never blocks opening the work.
+#[tauri::command]
+pub fn get_session_state(project_root: String) -> Result<SessionState, String> {
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let glyph_dir = safe_internal_directory(&root, ".glyph", false)?;
+    let session_path = glyph_dir.join("session.json");
     if !session_path.exists() {
-        // Return default session state
-        return Ok(SessionState {
-            last_open_file_path: None,
-            last_cursor_line: None,
-            last_cursor_column: None,
-            last_scroll_position: None,
-            open_file_paths: Vec::new(),
-            sidebar_width: None,
-            focus_mode: None,
-            last_edit_mode: None,
-            last_session_at: 0,
-        });
+        return Ok(default_session_state());
     }
 
-    let content = fs::read_to_string(&session_path)
-        .map_err(|e| format!("READ_ERROR: {}", e))?;
-
-    let state: SessionState = serde_json::from_str(&content)
-        .map_err(|e| format!("PARSE_ERROR: {}", e))?;
-
-    Ok(state)
+    let content = match fs::read_to_string(&session_path) {
+        Ok(content) => content,
+        Err(_) => return Ok(default_session_state()),
+    };
+    match serde_json::from_str::<SessionState>(&content) {
+        Ok(state) => Ok(state),
+        Err(_) => Ok(default_session_state()),
+    }
 }
 
 /// Save session state to .glyph/session.json
@@ -538,13 +867,10 @@ pub fn save_session_state(
     project_root: String,
     state: SessionState,
 ) -> Result<(), String> {
-    let session_path = Path::new(&project_root).join(".glyph").join("session.json");
-
-    // Ensure .glyph directory exists
-    if let Some(parent) = session_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("WRITE_ERROR: {}", e))?;
-    }
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let glyph_dir = safe_internal_directory(&root, ".glyph", true)?;
+    let session_path = glyph_dir.join("session.json");
 
     let content = serde_json::to_string_pretty(&state)
         .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
@@ -556,130 +882,176 @@ pub fn save_session_state(
 //  Migration Helpers
 // ============================================================================
 
-/// Export an SQLite-backed project to the filesystem layout.
+fn migration_filename(name: &str) -> String {
+    let sanitized: String = name
+        .chars()
+        .map(|character| {
+            if character.is_alphanumeric() || matches!(character, '_' | '-' | ' ') {
+                character
+            } else {
+                '_'
+            }
+        })
+        .take(80)
+        .collect();
+    let trimmed = sanitized.trim().trim_end_matches(|character| character == '.' || character == ' ');
+    if trimmed.is_empty() {
+        "未命名".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn clear_migration_output(root: &Path, root_existed: bool) {
+    if !root.exists() {
+        return;
+    }
+    if root_existed {
+        if let Ok(entries) = fs::read_dir(root) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let _ = fs::remove_dir_all(path);
+                } else {
+                    let _ = fs::remove_file(path);
+                }
+            }
+        }
+    } else {
+        let _ = fs::remove_dir_all(root);
+    }
+}
+
+/// Export an SQLite-backed project into one ordinary local project.
+/// The destination must be absent or empty so migration can never overwrite work.
 #[tauri::command]
 pub fn export_to_fs_project(
     db: State<'_, Database>,
     project_id: String,
     output_path: String,
 ) -> Result<ExportToFsResult, String> {
-    let project = db.get_project(&project_id)
+    let project = db
+        .get_project(&project_id)
         .map_err(|e| format!("DB_ERROR: {}", e))?
         .ok_or_else(|| "PROJECT_NOT_FOUND".to_string())?;
-    let objects = db.list_world_objects(&project_id)
+    let objects = db
+        .list_world_objects(&project_id)
         .map_err(|e| format!("DB_ERROR: {}", e))?;
-    let now = std::time::SystemTime::now()
-        .duration_since(UNIX_EPOCH).unwrap().as_millis() as i64;
 
-    let root = Path::new(&output_path);
-    let glyph_dir = root.join(".glyph");
-
-    // Create .glyph directory
-    fs::create_dir_all(&glyph_dir)
-        .map_err(|e| format!("CREATE_ERROR: {}", e))?;
-
-    // Write project.json
-    let new_id = Uuid::new_v4().to_string();
-    let project_meta = serde_json::json!({
-        "glyphVersion": "0.1.0",
-        "projectId": new_id,
-        "name": project.name,
-        "genre": project.genre,
-        "createdAt": project.created_at,
-        "lastOpenedAt": now,
-        "migratedFrom": project_id,
-        "fileCount": objects.len(),
-        "totalWordCount": project.word_count
-    });
-    fs::write(
-        glyph_dir.join("project.json"),
-        serde_json::to_string_pretty(&project_meta).unwrap()
-    ).map_err(|e| format!("WRITE_ERROR: {}", e))?;
-
-    // Write initial session
-    let session = serde_json::json!({
-        "lastOpenFilePath": null,
-        "lastCursorLine": null,
-        "lastCursorColumn": null,
-        "lastScrollPosition": null,
-        "openFilePaths": [],
-        "sidebarWidth": null,
-        "focusMode": false,
-        "lastEditMode": "wysiwyg",
-        "lastSessionAt": now
-    });
-    fs::write(
-        glyph_dir.join("session.json"),
-        serde_json::to_string_pretty(&session).unwrap()
-    ).map_err(|e| format!("WRITE_ERROR: {}", e))?;
-
-    // Write objects as .md files grouped by type
-    let mut file_count = 0;
-    for obj in &objects {
-        let type_dir = match obj.object_type.as_str() {
-            "character" => "characters",
-            "rule" => "world",
-            "faction" => "world",
-            "chapter" | "scene" => "chapters",
-            _ => "notes",
-        };
-        let dir_path = root.join(type_dir);
-        fs::create_dir_all(&dir_path)
+    let requested_root = PathBuf::from(&output_path);
+    if !requested_root.is_absolute() {
+        return Err("PROJECT_PATH_MUST_BE_ABSOLUTE".to_string());
+    }
+    let root_existed = requested_root.exists();
+    if root_existed {
+        if !requested_root.is_dir() {
+            return Err("PROJECT_PATH_NOT_DIRECTORY".to_string());
+        }
+        let mut entries = fs::read_dir(&requested_root)
+            .map_err(|e| format!("READ_ERROR: {}", e))?;
+        if entries.next().is_some() {
+            return Err("PROJECT_DIRECTORY_NOT_EMPTY".to_string());
+        }
+    } else {
+        fs::create_dir_all(&requested_root)
             .map_err(|e| format!("CREATE_ERROR: {}", e))?;
-
-        // Sanitize filename (limit length, remove problematic chars)
-        let safe_name: String = obj.name.chars()
-            .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' || c == ' ' { c } else { '_' })
-            .collect();
-        let safe_name = safe_name.trim();
-        let filename = if safe_name.len() > 80 {
-            &safe_name[..80]
-        } else {
-            safe_name
-        };
-        let file_path = dir_path.join(format!("{}.md", filename));
-
-        // Add YAML frontmatter with metadata
-        let frontmatter = serde_json::json!({
-            "glyph-id": obj.id,
-            "type": obj.object_type,
-            "status": obj.status,
-            "canon": obj.canon_level,
-            "tags": obj.tags,
-            "aliases": obj.aliases
-        });
-        let md_content = format!(
-            "---\n{}---\n\n# {}\n\n{}",
-            serde_json::to_string_pretty(&frontmatter).unwrap(),
-            obj.name,
-            obj.content
-        );
-
-        fs::write(&file_path, &md_content)
-            .map_err(|e| format!("WRITE_ERROR: {}: {}", filename, e))?;
-        file_count += 1;
     }
 
-    // Register the new FS project
-    db.create_fs_project(&new_id, &project.name, &output_path, &project.genre, now)
+    let operation = (|| -> Result<ExportToFsResult, String> {
+        let root = requested_root
+            .canonicalize()
+            .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+        let glyph_dir = root.join(".glyph");
+        fs::create_dir_all(&glyph_dir)
+            .map_err(|e| format!("CREATE_ERROR: {}", e))?;
+
+        let now = now_millis();
+        let new_id = Uuid::new_v4().to_string();
+        let project_meta = serde_json::json!({
+            "glyphVersion": "0.4.1",
+            "projectId": new_id,
+            "name": project.name,
+            "genre": project.genre,
+            "createdAt": project.created_at,
+            "lastOpenedAt": now,
+            "migratedFrom": project_id,
+            "fileCount": objects.len(),
+            "totalWordCount": project.word_count
+        });
+        let metadata = serde_json::to_string_pretty(&project_meta)
+            .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+        atomic_create(&glyph_dir.join("project.json"), &metadata)?;
+        write_default_session(&root, None)?;
+
+        let mut file_count = 0usize;
+        for object in &objects {
+            let type_dir = match object.object_type.as_str() {
+                "character" => "characters",
+                "rule" | "faction" => "world",
+                "chapter" | "scene" => "chapters",
+                _ => "notes",
+            };
+            let dir_path = root.join(type_dir);
+            fs::create_dir_all(&dir_path)
+                .map_err(|e| format!("CREATE_ERROR: {}", e))?;
+
+            let base_name = migration_filename(&object.name);
+            let mut file_path = dir_path.join(format!("{}.md", base_name));
+            if file_path.exists() {
+                let short_id: String = object.id.chars().take(8).collect();
+                file_path = dir_path.join(format!("{}-{}.md", base_name, short_id));
+            }
+
+            let frontmatter = serde_json::json!({
+                "glyph-id": object.id,
+                "type": object.object_type,
+                "status": object.status,
+                "canon": object.canon_level,
+                "tags": object.tags,
+                "aliases": object.aliases
+            });
+            let frontmatter_text = serde_json::to_string_pretty(&frontmatter)
+                .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+            let markdown = format!(
+                "---\n{}\n---\n\n# {}\n\n{}",
+                frontmatter_text, object.name, object.content
+            );
+            atomic_create(&file_path, &markdown).map_err(|error| {
+                format!("WRITE_ERROR: {}: {}", file_path.display(), error)
+            })?;
+            file_count += 1;
+        }
+
+        let normalized_root = root.to_string_lossy().replace('\\', "/");
+        db.create_fs_project(
+            &new_id,
+            &project.name,
+            &normalized_root,
+            &project.genre,
+            now,
+        )
         .map_err(|e| format!("DB_ERROR: {}", e))?;
 
-    let fs_project = FsProject {
-        id: new_id,
-        name: project.name,
-        root_path: output_path.replace('\\', "/"),
-        genre: project.genre,
-        created_at: project.created_at,
-        last_opened_at: now,
-        updated_at: now,
-    };
+        Ok(ExportToFsResult {
+            success: true,
+            project: FsProject {
+                id: new_id,
+                name: project.name,
+                root_path: normalized_root,
+                genre: project.genre,
+                created_at: project.created_at,
+                last_opened_at: now,
+                updated_at: now,
+            },
+            object_count: objects.len(),
+            file_count,
+        })
+    })();
 
-    Ok(ExportToFsResult {
-        success: true,
-        project: fs_project,
-        object_count: objects.len(),
-        file_count,
-    })
+    if operation.is_err() {
+        clear_migration_output(&requested_root, root_existed);
+    }
+    operation
 }
 
 // ============================================================================
@@ -903,11 +1275,26 @@ mod tests {
     }
 
     #[test]
+    fn test_resolve_project_path_rejects_windows_backslash_traversal() {
+        let (_dir, root) = setup_test_dir("backslash_escape");
+        let result = resolve_project_path(root.to_str().unwrap(), r"subdir\..\..\outside.md");
+        assert!(result.is_err(), "Should reject Windows-style traversal on every host");
+    }
+
+    #[test]
     fn test_resolve_project_path_non_existent_path_still_validated() {
         let (_dir, root) = setup_test_dir("nonexist");
         // New file path that doesn't exist yet should resolve its parent
         let result = resolve_project_path(root.to_str().unwrap(), "new_chapter.md");
         assert!(result.is_ok(), "Should allow new file paths");
+    }
+
+    #[test]
+    fn test_resolve_project_path_allows_new_nested_path() {
+        let (_dir, root) = setup_test_dir("nested_create");
+        let result = resolve_project_path(root.to_str().unwrap(), "new/chapters/ch01.md");
+        assert!(result.is_ok(), "Should allow nested new paths: {:?}", result.err());
+        assert!(result.unwrap().ends_with("new/chapters/ch01.md"));
     }
 
     #[test]
@@ -969,9 +1356,30 @@ mod tests {
 
         atomic_write(&file_path, "Clean write").unwrap();
 
-        // Ensure no .tmp file remains
-        let tmp_path = file_path.with_extension("tmp");
-        assert!(!tmp_path.exists(), "Temp file should be removed after successful write");
+        let leftovers: Vec<_> = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_name().to_string_lossy().starts_with(".glyph-write-"))
+            .collect();
+        assert!(leftovers.is_empty(), "Temporary files should be removed after successful write");
+    }
+
+    #[test]
+    fn test_atomic_create_never_overwrites_existing_file() {
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let file_path = dir.path().join("existing.md");
+        fs::write(&file_path, "original").unwrap();
+
+        let result = atomic_create(&file_path, "replacement");
+
+        assert!(result.is_err());
+        assert_eq!(fs::read_to_string(&file_path).unwrap(), "original");
+    }
+
+    #[test]
+    fn test_content_version_tracks_content_not_only_timestamp() {
+        assert_eq!(content_version("same"), content_version("same"));
+        assert_ne!(content_version("first"), content_version("second"));
     }
 
     // ── relative_path ──

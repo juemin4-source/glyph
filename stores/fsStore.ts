@@ -1,274 +1,650 @@
 import { create } from 'zustand';
-import type { DirEntry, FsProject, SessionState } from '../types/fs';
+import type {
+  DirEntry,
+  ExternalConflict,
+  FileSyncStatus,
+  FsProject,
+  SessionState,
+} from '../types/fs';
 import {
-  listFsProjects,
+  createDirectory,
   createFsProject,
-  openFsProject,
-  removeFsProject,
-  listDirectory,
-  readFile,
-  writeFile,
+  createTextFile,
+  deleteDirectory,
+  deleteFile,
   getSessionState,
+  listDirectory,
+  listFsProjects,
+  openFsProject,
+  readFileState,
+  removeFsProject,
+  renameFile,
   saveSessionState,
+  writeFileChecked,
 } from '../tauri-api';
 
-export type ProjectMode = 'sqlite' | 'filesystem';
+interface ViewportState {
+  cursorLine: number;
+  cursorColumn: number;
+  scrollPosition: number;
+}
 
 interface FsStore {
-  // Mode
-  projectMode: ProjectMode;
-  setProjectMode: (mode: ProjectMode) => void;
-
-  // Project list
   fsProjects: FsProject[];
   loading: boolean;
   error: string | null;
 
-  // Active project
-  activeFsProject: FsProject | null;
-
-  // File tree
-  fileTree: DirEntry[];
-  currentPath: string; // current directory path being shown
+  activeProject: FsProject | null;
+  rootEntries: DirEntry[];
+  childrenByPath: Record<string, DirEntry[]>;
   expandedPaths: Set<string>;
 
-  // Current file
   openFilePath: string | null;
   openFileName: string | null;
   fileContent: string | null;
-  fileDirty: boolean;
+  diskModifiedAt: number | null;
+  diskVersion: string | null;
+  fileStatus: FileSyncStatus;
+  externalConflict: ExternalConflict | null;
+  contentRevision: number;
+  editRevision: number;
 
-  // Session
-  sessionState: SessionState | null;
+  viewport: ViewportState;
+  restoredSession: SessionState | null;
 
-  // Actions
-  loadFsProjects: () => Promise<void>;
-  initNewProject: (name: string, rootPath: string, genre?: string) => Promise<FsProject>;
-  openProject: (rootPath: string) => Promise<void>;
-  closeProject: () => void;
-  navigateToDir: (dirPath: string) => Promise<void>;
-  refreshTree: () => Promise<void>;
-  toggleExpanded: (path: string) => void;
-  openFile: (filePath: string) => Promise<void>;
-  saveCurrentFile: () => Promise<boolean>;
-  setFileDirty: (dirty: boolean) => void;
-  updateContent: (content: string) => void;
+  loadProjects: () => Promise<void>;
+  createProject: (name: string, rootPath: string, genre?: string) => Promise<FsProject>;
+  openProject: (rootPath: string) => Promise<FsProject>;
+  closeProject: () => Promise<boolean>;
   removeProject: (projectId: string) => Promise<void>;
+
+  loadDirectory: (path: string) => Promise<void>;
+  toggleDirectory: (path: string) => Promise<void>;
+  refreshVisibleTree: () => Promise<void>;
+
+  openFile: (path: string) => Promise<boolean>;
+  updateContent: (content: string) => void;
+  saveCurrentFile: (options?: { force?: boolean }) => Promise<boolean>;
+  handleExternalChanges: (paths: string[]) => Promise<'none' | 'reloaded' | 'conflict' | 'missing'>;
+  useExternalVersion: () => void;
+  overwriteExternalVersion: () => Promise<boolean>;
+  saveConflictCopy: () => Promise<string | null>;
+  saveMissingCopy: () => Promise<string | null>;
+
+  createMarkdownFile: (path: string) => Promise<boolean>;
+  createFolder: (path: string) => Promise<boolean>;
+  renameEntry: (oldPath: string, newPath: string) => Promise<boolean>;
+  deleteEntry: (entry: DirEntry) => Promise<boolean>;
+
+  updateViewport: (partial: Partial<ViewportState>) => void;
+  persistSession: () => Promise<void>;
+  clearError: () => void;
 }
 
-export const useFsStore = create<FsStore>((set, get) => ({
-  // Defaults
-  projectMode: 'filesystem',
-  setProjectMode: (mode) => set({ projectMode: mode }),
+const initialViewport: ViewportState = {
+  cursorLine: 0,
+  cursorColumn: 0,
+  scrollPosition: 0,
+};
 
-  fsProjects: [],
-  loading: false,
-  error: null,
+let activeSavePromise: Promise<boolean> | null = null;
+let openRequestSequence = 0;
 
-  activeFsProject: null,
-  fileTree: [],
-  currentPath: '',
-  expandedPaths: new Set<string>(),
+function fileName(path: string): string {
+  return path.split('/').pop() || path;
+}
 
-  openFilePath: null,
-  openFileName: null,
-  fileContent: null,
-  fileDirty: false,
+function normalizeRelative(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+}
 
-  sessionState: null,
+function isExternalModification(error: unknown): boolean {
+  const message = String(error);
+  return message.includes('EXTERNAL_MODIFICATION') || message.includes('FILE_MISSING');
+}
 
-  loadFsProjects: async () => {
-    set({ loading: true, error: null });
-    try {
-      const projects = await listFsProjects();
-      set({ fsProjects: projects || [], loading: false });
-    } catch (err) {
-      set({ error: String(err), loading: false });
-    }
-  },
+function conflictCopyPath(path: string): string {
+  const slash = path.lastIndexOf('/');
+  const dir = slash >= 0 ? path.slice(0, slash + 1) : '';
+  const name = slash >= 0 ? path.slice(slash + 1) : path;
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '.md';
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  return `${dir}${stem}.本地冲突-${stamp}${ext}`;
+}
 
-  initNewProject: async (name, rootPath, genre) => {
-    set({ loading: true, error: null });
-    try {
-      const result = await createFsProject(name, rootPath, genre);
-      const project = result.project;
-      set((state) => ({
-        fsProjects: [project, ...state.fsProjects],
-        activeFsProject: project,
-        loading: false,
-      }));
-      // Navigate to root
-      await get().navigateToDir('');
-      return project;
-    } catch (err) {
-      set({ error: String(err), loading: false });
-      throw err;
-    }
-  },
+function pathIsWithin(path: string, parent: string): boolean {
+  return path === parent || path.startsWith(`${parent}/`);
+}
 
-  openProject: async (rootPath) => {
-    set({ loading: true, error: null });
-    try {
-      const project = await openFsProject(rootPath);
-      const state = await getSessionState(rootPath);
-      set({
-        activeFsProject: project,
-        sessionState: state,
-        loading: false,
-        openFilePath: null,
-        fileContent: null,
-        fileDirty: false,
-      });
-      // Navigate to root
-      await get().navigateToDir('');
+function replacePathPrefix(path: string, oldPrefix: string, newPrefix: string): string {
+  if (path === oldPrefix) return newPrefix;
+  if (path.startsWith(`${oldPrefix}/`)) return `${newPrefix}${path.slice(oldPrefix.length)}`;
+  return path;
+}
 
-      // Restore last open file if exists
-      if (state?.lastOpenFilePath) {
-        try {
-          await get().openFile(state.lastOpenFilePath);
-        } catch {
-          // File might have been deleted; ignore
-        }
-      }
+function emptyWorkspace() {
+  return {
+    rootEntries: [] as DirEntry[],
+    childrenByPath: {} as Record<string, DirEntry[]>,
+    expandedPaths: new Set<string>(),
+    openFilePath: null as string | null,
+    openFileName: null as string | null,
+    fileContent: null as string | null,
+    diskModifiedAt: null as number | null,
+    diskVersion: null as string | null,
+    fileStatus: 'clean' as FileSyncStatus,
+    externalConflict: null as ExternalConflict | null,
+    restoredSession: null as SessionState | null,
+    viewport: initialViewport,
+    contentRevision: 0,
+    editRevision: 0,
+  };
+}
 
-      // Update project list
-      const projects = await listFsProjects();
-      set({ fsProjects: projects });
-    } catch (err) {
-      set({ error: String(err), loading: false });
-      throw err;
-    }
-  },
-
-  closeProject: async () => {
-    const { activeFsProject, openFilePath, openFileContent, fileDirty } = get();
-    if (fileDirty && openFilePath && activeFsProject) {
-      await get().saveCurrentFile();
-    }
-    // Save session state
-    if (activeFsProject) {
-      try {
-        const state: SessionState = {
-          lastOpenFilePath: get().openFilePath,
-          lastCursorLine: null,
-          lastCursorColumn: null,
-          lastScrollPosition: null,
-          openFilePaths: get().openFilePath ? [get().openFilePath!] : [],
-          sidebarWidth: null,
-          focusMode: null,
-          lastEditMode: null,
-          lastSessionAt: Date.now(),
-        };
-        await saveSessionState(activeFsProject.rootPath, state);
-      } catch {
-        // Silently fail session save
-      }
-    }
+export const useFsStore = create<FsStore>((set, get) => {
+  const activateProject = async (project: FsProject, session: SessionState | null) => {
+    openRequestSequence += 1;
     set({
-      activeFsProject: null,
-      fileTree: [],
-      currentPath: '',
-      openFilePath: null,
-      openFileName: null,
-      fileContent: null,
-      fileDirty: false,
-      sessionState: null,
+      ...emptyWorkspace(),
+      activeProject: project,
+      restoredSession: session,
+      viewport: {
+        cursorLine: session?.lastCursorLine ?? 0,
+        cursorColumn: session?.lastCursorColumn ?? 0,
+        scrollPosition: session?.lastScrollPosition ?? 0,
+      },
+      loading: false,
+      error: null,
     });
-  },
 
-  navigateToDir: async (dirPath) => {
-    const { activeFsProject } = get();
-    if (!activeFsProject) return;
-
-    set({ loading: true });
-    try {
-      const entries = await listDirectory(activeFsProject.rootPath, dirPath);
-      set({
-        fileTree: entries,
-        currentPath: dirPath,
-        loading: false,
-      });
-    } catch (err) {
-      set({ error: String(err), loading: false });
+    await get().loadDirectory('');
+    if (session?.lastOpenFilePath) {
+      const restored = await get().openFile(session.lastOpenFilePath);
+      if (!restored) set({ error: null, loading: false, restoredSession: null });
     }
-  },
+  };
 
-  refreshTree: async () => {
-    const { currentPath, activeFsProject } = get();
-    if (!activeFsProject) return;
-    try {
-      const entries = await listDirectory(activeFsProject.rootPath, currentPath);
-      set({ fileTree: entries });
-    } catch {
-      // Silently fail refresh
-    }
-  },
+  const waitForActiveSave = async () => {
+    const pending = activeSavePromise;
+    if (pending) await pending;
+  };
 
-  toggleExpanded: (path) => {
-    set((state) => {
-      const next = new Set(state.expandedPaths);
-      if (next.has(path)) {
-        next.delete(path);
-      } else {
-        next.add(path);
+  const settleCurrentFile = async (): Promise<boolean> => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (get().fileStatus === 'saving') await waitForActiveSave();
+      const status = get().fileStatus;
+      if (status === 'clean' || !get().openFilePath) return true;
+      if (status === 'dirty' || status === 'save-error') {
+        const saved = await get().saveCurrentFile();
+        if (!saved) return false;
+        continue;
       }
-      return { expandedPaths: next };
-    });
-  },
-
-  openFile: async (filePath) => {
-    const { activeFsProject } = get();
-    if (!activeFsProject) return;
-
-    // If dirty, save first
-    if (get().fileDirty) {
-      await get().saveCurrentFile();
-    }
-
-    set({ loading: true, error: null });
-    try {
-      const content = await readFile(activeFsProject.rootPath, filePath);
-      const name = filePath.split('/').pop() || filePath;
-      set({
-        openFilePath: filePath,
-        openFileName: name,
-        fileContent: content,
-        fileDirty: false,
-        loading: false,
-      });
-    } catch (err) {
-      set({ error: String(err), loading: false });
-    }
-  },
-
-  saveCurrentFile: async () => {
-    const { activeFsProject, openFilePath, fileContent } = get();
-    if (!activeFsProject || !openFilePath || fileContent === null) return false;
-
-    try {
-      await writeFile(activeFsProject.rootPath, openFilePath, fileContent);
-      set({ fileDirty: false });
-      return true;
-    } catch (err) {
-      set({ error: String(err) });
+      // Conflict and missing states preserve local text and require an explicit user choice.
       return false;
     }
-  },
+    return get().fileStatus === 'clean';
+  };
 
-  setFileDirty: (dirty) => set({ fileDirty: dirty }),
+  return {
+    fsProjects: [],
+    loading: false,
+    error: null,
 
-  updateContent: (content) => {
-    set({ fileContent: content, fileDirty: true });
-  },
+    activeProject: null,
+    ...emptyWorkspace(),
 
-  removeProject: async (projectId) => {
-    try {
-      await removeFsProject(projectId);
+    loadProjects: async () => {
+      set({ loading: true, error: null });
+      try {
+        const projects = await listFsProjects();
+        set({ fsProjects: projects ?? [], loading: false });
+      } catch (error) {
+        set({ fsProjects: [], loading: false, error: String(error) });
+      }
+    },
+
+    createProject: async (name, rootPath, genre) => {
+      set({ loading: true, error: null });
+      try {
+        const result = await createFsProject(name, rootPath, genre);
+        const session = await getSessionState(result.project.rootPath).catch(() => null);
+        set((state) => ({
+          fsProjects: [result.project, ...state.fsProjects.filter((project) => project.id !== result.project.id)],
+        }));
+        await activateProject(result.project, session);
+        return result.project;
+      } catch (error) {
+        set({ loading: false, error: String(error) });
+        throw error;
+      }
+    },
+
+    openProject: async (rootPath) => {
+      set({ loading: true, error: null });
+      try {
+        const project = await openFsProject(rootPath);
+        const session = await getSessionState(project.rootPath).catch(() => null);
+        await activateProject(project, session);
+        set((state) => ({
+          fsProjects: [project, ...state.fsProjects.filter((item) => item.id !== project.id)],
+        }));
+        return project;
+      } catch (error) {
+        set({ loading: false, error: String(error) });
+        throw error;
+      }
+    },
+
+    closeProject: async () => {
+      if (!await settleCurrentFile()) return false;
+      await get().persistSession();
+      openRequestSequence += 1;
+      set({ activeProject: null, ...emptyWorkspace() });
+      return true;
+    },
+
+    removeProject: async (projectId) => {
+      try {
+        await removeFsProject(projectId);
+        set((state) => ({ fsProjects: state.fsProjects.filter((project) => project.id !== projectId) }));
+      } catch (error) {
+        set({ error: String(error) });
+      }
+    },
+
+    loadDirectory: async (path) => {
+      const project = get().activeProject;
+      if (!project) return;
+      const normalized = normalizeRelative(path);
+      try {
+        const entries = await listDirectory(project.rootPath, normalized);
+        if (get().activeProject?.id !== project.id) return;
+        if (normalized === '') {
+          set({ rootEntries: entries });
+        } else {
+          set((state) => ({
+            childrenByPath: { ...state.childrenByPath, [normalized]: entries },
+          }));
+        }
+      } catch (error) {
+        if (get().activeProject?.id === project.id) set({ error: String(error) });
+      }
+    },
+
+    toggleDirectory: async (path) => {
+      const normalized = normalizeRelative(path);
+      if (get().expandedPaths.has(normalized)) {
+        set((state) => {
+          const next = new Set(state.expandedPaths);
+          next.delete(normalized);
+          return { expandedPaths: next };
+        });
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(get().childrenByPath, normalized)) {
+        await get().loadDirectory(normalized);
+      }
+      set((state) => {
+        const next = new Set(state.expandedPaths);
+        next.add(normalized);
+        return { expandedPaths: next };
+      });
+    },
+
+    refreshVisibleTree: async () => {
+      await get().loadDirectory('');
+      const paths = [...get().expandedPaths];
+      await Promise.all(paths.map((path) => get().loadDirectory(path)));
+    },
+
+    openFile: async (path) => {
+      const project = get().activeProject;
+      if (!project) return false;
+      const normalized = normalizeRelative(path);
+      if (normalized === get().openFilePath) return true;
+      if (!await settleCurrentFile()) return false;
+
+      const requestId = ++openRequestSequence;
+      set({ loading: true, error: null });
+      try {
+        const result = await readFileState(project.rootPath, normalized);
+        if (requestId !== openRequestSequence || get().activeProject?.id !== project.id) return false;
+        const restoredSession = get().restoredSession;
+        set((state) => ({
+          openFilePath: normalized,
+          openFileName: fileName(normalized),
+          fileContent: result.content,
+          diskModifiedAt: result.modifiedAt,
+          diskVersion: result.version,
+          fileStatus: 'clean',
+          externalConflict: null,
+          contentRevision: state.contentRevision + 1,
+          editRevision: 0,
+          viewport:
+            restoredSession?.lastOpenFilePath === normalized
+              ? state.viewport
+              : initialViewport,
+          restoredSession: null,
+          loading: false,
+        }));
+        return true;
+      } catch (error) {
+        if (requestId === openRequestSequence) set({ loading: false, error: String(error) });
+        return false;
+      }
+    },
+
+    updateContent: (content) => {
+      const state = get();
+      if (state.fileStatus === 'conflict' || state.fileStatus === 'missing') return;
+      if (state.fileContent === content) return;
+      set({
+        fileContent: content,
+        fileStatus: 'dirty',
+        editRevision: state.editRevision + 1,
+      });
+    },
+
+    saveCurrentFile: async ({ force = false } = {}) => {
+      if (activeSavePromise) return activeSavePromise;
+
+      const snapshot = get();
+      if (!snapshot.activeProject || !snapshot.openFilePath || snapshot.fileContent === null) return false;
+      if (snapshot.fileStatus === 'clean') return true;
+      if ((snapshot.fileStatus === 'conflict' || snapshot.fileStatus === 'missing') && !force) return false;
+
+      const projectId = snapshot.activeProject.id;
+      const projectRoot = snapshot.activeProject.rootPath;
+      const path = snapshot.openFilePath;
+      const content = snapshot.fileContent;
+      const version = force ? null : snapshot.diskVersion;
+      const editRevision = snapshot.editRevision;
+
+      set({ fileStatus: 'saving', error: null });
+      const task = (async (): Promise<boolean> => {
+        try {
+          const result = await writeFileChecked(projectRoot, path, content, version);
+          set((state) => {
+            if (state.activeProject?.id !== projectId || state.openFilePath !== path) return {};
+            if (state.fileStatus === 'conflict' || state.fileStatus === 'missing') return {};
+            const unchanged = state.editRevision === editRevision && state.fileContent === content;
+            return {
+              diskModifiedAt: result.modifiedAt,
+              diskVersion: result.version,
+              fileStatus: unchanged ? 'clean' : 'dirty',
+              externalConflict: null,
+            };
+          });
+          return true;
+        } catch (error) {
+          if (get().activeProject?.id !== projectId || get().openFilePath !== path) return false;
+          if (isExternalModification(error)) {
+            try {
+              const external = await readFileState(projectRoot, path);
+              set({
+                fileStatus: 'conflict',
+                externalConflict: external,
+                error: '文件已被其他程序修改，自动保存已暂停。',
+              });
+            } catch {
+              set({ fileStatus: 'missing', error: '文件已被移动或删除。' });
+            }
+          } else {
+            set({ fileStatus: 'save-error', error: String(error) });
+          }
+          return false;
+        }
+      })();
+
+      activeSavePromise = task;
+      try {
+        return await task;
+      } finally {
+        if (activeSavePromise === task) activeSavePromise = null;
+      }
+    },
+
+    handleExternalChanges: async (paths) => {
+      const normalized = paths.map(normalizeRelative);
+      await get().refreshVisibleTree();
+
+      let project = get().activeProject;
+      let openPath = get().openFilePath;
+      if (!project || !openPath || !normalized.includes(openPath)) return 'none';
+
+      // A watcher event may arrive before the checked-write promise resolves.
+      // Wait for that single save owner, then compare the actual disk version.
+      if (activeSavePromise) {
+        await waitForActiveSave();
+        project = get().activeProject;
+        openPath = get().openFilePath;
+        if (!project || !openPath || !normalized.includes(openPath)) return 'none';
+      }
+
+      try {
+        const external = await readFileState(project.rootPath, openPath);
+        if (get().activeProject?.id !== project.id || get().openFilePath !== openPath) return 'none';
+        const state = get();
+
+        // This is Glyph's own completed save (or a duplicate watcher event).
+        // It is harmless even when the user has already typed newer dirty text.
+        if (external.version === state.diskVersion) return 'none';
+
+        if (state.fileStatus === 'clean') {
+          set((current) => ({
+            fileContent: external.content,
+            diskModifiedAt: external.modifiedAt,
+            diskVersion: external.version,
+            externalConflict: null,
+            fileStatus: 'clean',
+            contentRevision: current.contentRevision + 1,
+            editRevision: 0,
+          }));
+          return 'reloaded';
+        }
+
+        set({
+          fileStatus: 'conflict',
+          externalConflict: external,
+          error: '文件已被其他程序修改，自动保存已暂停。',
+        });
+        return 'conflict';
+      } catch {
+        set({ fileStatus: 'missing', error: '当前文件已被移动或删除。' });
+        return 'missing';
+      }
+    },
+
+    useExternalVersion: () => {
+      const conflict = get().externalConflict;
+      if (!conflict) return;
       set((state) => ({
-        fsProjects: state.fsProjects.filter((p) => p.projectId !== projectId),
+        fileContent: conflict.content,
+        diskModifiedAt: conflict.modifiedAt,
+        diskVersion: conflict.version,
+        externalConflict: null,
+        fileStatus: 'clean',
+        error: null,
+        contentRevision: state.contentRevision + 1,
+        editRevision: 0,
       }));
-    } catch (err) {
-      set({ error: String(err) });
-    }
-  },
-}));
+    },
+
+    overwriteExternalVersion: async () => get().saveCurrentFile({ force: true }),
+
+    saveConflictCopy: async () => {
+      const { activeProject, openFilePath, fileContent, externalConflict } = get();
+      if (!activeProject || !openFilePath || fileContent === null || !externalConflict) return null;
+      const copyPath = conflictCopyPath(openFilePath);
+      try {
+        await createTextFile(activeProject.rootPath, copyPath, fileContent);
+        set((state) => ({
+          fileContent: externalConflict.content,
+          diskModifiedAt: externalConflict.modifiedAt,
+          diskVersion: externalConflict.version,
+          externalConflict: null,
+          fileStatus: 'clean',
+          error: null,
+          contentRevision: state.contentRevision + 1,
+          editRevision: 0,
+        }));
+        await get().refreshVisibleTree();
+        return copyPath;
+      } catch (error) {
+        set({ error: String(error) });
+        return null;
+      }
+    },
+
+    saveMissingCopy: async () => {
+      const { activeProject, openFilePath, fileContent } = get();
+      if (!activeProject || !openFilePath || fileContent === null) return null;
+      const copyPath = conflictCopyPath(openFilePath).replace('.本地冲突-', '.恢复副本-');
+      try {
+        const result = await createTextFile(activeProject.rootPath, copyPath, fileContent);
+        set((state) => ({
+          openFilePath: copyPath,
+          openFileName: fileName(copyPath),
+          diskModifiedAt: result.modifiedAt,
+          diskVersion: result.version,
+          externalConflict: null,
+          fileStatus: 'clean',
+          error: null,
+          contentRevision: state.contentRevision + 1,
+          editRevision: 0,
+        }));
+        await get().refreshVisibleTree();
+        return copyPath;
+      } catch (error) {
+        set({ error: String(error) });
+        return null;
+      }
+    },
+
+    createMarkdownFile: async (path) => {
+      const project = get().activeProject;
+      if (!project) return false;
+      if (!await settleCurrentFile()) return false;
+      const normalized = normalizeRelative(path.endsWith('.md') ? path : `${path}.md`);
+      try {
+        await createTextFile(project.rootPath, normalized, '');
+        await get().refreshVisibleTree();
+        return get().openFile(normalized);
+      } catch (error) {
+        set({ error: String(error) });
+        return false;
+      }
+    },
+
+    createFolder: async (path) => {
+      const project = get().activeProject;
+      if (!project) return false;
+      try {
+        await createDirectory(project.rootPath, normalizeRelative(path));
+        await get().refreshVisibleTree();
+        return true;
+      } catch (error) {
+        set({ error: String(error) });
+        return false;
+      }
+    },
+
+    renameEntry: async (oldPath, newPath) => {
+      const project = get().activeProject;
+      if (!project) return false;
+      const normalizedOld = normalizeRelative(oldPath);
+      const normalizedNew = normalizeRelative(newPath);
+      const currentOpenPath = get().openFilePath;
+      const affectsOpenFile = currentOpenPath ? pathIsWithin(currentOpenPath, normalizedOld) : false;
+      if (affectsOpenFile && !await settleCurrentFile()) return false;
+
+      try {
+        await renameFile(project.rootPath, normalizedOld, normalizedNew);
+        const nextOpenPath = currentOpenPath && affectsOpenFile
+          ? replacePathPrefix(currentOpenPath, normalizedOld, normalizedNew)
+          : null;
+        openRequestSequence += 1;
+        set({
+          rootEntries: [],
+          childrenByPath: {},
+          expandedPaths: new Set<string>(),
+          ...(affectsOpenFile ? {
+            openFilePath: null,
+            openFileName: null,
+            fileContent: null,
+            diskModifiedAt: null,
+            diskVersion: null,
+            fileStatus: 'clean' as FileSyncStatus,
+            externalConflict: null,
+          } : {}),
+        });
+        await get().loadDirectory('');
+        if (nextOpenPath) await get().openFile(nextOpenPath);
+        return true;
+      } catch (error) {
+        set({ error: String(error) });
+        return false;
+      }
+    },
+
+    deleteEntry: async (entry) => {
+      const project = get().activeProject;
+      if (!project) return false;
+      const currentOpenPath = get().openFilePath;
+      const affectsOpenFile = currentOpenPath ? pathIsWithin(currentOpenPath, entry.path) : false;
+      if (affectsOpenFile && !await settleCurrentFile()) return false;
+
+      try {
+        if (entry.isDir) await deleteDirectory(project.rootPath, entry.path);
+        else await deleteFile(project.rootPath, entry.path);
+        if (affectsOpenFile) {
+          openRequestSequence += 1;
+          set({
+            openFilePath: null,
+            openFileName: null,
+            fileContent: null,
+            diskModifiedAt: null,
+            diskVersion: null,
+            fileStatus: 'clean',
+            externalConflict: null,
+          });
+        }
+        await get().refreshVisibleTree();
+        return true;
+      } catch (error) {
+        set({ error: String(error) });
+        return false;
+      }
+    },
+
+    updateViewport: (partial) => {
+      set((state) => ({ viewport: { ...state.viewport, ...partial } }));
+    },
+
+    persistSession: async () => {
+      const { activeProject, openFilePath, viewport } = get();
+      if (!activeProject) return;
+      const projectRoot = activeProject.rootPath;
+      const state: SessionState = {
+        lastOpenFilePath: openFilePath,
+        lastCursorLine: viewport.cursorLine,
+        lastCursorColumn: viewport.cursorColumn,
+        lastScrollPosition: viewport.scrollPosition,
+        openFilePaths: openFilePath ? [openFilePath] : [],
+        sidebarWidth: null,
+        focusMode: null,
+        lastEditMode: 'markdown',
+        lastSessionAt: Date.now(),
+      };
+      try {
+        await saveSessionState(projectRoot, state);
+      } catch (error) {
+        console.warn('[session] failed to persist session', error);
+      }
+    },
+
+    clearError: () => set({ error: null }),
+  };
+});

@@ -1,215 +1,142 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
-import type { Editor } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import { Slash, SlashCmd, SlashCmdProvider, createSuggestionsItems, enableKeyboardNavigation } from '@harshtalks/slash-tiptap';
-import { markdownToHtml, htmlToMarkdown, ensureEditorContent, countWords } from '../utils/markdown';
-import { Eye, FileEdit } from 'lucide-react';
+import { useEffect, useMemo, useRef, type ChangeEvent, type UIEvent } from 'react';
+import type { FileSyncStatus } from '../types/fs';
+import { countWords } from '../utils/markdown';
 
 interface FsDocumentViewProps {
   content: string | null;
   filePath: string | null;
   fileName: string | null;
-  isDirty: boolean;
+  status: FileSyncStatus;
+  contentRevision: number;
+  cursorLine: number;
+  cursorColumn: number;
+  scrollPosition: number;
   onContentChange: (content: string) => void;
   onSave: () => Promise<boolean>;
-  wordCount?: number;
+  onViewportChange: (state: {
+    cursorLine?: number;
+    cursorColumn?: number;
+    scrollPosition?: number;
+  }) => void;
 }
 
-type EditMode = 'wysiwyg' | 'source' | 'preview';
+function offsetFromLineColumn(content: string, line: number, column: number): number {
+  const lines = content.split('\n');
+  const safeLine = Math.max(0, Math.min(line, lines.length - 1));
+  let offset = 0;
+  for (let index = 0; index < safeLine; index += 1) offset += lines[index].length + 1;
+  return Math.min(offset + Math.max(0, column), content.length);
+}
 
-const slashItems = createSuggestionsItems([
-  { title: '标题 1', searchTerms: ['h1', 'heading1', '大标题'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
-  { title: '标题 2', searchTerms: ['h2', 'heading2', '章节'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
-  { title: '标题 3', searchTerms: ['h3', 'heading3', '小节'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
-  { title: '无序列表', searchTerms: ['ul', 'unordered', '列表', '圆点'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run() },
-  { title: '有序列表', searchTerms: ['ol', 'ordered', '编号'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run() },
-  { title: '引用', searchTerms: ['blockquote', 'quote', '引用'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
-  { title: '代码块', searchTerms: ['code', 'pre', '代码'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run() },
-  { title: '分割线', searchTerms: ['hr', 'divider', '分割'], command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run() },
-]);
+function lineColumnFromOffset(content: string, offset: number): { line: number; column: number } {
+  const safeOffset = Math.max(0, Math.min(offset, content.length));
+  const before = content.slice(0, safeOffset);
+  const lines = before.split('\n');
+  return { line: lines.length - 1, column: lines[lines.length - 1].length };
+}
+
+const STATUS_TEXT: Record<FileSyncStatus, string> = {
+  clean: '已保存',
+  dirty: '未保存',
+  saving: '正在保存',
+  'save-error': '保存失败',
+  conflict: '外部冲突',
+  missing: '文件已丢失',
+};
 
 /**
- * FsDocumentView — Tiptap-based editor for filesystem Markdown files.
- * Mirrors the editing experience of DocumentView but works with raw file content.
+ * A single truthful Markdown editor.
+ * Gate A intentionally avoids WYSIWYG round-tripping so existing Markdown is never rewritten by a lossy serializer.
  */
 export default function FsDocumentView({
-  content, filePath, fileName, isDirty, onContentChange, onSave,
+  content,
+  filePath,
+  fileName,
+  status,
+  contentRevision,
+  cursorLine,
+  cursorColumn,
+  scrollPosition,
+  onContentChange,
+  onSave,
+  onViewportChange,
 }: FsDocumentViewProps) {
-  const [editMode, setEditMode] = useState<EditMode>('wysiwyg');
-  const sourceRef = useRef<HTMLTextAreaElement>(null);
-  const editorRef = useRef<Editor | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const restoredRevisionRef = useRef<number | null>(null);
+  const wordCount = useMemo(() => countWords(content || ''), [content]);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      Slash.configure({
-        suggestion: {
-          items: () => slashItems,
-        },
-      }),
-    ],
-    content: ensureEditorContent(content || ''),
-    onCreate: ({ editor: ed }) => { editorRef.current = ed; },
-    editorProps: {
-      attributes: {
-        class: 'editor-content',
-        'data-placeholder': '在此输入文档内容...',
-      },
-      handleDOMEvents: {
-        keydown: (_, v) => {
-          if (v.isComposing || v.keyCode === 229) return false;
-          return enableKeyboardNavigation(v);
-        },
-      },
-    },
-    onUpdate: ({ editor: ed }) => {
-      // WYSIWYG mode: serialize HTML → Markdown
-      const html = ed.getHTML();
-      const md = htmlToMarkdown(html);
-      onContentChange(md);
-    },
-  });
-
-  // Update editor content when switching files
   useEffect(() => {
-    if (editor && filePath && content !== null) {
-      const html = ensureEditorContent(content);
-      if (editor.getHTML() !== html) {
-        editor.commands.setContent(html);
-      }
+    if (!textareaRef.current || content === null) return;
+    if (restoredRevisionRef.current === contentRevision) return;
+    restoredRevisionRef.current = contentRevision;
+    const offset = offsetFromLineColumn(content, cursorLine, cursorColumn);
+    const restore = () => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.setSelectionRange(offset, offset);
+      textarea.scrollTop = scrollPosition;
+    };
+    if (typeof window.requestAnimationFrame === 'function') {
+      const frame = window.requestAnimationFrame(restore);
+      return () => window.cancelAnimationFrame(frame);
     }
-  }, [editor, filePath]);
+    const timer = window.setTimeout(restore, 0);
+    return () => window.clearTimeout(timer);
+  }, [contentRevision, content, cursorLine, cursorColumn, scrollPosition]);
 
-  // Keyboard shortcuts
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        onSave();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'p') {
-        e.preventDefault();
-        setEditMode(prev => prev === 'preview' ? 'wysiwyg' : 'preview');
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        void onSave();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onSave]);
 
-  // Source mode handler
-  const handleSourceChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onContentChange(e.target.value);
-  }, [onContentChange]);
-
-  // Preview HTML
-  const previewHtml = useMemo(() => {
-    if (!content) return '<p></p>';
-    try {
-      return markdownToHtml(content);
-    } catch {
-      return '<p>预览渲染失败</p>';
-    }
-  }, [content]);
-
-  // Empty state
   if (!filePath || content === null) {
     return (
       <div className="fs-file-empty">
         <div className="fs-file-empty-icon">📝</div>
-        <p>在侧栏选择一个文件开始编辑</p>
+        <p>从左侧打开一份 Markdown，继续你的作品。</p>
       </div>
     );
   }
 
+  const reportCursor = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const position = lineColumnFromOffset(content, textarea.selectionStart);
+    onViewportChange({ cursorLine: position.line, cursorColumn: position.column });
+  };
+
   return (
-    <div className="fs-document-view">
-      {/* Toolbar */}
+    <div className="fs-document-view fs-markdown-only">
       <div className="editor-toolbar">
         <div className="editor-toolbar-left">
-          {fileName && (
-            <span className="editor-filename" title={filePath || undefined}>
-              {fileName}
-              {isDirty && <span className="editor-dirty-dot"> ●</span>}
-            </span>
-          )}
+          <span className="editor-filename" title={filePath}>{fileName}</span>
+          <span className={`fs-save-state fs-save-state-${status}`}>{STATUS_TEXT[status]}</span>
         </div>
-
         <div className="editor-toolbar-right">
-          <div className="edit-mode-tabs">
-            <button
-              className={`edit-mode-tab ${editMode === 'wysiwyg' ? 'active' : ''}`}
-              onClick={() => setEditMode('wysiwyg')}
-              title="所见即所得模式"
-            >
-              可视化
-            </button>
-            <button
-              className={`edit-mode-tab ${editMode === 'source' ? 'active' : ''}`}
-              onClick={() => setEditMode('source')}
-              title="源码模式"
-            >
-              <FileEdit size={14} /> 源码
-            </button>
-            <button
-              className={`edit-mode-tab ${editMode === 'preview' ? 'active' : ''}`}
-              onClick={() => setEditMode('preview')}
-              title="预览模式 (Ctrl+Shift+P)"
-            >
-              <Eye size={14} /> 预览
-            </button>
-          </div>
+          <span className="fs-word-count">{wordCount} 字</span>
+          <span className="fs-editor-mode">Markdown</span>
         </div>
       </div>
 
-      {/* Editor area */}
-      <div className="editor-area">
-        {editMode === 'wysiwyg' && (
-          <div className="editor-wysiwyg">
-            {editor && (
-              <BubbleMenu editor={editor} tippyOptions={{ duration: 150 }}>
-                <div className="bubble-menu">
-                  <button onClick={() => editor.chain().focus().toggleBold().run()}>
-                    <strong>B</strong>
-                  </button>
-                  <button onClick={() => editor.chain().focus().toggleItalic().run()}>
-                    <em>I</em>
-                  </button>
-                  <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-                    H2
-                  </button>
-                  <button onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-                    H3
-                  </button>
-                  <button onClick={() => editor.chain().focus().toggleBulletList().run()}>
-                    列表
-                  </button>
-                </div>
-              </BubbleMenu>
-            )}
-            <EditorContent editor={editor} />
-          </div>
-        )}
-
-        {editMode === 'source' && (
-          <textarea
-            ref={sourceRef}
-            className="editor-source-textarea"
-            value={content || ''}
-            onChange={handleSourceChange}
-            spellCheck
-          />
-        )}
-
-        {editMode === 'preview' && (
-          <div
-            className="editor-preview"
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
-        )}
-      </div>
+      <textarea
+        ref={textareaRef}
+        className="fs-markdown-textarea"
+        aria-label="Markdown 正文编辑器"
+        value={content}
+        onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onContentChange(event.target.value)}
+        onClick={reportCursor}
+        onKeyUp={reportCursor}
+        onSelect={reportCursor}
+        onScroll={(event: UIEvent<HTMLTextAreaElement>) => onViewportChange({ scrollPosition: event.currentTarget.scrollTop })}
+        spellCheck
+        readOnly={status === 'conflict' || status === 'missing'}
+      />
     </div>
   );
 }

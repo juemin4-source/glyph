@@ -1,4 +1,4 @@
-﻿mod ai;
+mod ai;
 mod ai_commands;
 mod api;
 mod chapter_packet_commands;
@@ -209,9 +209,12 @@ pub fn run() {
             fs_commands::remove_fs_project,
             fs_commands::list_directory,
             fs_commands::read_file,
+            fs_commands::read_file_state,
             // Gate B: Content search
             fs_commands::search_file_content,
             fs_commands::write_file,
+            fs_commands::write_file_checked,
+            fs_commands::create_text_file,
             fs_commands::create_file,
             fs_commands::create_directory,
             fs_commands::rename_file,
