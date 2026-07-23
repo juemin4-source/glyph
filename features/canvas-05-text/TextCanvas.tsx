@@ -18,8 +18,8 @@
  * 设计约束：
  * - 不改 App.tsx（由 C5 Integration 替换 text stage 渲染）
  * - 不直接调用 invoke
- * - 不含 mock AI
- * - AI 生成不做 fallback mock
+ * - 不含伪 AI（真实 AI 管线，不做本地模拟）
+ * - AI 生成不做 fallback 占位
  */
 import { useState, useEffect, useCallback } from 'react';
 import DocumentView from '../../components/DocumentView';

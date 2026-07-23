@@ -3,7 +3,7 @@
  * scan-forbidden-patterns.mjs
  *
  * Scans v2 files for patterns that should not exist:
- *  - Direct import/use of @tauri-apps/api/core's invoke outside src/api/
+ *  - Direct import/use of @tauri-apps/api/core's invoke outside api/
  *  - Large inline style objects (const styles = { / const s: Record<string,)
  *  - 'mock' keyword in production code
  *  - Accidental edits to old (v1) components
@@ -18,10 +18,10 @@ import { execSync } from 'child_process';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const V2_DIRS = [
-  'src/features',
-  'src/contracts',
-  'src/api',
-  'src/stores',
+  'features',
+  'docs/contracts',
+  'api',
+  'stores',
 ];
 const V2_RS_GLOBS = [
   'src-tauri/src/setting_commands.rs',
@@ -75,11 +75,11 @@ function fail(pattern, file, line, msg) {
   violations++;
 }
 
-// 1. Direct @tauri-apps/api/core invoke outside src/api/
+// 1. Direct @tauri-apps/api/core invoke outside api/
 function checkDirectInvoke(files) {
   for (const file of files) {
     const rel = normRel(file);
-    const isApi = rel.startsWith('src/api/');
+    const isApi = rel.startsWith('api/');
     if (isApi) continue; // Allowed in api layer
 
     const content = readFile(file);
@@ -89,11 +89,11 @@ function checkDirectInvoke(files) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line.includes('@tauri-apps/api/core') || line.includes("from '@tauri-apps/api/core'")) {
-        fail('direct-invoke-import', rel, i + 1, 'Found import from @tauri-apps/api/core outside src/api/');
+        fail('direct-invoke-import', rel, i + 1, 'Found import from @tauri-apps/api/core outside api/');
       }
       // Also check for direct invoke() calls
       if (/\binvoke\(/.test(line) && !line.trim().startsWith('//') && !line.trim().startsWith('*')) {
-        fail('direct-invoke-call', rel, i + 1, 'Found invoke() call outside src/api/');
+        fail('direct-invoke-call', rel, i + 1, 'Found invoke() call outside api/');
       }
     }
   }
@@ -157,10 +157,10 @@ function checkOldComponentEdits() {
     const diff = execSync('git diff --name-only HEAD', { encoding: 'utf8', cwd: ROOT });
     const changedFiles = diff.trim().split('\n').filter(Boolean);
     const oldPatterns = [
-      'src/components/CanvasView',
-      'src/components/AIChat',
-      'src/components/SettingCollection',
-      'src/components/DocumentView',
+      'components/CanvasView',
+      'components/AIChat',
+      'components/SettingCollection',
+      'components/DocumentView',
     ];
     for (const file of changedFiles) {
       for (const pattern of oldPatterns) {

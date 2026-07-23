@@ -28,15 +28,15 @@ const HARDCODED_LIMIT = 40;
 
 // CSS files to check: all v2 feature CSS + canvas-ai-bar
 const CSS_FILES = [
-  'src/features/canvas-01-premise/premise-entry.css',
-  'src/features/canvas-02-structure/structure-flow.css',
-  'src/features/canvas-03-setting/character-panel.css',
-  'src/features/canvas-03-setting/faction-panel.css',
-  'src/features/canvas-03-setting/setting-canvas.css',
-  'src/features/canvas-03-setting/world-rule-panel.css',
-  'src/features/pipeline-canvas/canvas-shell.css',
-  'src/features/pipeline-nav/pipeline-nav.css',
-  'src/components/ai/canvas-ai-bar.css',
+  'features/canvas-01-premise/premise-entry.css',
+  'features/canvas-02-structure/structure-flow.css',
+  'features/canvas-03-setting/character-panel.css',
+  'features/canvas-03-setting/faction-panel.css',
+  'features/canvas-03-setting/setting-canvas.css',
+  'features/canvas-03-setting/world-rule-panel.css',
+  'features/pipeline-canvas/canvas-shell.css',
+  'features/pipeline-nav/pipeline-nav.css',
+  'components/ai/canvas-ai-bar.css',
 ];
 
 // ---- Helpers ----

@@ -25,7 +25,7 @@ glyph/
 │   ├── ui/                    # UI 原语
 │   └── feedback/              # 反馈组件
 ├── features/                  # 功能模块
-│   ├── canvas-01-premise/     # 前提卡（管线，待拆为可选）
+│   ├── canvas-01-premise/     # 前提卡
 │   ├── canvas-02-structure/   # 结构图
 │   ├── canvas-03-setting/     # 设定集
 │   ├── canvas-04-packet/      # 细纲包
@@ -34,17 +34,29 @@ glyph/
 │   ├── pipeline-canvas/       # 管线画板壳
 │   └── quick-draft/           # 快速速写
 ├── api/                       # Tauri 命令封装
-├── lib/                       # 业务逻辑
-│   └── ai/                    # AI 管线逻辑
+├── lib/                       # 业务逻辑（含 ai/ 管线）
 ├── stores/                    # Zustand 状态管理
 ├── types/                     # TypeScript 类型定义
-├── contracts/                 # 接口契约
 ├── styles/                    # 全局样式
-├── product/                   # 产品文档（历史）
+├── docs/                      # 文档
+│   ├── contracts/             # 接口契约
+│   ├── product/               # 产品文档（PRD、路线图）
+│   ├── reports/               # 审计/验收报告
+│   └── master-prototype/      # 设计原型
+├── tests/                     # 测试
+│   ├── unit/                  # 单元测试（Vitest）
+│   ├── e2e/                   # 端到端测试（Playwright）
+│   ├── acceptance/            # 机器验收脚本
+│   ├── tauri/                 # Tauri 实机测试
+│   └── smoke/                 # 冒烟测试
+├── src-tauri/                 # Rust 后端 + Tauri 配置
+│   ├── src/                   # Rust 源码
+│   ├── tauri.conf.json        # Tauri 应用配置
+│   ├── Cargo.toml             # Rust 依赖
+│   ├── icons/                 # 应用图标
+│   └── capabilities/          # 权限声明
 ├── scripts/                   # 构建/验收脚本
-├── e2e/                       # Playwright 端到端测试
-├── __tests__/                 # 单元测试
-└── acceptance/                # 机器验收脚本
+└── public/                    # 静态资源
 ```
 
 ## 开发命令
@@ -54,8 +66,8 @@ npm run dev        # 启动 dev server
 npm run build      # TS 检查 + Vite 构建
 npm run tauri      # Tauri CLI
 npm test           # 运行 vitest 单元测试
-cargo check        # Rust 编译检查
-cargo tauri build  # 打包桌面应用
+cd src-tauri && cargo check  # Rust 编译检查
+npm run tauri build          # 打包桌面应用（Tauri CLI 自动从 src-tauri/ 读取）
 ```
 
 ## 技术栈
@@ -74,9 +86,9 @@ cargo tauri build  # 打包桌面应用
 
 ## 禁止改动区域
 
-- `product/` 下为历史产品文档，当前不做修改
-- `master-prototype/` 为设计原型，不做代码性修改
-- 第三方依赖锁文件（package-lock.json, Cargo.lock）不经明确授权不得修改
+- `docs/product/` 下为历史产品文档，当前不做修改
+- `docs/master-prototype/` 为设计原型，不做代码性修改
+- 第三方依赖锁文件（package-lock.json, src-tauri/Cargo.lock）不经明确授权不得修改
 
 ## 当前非目标
 
