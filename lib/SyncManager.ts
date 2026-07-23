@@ -71,7 +71,8 @@ export class SyncManager {
         this.setSaveStatus('saved');
       }
       return true;
-    } catch {
+    } catch (e) {
+      console.error('SyncManager.writeObject failed:', type, e);
       this.pendingWrites--;
       if (this.pendingWrites === 0) {
         this.setSaveStatus('failed');

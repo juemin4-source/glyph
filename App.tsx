@@ -40,8 +40,7 @@ import './styles/ai.css';
 import './components/ui/design-tokens.css';
 
 // ── IDs ──
-let _nextId = 1000;
-function uid(): string { return `obj_${_nextId++}`; }
+function uid(): string { return `obj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
 
 const syncManager = new SyncManager();
 const changelog = new Changelog();

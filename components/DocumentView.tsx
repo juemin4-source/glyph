@@ -125,7 +125,7 @@ export default function DocumentView({
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (slashMenuRef.current && !slashMenuRef.current.contains(e.target as Node)) {
-        setShowSlashMenu(false);
+        setShowSlashMenuSync(false);
       }
     };
     if (showSlashMenu) {
@@ -233,6 +233,15 @@ export default function DocumentView({
   const wordCount = useMemo(() => {
     return countWords(currentObject?.content || '');
   }, [currentObject]);
+
+  const previewHtml = useMemo(() => {
+    if (!currentObject) return '<p></p>';
+    try {
+      return markdownToHtml(currentObject.content);
+    } catch {
+      return '<p>预览渲染失败</p>';
+    }
+  }, [currentObject?.content]);
 
   // ── Source mode handlers ──
 
@@ -453,9 +462,10 @@ export default function DocumentView({
   };
 
   const renderEditorContent = () => {
-    if (editMode === 'source') {
-      return (
-        <div className="doc-editor">
+    return (
+      <>
+        {/* Source mode */}
+        <div className="doc-editor" style={{ display: editMode === 'source' ? 'block' : 'none' }}>
           <textarea
             ref={sourceRef}
             value={currentObject?.content || ''}
@@ -465,11 +475,9 @@ export default function DocumentView({
             spellCheck={false}
           />
         </div>
-      );
-    }
-    if (editMode === 'wysiwyg') {
-      return (
-        <div className="doc-editor tiptap-editor">
+
+        {/* WYSIWYG mode (Tiptap stays mounted) */}
+        <div className="doc-editor tiptap-editor" style={{ display: editMode === 'wysiwyg' ? 'block' : 'none' }}>
           {editor && (
             <>
               <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: 'top' }}>
@@ -500,14 +508,14 @@ export default function DocumentView({
                     onChange={(e) => setSlashFilter(e.target.value)}
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === 'Escape') { setShowSlashMenu(false); editorRef.current?.commands.focus(); }
+                      if (e.key === 'Escape') { setShowSlashMenuSync(false); editorRef.current?.commands.focus(); }
                       if (e.key === 'Enter' && filteredSlash.length > 0) {
                         const ed = editorRef.current;
                         if (ed) {
                           const from = slashDocPosRef.current;
                           ed.chain().focus().deleteRange({ from, to: from + 1 }).run();
                           filteredSlash[0].action(ed);
-                          setShowSlashMenu(false); setSlashFilter('');
+                          setShowSlashMenuSync(false); setSlashFilter('');
                         }
                       }
                     }}
@@ -520,7 +528,7 @@ export default function DocumentView({
                           const from = slashDocPosRef.current;
                           ed.chain().focus().deleteRange({ from, to: from + 1 }).run();
                           item.action(ed);
-                          setShowSlashMenu(false); setSlashFilter('');
+                          setShowSlashMenuSync(false); setSlashFilter('');
                         }
                       }}>
                         <span className="slash-icon">{item.icon}</span>
@@ -536,18 +544,12 @@ export default function DocumentView({
             </>
           )}
         </div>
-      );
-    }
-    // Preview mode
-    return (
-      <div className="doc-editor">
-        <div
-          className="editor-content preview-content"
-          dangerouslySetInnerHTML={{
-            __html: currentObject ? markdownToHtml(currentObject.content) : '',
-          }}
-        />
-      </div>
+
+        {/* Preview mode */}
+        <div className="doc-editor" style={{ display: editMode === 'preview' ? 'block' : 'none' }}>
+          <div className="editor-content preview-content" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+        </div>
+      </>
     );
   };
 
