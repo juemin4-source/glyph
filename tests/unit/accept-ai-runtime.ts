@@ -15,15 +15,15 @@
  * Returns exit code 0 for PASS, 1 for FAIL.
  */
 
-import { route as routerRoute } from '../lib/ai/command-router';
+import { route as routerRoute } from '../../lib/ai/command-router';
 import {
   parseStructuredOutput,
   parseChapterPacket,
   parseWritingContract,
   parseTianDiRen,
-} from '../lib/ai/structured-parser';
-import type { RouteOutput } from '../contracts/ai-router.contract';
-import type { ParseResult } from '../lib/ai/structured-parser';
+} from '../../lib/ai/structured-parser';
+import type { RouteOutput } from '../../docs/contracts/ai-router.contract';
+import type { ParseResult } from '../../lib/ai/structured-parser';
 
 // ===== Test Runner =====
 

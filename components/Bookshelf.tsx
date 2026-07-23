@@ -132,7 +132,18 @@ function BookCard({
     } catch (e) { console.error('Failed to update cover', e); }
   };
 
-  const genreBg = GENRE_GRADIENT_BG[project.genre] || GENRE_GRADIENT_BG['其他'];
+  // 优先使用自定义封面渐变，否则用体裁默认
+  let cardGradient: string;
+  try {
+    if (project.gradient && Array.isArray(JSON.parse(project.gradient))) {
+      const g = JSON.parse(project.gradient) as string[];
+      cardGradient = `linear-gradient(145deg, ${g[0] || '#1e1e1e'}, ${g[1] || '#141416'})`;
+    } else {
+      cardGradient = GENRE_GRADIENT_BG[project.genre] || GENRE_GRADIENT_BG['其他'];
+    }
+  } catch {
+    cardGradient = GENRE_GRADIENT_BG[project.genre] || GENRE_GRADIENT_BG['其他'];
+  }
   const genreRadial = GENRE_RADIAL_GLOW[project.genre] || '';
 
   return (
@@ -166,7 +177,7 @@ function BookCard({
           position: 'absolute',
           inset: 0,
           zIndex: 0,
-          background: genreBg,
+          background: cardGradient,
           backgroundSize: '200% 200%',
           backgroundPosition: '0% 50%',
           animation: hovered ? 'gradientShift 5s ease-in-out infinite' : undefined,

@@ -15,7 +15,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { BookOpen, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { BookOpen, Maximize, Minimize } from 'lucide-react';
 import type { WorldObject, ObjectType, ObjectStatus, CanonLevel, SaveStatus, ChangelogEntry } from './types/world';
 import { CANON_LEVELS } from './types/world';
 import type { Project } from './types/world';
@@ -68,7 +68,6 @@ function AppInner() {
 
   // ── UI state ──
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
-  const [showOutline, setShowOutline] = useState(true);
   const [focusMode, setFocusMode] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showCreationWizard, setShowCreationWizard] = useState(false);
@@ -422,22 +421,14 @@ function AppInner() {
           title={`专注模式 (Ctrl+Shift+F) ${focusMode ? '(已开启)' : ''}`}
           style={{ color: focusMode ? 'var(--accent, #B7FF00)' : undefined }}
         >
-          {focusMode ? '✎' : '📝'}
-        </button>
-
-        <button
-          className="glyph-topbar-btn"
-          onClick={() => setShowOutline(v => !v)}
-          title={showOutline ? '隐藏大纲' : '显示大纲'}
-        >
-          {showOutline ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />}
+          {focusMode ? <Minimize size={18} /> : <Maximize size={18} />}
         </button>
 
       </header>
 
       {/* Main area */}
       <div className="glyph-workspace">
-        {showOutline && !focusMode && (
+        {!focusMode && (
           <aside className="glyph-sidebar">
             <DocOutline
               allObjects={objects}

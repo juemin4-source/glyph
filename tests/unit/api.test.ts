@@ -26,7 +26,7 @@ import {
   listCanvasTabStates,
   saveCanvasTabState,
   deleteCanvasTabState,
-} from '../tauri-api';
+} from '../../tauri-api';
 
 const mockInvoke = invoke as ReturnType<typeof vi.fn>;
 

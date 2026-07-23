@@ -26,6 +26,11 @@ Thumbs.db
 # SomaOS session state (not committed)
 .soma/
 
+# SQLite runtime databases
+glyph-api.db
+glyph-api.db-shm
+glyph-api.db-wal
+
 # Logs
 *.log
 autosave.log

@@ -142,14 +142,16 @@ export default function DocumentView({
           if (v.isComposing || v.keyCode === 229) return false;
           return enableKeyboardNavigation(v);
         },
+        // 只在空白区域点击时定位光标，不影响已有文字的选中
         mousedown: (view, event) => {
-          const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
-          if (pos) {
-            view.dispatch(view.state.tr.setSelection(
-              new TextSelection(view.state.doc.resolve(pos.pos))
-            ));
-          }
-          return false;
+          // 让 ProseMirror 先处理原生点击（光标、选中）
+          // 如果点击发生在空白区域，posAtCoords 会返回末尾位置
+          setTimeout(() => {
+            if (!view.hasFocus()) {
+              view.focus();
+            }
+          }, 0);
+          return false; // 不拦截事件
         },
       },
     },

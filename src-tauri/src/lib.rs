@@ -18,6 +18,23 @@ use db::Database;
 use std::fs;
 use tauri::Manager;
 
+/// Start just the HTTP API server without the Tauri GUI window.
+/// Use `glyph --api-only` to run in this mode.
+pub fn run_api_only() {
+    let db_path = std::env::var("GLYPH_DB_PATH")
+        .unwrap_or_else(|_| "glyph-api.db".to_string());
+    let database = Database::new(&db_path)
+        .expect("Failed to initialize database");
+    eprintln!("[glyph-api] DB: {} (--api-only mode)", db_path);
+    api::start_api_server(database.clone());
+    eprintln!("[glyph-api] Server started on http://127.0.0.1:21778");
+    eprintln!("[glyph-api] Press Ctrl+C to stop");
+    // Block forever
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(3600));
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

@@ -64,16 +64,16 @@ pub fn start_api_server(db: Database) {
             get(list_projects_handler).post(create_project_handler),
         )
         .route(
-            "/api/projects/{id}",
+            "/api/projects/:id",
             get(get_project_handler)
                 .put(update_project_handler)
                 .delete(delete_project_handler),
         )
-        .route("/api/projects/{id}/objects", get(list_objects_handler))
+        .route("/api/projects/:id/objects", get(list_objects_handler))
         // WorldObject CRUD
         .route("/api/objects", post(create_object_handler))
         .route(
-            "/api/objects/{id}",
+            "/api/objects/:id",
             get(get_object_handler)
                 .put(update_object_handler)
                 .delete(delete_object_handler),
@@ -81,15 +81,18 @@ pub fn start_api_server(db: Database) {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    tokio::spawn(async move {
-        let addr = format!("127.0.0.1:{}", port);
-        eprintln!("[glyph-api] Listening on http://{}", addr);
-        let listener = tokio::net::TcpListener::bind(&addr)
-            .await
-            .expect("Failed to bind API server");
-        axum::serve(listener, app)
-            .await
-            .expect("API server exited with error");
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+        rt.block_on(async move {
+            let addr = format!("127.0.0.1:{}", port);
+            eprintln!("[glyph-api] Listening on http://{}", addr);
+            let listener = tokio::net::TcpListener::bind(&addr)
+                .await
+                .expect("Failed to bind API server");
+            axum::serve(listener, app)
+                .await
+                .expect("API server exited with error");
+        });
     });
 }
 

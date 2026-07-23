@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, type ReactNode, type DragEvent } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode, type MouseEvent as ReactMouseEvent } from 'react';
 import { Trash2, FileText, User, Lock, Search, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Hash, Globe } from 'lucide-react';
 import type { WorldObject, ObjectType } from '../types/world';
 
@@ -103,47 +103,9 @@ function HeadingOutline({ headings }: { headings: HeadingItem[] }) {
   );
 }
 
-// ── Drag-and-drop helpers ──
+// ── 拖拽层级工具 ──
 
-/** Data attributes stored in drag event */
-interface DragData {
-  objectId: string;
-  /** The group key this item was dragged from */
-  groupKey: string;
-}
-
-const DRAG_DATA_TYPE = 'application/x-glyph-outline-item';
-
-/**
- * Build a sorted tree from flat objects list.
- * Root items have parentId == null. Children are nested under their parent.
- */
-function buildOutlineTree(objects: WorldObject[]): WorldObject[] {
-  const childrenMap = new Map<string | null, WorldObject[]>();
-  for (const obj of objects) {
-    const pid = obj.parentId ?? null;
-    if (!childrenMap.has(pid)) childrenMap.set(pid, []);
-    childrenMap.get(pid)!.push(obj);
-  }
-  // Sort each level by sort_order
-  for (const [, children] of childrenMap) {
-    children.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  }
-  // Flatten the tree in display order (root items first, then recursively children)
-  const result: WorldObject[] = [];
-  function traverse(parentId: string | null, depth: number) {
-    const children = childrenMap.get(parentId);
-    if (!children) return;
-    for (const child of children) {
-      result.push(child);
-      traverse(child.id, depth + 1);
-    }
-  }
-  traverse(null, 0);
-  return result;
-}
-
-/** Compute indent level for display purposes (not from parentId, since we flattened). */
+/** Compute indent level by following parentId chain. */
 function getIndentLevel(object: WorldObject, allObjects: WorldObject[]): number {
   let level = 0;
   let current: WorldObject | undefined = object;
@@ -165,44 +127,25 @@ function OutlineItem({
   isActive,
   hasChildren,
   onNavigate,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  dragOverState,
+  onMouseDown,
 }: {
   object: WorldObject;
   indentLevel: number;
   isActive: boolean;
   hasChildren: boolean;
   onNavigate: (name: string, id?: string) => void;
-  onDragStart: (e: DragEvent<HTMLDivElement>, objectId: string, groupKey: string) => void;
-  onDragOver: (e: DragEvent<HTMLDivElement>, objectId: string, zone: 'above' | 'below' | 'inside') => void;
-  onDragLeave: (e: DragEvent<HTMLDivElement>) => void;
-  onDrop: (e: DragEvent<HTMLDivElement>, targetId: string, zone: 'above' | 'below' | 'inside') => void;
-  dragOverState: { targetId: string; zone: string } | null;
+  onMouseDown?: (e: ReactMouseEvent, objectId: string) => void;
 }) {
-  const isDragOver = dragOverState?.targetId === object.id;
-  const dropZone = isDragOver ? dragOverState!.zone : null;
-  const baseLeftPad = 28; // base padding for root items
+  const baseLeftPad = 28;
   const leftPad = baseLeftPad + indentLevel * 16;
 
   return (
     <div
-      className={`
-        outline-item-wrapper
-        ${isActive ? 'active' : ''}
-        ${dropZone === 'above' ? 'drop-above' : ''}
-        ${dropZone === 'below' ? 'drop-below' : ''}
-        ${dropZone === 'inside' ? 'drop-inside' : ''}
-      `}
-      draggable
-      onDragStart={(e) => onDragStart(e, object.id, '')}
-      onDragOver={(e) => onDragOver(e, object.id, 'inside')}
-      onDragLeave={onDragLeave}
-      onDrop={(e) => onDrop(e, object.id, 'inside')}
+      className={`outline-item-wrapper ${isActive ? 'active' : ''}`}
+      data-item-id={object.id}
+      onMouseDown={(e) => onMouseDown?.(e, object.id)}
     >
-      {/* Indent guide lines (vertical lines for tree depth) */}
+      {/* Indent guide lines */}
       {indentLevel > 0 && (
         <div className="outline-indent-guides" style={{ left: 20 }}>
           {Array.from({ length: indentLevel }).map((_, i) => (
@@ -210,18 +153,6 @@ function OutlineItem({
           ))}
         </div>
       )}
-
-      {/* Ghost drop zones for above/below insertion */}
-      <div
-        className="outline-drop-zone outline-drop-above"
-        onDragOver={(e) => onDragOver(e, object.id, 'above')}
-        onDrop={(e) => onDrop(e, object.id, 'above')}
-      />
-      <div
-        className="outline-drop-zone outline-drop-below"
-        onDragOver={(e) => onDragOver(e, object.id, 'below')}
-        onDrop={(e) => onDrop(e, object.id, 'below')}
-      />
 
       <div
         className={`outline-item ${isActive ? 'active' : ''}`}
@@ -240,9 +171,6 @@ function OutlineItem({
 export default function DocOutline({ allObjects, currentObjectId, currentObjectContent, onNavigate, onCreateObject, onReorderOutline }: DocOutlineProps) {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [dragOverState, setDragOverState] = useState<{ targetId: string; zone: string } | null>(null);
-  const dragSourceRef = useRef<DragData | null>(null);
-  const dragCounterRef = useRef(0); // For tracking nested enter/leave
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
@@ -252,7 +180,7 @@ export default function DocOutline({ allObjects, currentObjectId, currentObjectC
     return GROUPS
       .map(g => ({
         ...g,
-        items: allObjects.filter(g.predicate),
+        items: allObjects.filter(g.predicate).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
       }))
       .filter(g => g.items.length > 0);
   }, [allObjects]);
@@ -262,96 +190,136 @@ export default function DocOutline({ allObjects, currentObjectId, currentObjectC
     return parseHeadings(currentObjectContent);
   }, [currentObjectContent]);
 
-  // ── Drag handlers ──
-  const handleDragStart = useCallback((e: DragEvent<HTMLDivElement>, objectId: string, _groupKey: string) => {
-    dragSourceRef.current = { objectId, groupKey: _groupKey };
-    e.dataTransfer.setData(DRAG_DATA_TYPE, JSON.stringify(dragSourceRef.current));
-    e.dataTransfer.effectAllowed = 'move';
-    // Slight opacity feedback
+  // ── 鼠标拖拽（替代 HTML5 DnD，绕过 WebView2 兼容问题）──
+  const dragState = useRef<{
+    sourceId: string;
+    startY: number;
+    sourceTop: number;
+    clone: HTMLElement | null;
+  } | null>(null);
+
+  const handleItemMouseDown = useCallback((e: ReactMouseEvent, objectId: string) => {
+    // 只响应左键
+    if (e.button !== 0) return;
     const el = e.currentTarget as HTMLElement;
-    setTimeout(() => { el.style.opacity = '0.4'; }, 0);
+    el.style.opacity = '0.4';
+    el.classList.add('dragging');
+    dragState.current = {
+      sourceId: objectId,
+      startY: e.clientX,
+      sourceTop: e.clientY,
+      clone: null,
+    };
   }, []);
 
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>, _targetId: string, _zone: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverState({ targetId: _targetId, zone: _zone });
-  }, []);
+  // 文档级 mouse move/up 监听（拖拽期间）
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const ds = dragState.current;
+      if (!ds) return;
 
-  const handleDragLeave = useCallback((_e: DragEvent<HTMLDivElement>) => {
-    setDragOverState(null);
-  }, []);
+      // 找到鼠标下的 outline-item-wrapper
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const wrapper = el?.closest?.('.outline-item-wrapper') as HTMLElement | null;
+      const targetId = wrapper?.dataset?.itemId;
 
-  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>, targetId: string, zone: string) => {
-    e.preventDefault();
-    setDragOverState(null);
-    // Reset source opacity
-    const items = document.querySelectorAll('.outline-item-wrapper[draggable]');
-    items.forEach(el => { (el as HTMLElement).style.opacity = '1'; });
+      if (targetId && targetId !== ds.sourceId) {
+        const rect = wrapper!.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const h = rect.height;
+        let zone: string;
+        if (y < h * 0.25) zone = 'above';
+        else if (y > h * 0.75) zone = 'below';
+        else zone = 'inside';
 
-    if (!onReorderOutline) return;
-    const raw = e.dataTransfer.getData(DRAG_DATA_TYPE);
-    if (!raw) return;
-    let sourceData: DragData;
-    try { sourceData = JSON.parse(raw); } catch { return; }
-    if (!sourceData?.objectId || sourceData.objectId === targetId) return;
-
-    const draggedObj = allObjects.find(o => o.id === sourceData.objectId);
-    const targetObj = allObjects.find(o => o.id === targetId);
-    if (!draggedObj || !targetObj) return;
-
-    // Determine new parentId and sort_order based on drop zone
-    let newParentId: string | null;
-    let newSortOrder: number;
-
-    const sameParent = (a: WorldObject, b: WorldObject): boolean =>
-      (a.parentId ?? null) === (b.parentId ?? null);
-
-    if (zone === 'inside') {
-      // Drop inside target: make dragged item a child of target
-      newParentId = targetId;
-      // Count existing children of target to place at end
-      const siblings = allObjects.filter(o => (o.parentId ?? null) === targetId && o.id !== sourceData.objectId);
-      newSortOrder = siblings.length > 0 ? Math.max(...siblings.map(o => o.sortOrder ?? 0)) + 1 : 0;
-    } else if (zone === 'above') {
-      // Insert above target: same parent level, before target
-      newParentId = targetObj.parentId ?? null;
-      // Get all siblings at this level, sort by current sort_order
-      const siblings = allObjects
-        .filter(o => (o.parentId ?? null) === newParentId && o.id !== sourceData.objectId)
-        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-      const targetIdx = siblings.findIndex(o => o.id === targetId);
-      if (targetIdx <= 0) {
-        newSortOrder = 0;
+        // 高亮目标
+        document.querySelectorAll('.outline-item-wrapper.drop-above, .outline-item-wrapper.drop-below, .outline-item-wrapper.drop-inside').forEach(el => {
+          el.classList.remove('drop-above', 'drop-below', 'drop-inside');
+        });
+        wrapper!.classList.add(`drop-${zone}`);
       } else {
-        newSortOrder = (siblings[targetIdx - 1]?.sortOrder ?? 0) + 1;
+        document.querySelectorAll('.outline-item-wrapper.drop-above, .outline-item-wrapper.drop-below, .outline-item-wrapper.drop-inside').forEach(el => {
+          el.classList.remove('drop-above', 'drop-below', 'drop-inside');
+        });
       }
-    } else {
-      // below: same parent level, after target
-      newParentId = targetObj.parentId ?? null;
-      const siblings = allObjects
-        .filter(o => (o.parentId ?? null) === newParentId && o.id !== sourceData.objectId)
-        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-      const targetIdx = siblings.findIndex(o => o.id === targetId);
-      if (targetIdx < 0 || targetIdx >= siblings.length - 1) {
-        newSortOrder = (targetObj.sortOrder ?? 0) + 1;
-      } else {
-        newSortOrder = (siblings[targetIdx]?.sortOrder ?? 0) + 1;
-      }
-    }
+    };
 
-    onReorderOutline(sourceData.objectId, newParentId, newSortOrder);
+    const handleMouseUp = (e: MouseEvent) => {
+      const ds = dragState.current;
+      if (!ds) return;
+      dragState.current = null;
+
+      // 恢复样式
+      document.querySelectorAll('.outline-item-wrapper.dragging').forEach(el => {
+        el.classList.remove('dragging');
+        (el as HTMLElement).style.opacity = '1';
+      });
+      document.querySelectorAll('.outline-item-wrapper.drop-above, .outline-item-wrapper.drop-below, .outline-item-wrapper.drop-inside').forEach(el => {
+        el.classList.remove('drop-above', 'drop-below', 'drop-inside');
+      });
+
+      // 最小拖动距离检查（防止点了一下就触发）
+      const dist = Math.sqrt((e.clientX - ds.startY) ** 2 + (e.clientY - ds.sourceTop) ** 2);
+      if (dist < 10) return;
+
+      if (!onReorderOutline) return;
+
+      // 找目标
+      const targetEl = document.elementFromPoint(e.clientX, e.clientY);
+      if (!targetEl) return;
+      const wrapper = targetEl.closest?.('.outline-item-wrapper') as HTMLElement | null;
+      if (!wrapper) return;
+      const targetId = wrapper.dataset.itemId;
+      if (!targetId || targetId === ds.sourceId) return;
+
+      const draggedObj = allObjects.find(o => o.id === ds.sourceId);
+      const targetObj = allObjects.find(o => o.id === targetId);
+      if (!draggedObj || !targetObj) return;
+
+      // 计算落区
+      const r = wrapper.getBoundingClientRect();
+      const y = e.clientY - r.top;
+      const h = r.height;
+      const zone = y < h * 0.25 ? 'above' as const : y > h * 0.75 ? 'below' as const : 'inside' as const;
+      let newParentId: string | null;
+      let newSortOrder: number;
+
+      if (zone === 'inside') {
+        newParentId = targetId;
+        const siblings = allObjects.filter(o => (o.parentId ?? null) === targetId && o.id !== ds.sourceId);
+        newSortOrder = siblings.length ? Math.max(...siblings.map(o => o.sortOrder ?? 0)) + 1 : 0;
+      } else {
+        newParentId = targetObj.parentId ?? null;
+        const siblings = allObjects.filter(o => (o.parentId ?? null) === newParentId && o.id !== ds.sourceId)
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        const idx = siblings.findIndex(o => o.id === targetId);
+        newSortOrder = zone === 'above'
+          ? (idx <= 0 ? 0 : (siblings[idx - 1]?.sortOrder ?? 0) + 1)
+          : (idx < 0 || idx >= siblings.length - 1 ? (targetObj.sortOrder ?? 0) + 1 : (siblings[idx]?.sortOrder ?? 0) + 1);
+      }
+
+      onReorderOutline(ds.sourceId, newParentId, newSortOrder);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
   }, [allObjects, onReorderOutline]);
 
-  const handleDragEnd = useCallback(() => {
-    dragSourceRef.current = null;
-    setDragOverState(null);
-    const items = document.querySelectorAll('.outline-item-wrapper[draggable]');
-    items.forEach(el => { (el as HTMLElement).style.opacity = '1'; });
+  // 容器级别 dragover 拦截
+  const handleContainerDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   }, []);
 
   return (
-    <div className={`doc-outline ${panelCollapsed ? 'collapsed' : ''}`} onDragEnd={handleDragEnd}>
+    <div
+      className={`doc-outline ${panelCollapsed ? 'collapsed' : ''}`}
+      onDragOver={handleContainerDragOver}
+    >
       <div className="doc-outline-header">
         {!panelCollapsed && <span className="doc-outline-title">大纲</span>}
         <button className="doc-outline-toggle-btn" onClick={() => setPanelCollapsed(!panelCollapsed)} title={panelCollapsed ? '展开大纲' : '收起大纲'}>
@@ -389,11 +357,7 @@ export default function DocOutline({ allObjects, currentObjectId, currentObjectC
                         isActive={currentObjectId === item.id}
                         hasChildren={hasChildren}
                         onNavigate={onNavigate}
-                        onDragStart={handleDragStart}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        dragOverState={dragOverState}
+                        onMouseDown={handleItemMouseDown}
                       />
                     );
                   })}

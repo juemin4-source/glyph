@@ -55,9 +55,13 @@ body {
 /* ===== App Layout ===== */
 .app-layout {
   display: flex; flex-direction: column; height: 100vh;
-  user-select: none; /* UI 元素不可框选 */
+  /* user-select 不设在此层——有些 WebView 会用继承阻止 contenteditable 光标 */
 }
-.doc-editor, .editor-content, .doc-editor textarea { user-select: text; } /* 编辑器区域保持可选中 */
+/* 非编辑器 UI 元素各自禁选，而非继承 */
+.doc-outline, .nav-bar, .status-bar-wrapper,
+.glyph-topbar, .bookshelf-page, .inspector-panel { user-select: none; }
+/* 编辑器区域保持可选中且显示 I 形光标 */
+.doc-editor, .editor-content, .doc-editor textarea { user-select: text; cursor: text; }
 
 /* ===== Glyph Top Bar ===== */
 .glyph-topbar {
@@ -86,10 +90,9 @@ body {
   display: flex; flex: 1; overflow: hidden;
 }
 .glyph-sidebar {
-  width: 240px; flex-shrink: 0;
+  display: flex; flex-shrink: 0;
   background: var(--bg-surface);
   border-right: 1px solid var(--border-default);
-  overflow-y: auto;
 }
 .glyph-main {
   flex: 1; overflow-y: auto;
@@ -258,7 +261,9 @@ body {
 .doc-editor.tiptap-editor .ProseMirror {
   flex: 1; padding: 20px 0; outline: none; color: #ccc;
   font-family: inherit; font-size: 14px; line-height: 1.8;
+  cursor: text; min-height: 200px;
 }
+.doc-editor.tiptap-editor .ProseMirror p { cursor: text; }
 .doc-editor.tiptap-editor .ProseMirror h1 { font-size: 24px; font-weight: 700; margin: 1.2em 0 0.4em; color: #e0e0e0; }
 .doc-editor.tiptap-editor .ProseMirror h2 { font-size: 20px; font-weight: 600; margin: 1em 0 0.3em; color: #e0e0e0; }
 .doc-editor.tiptap-editor .ProseMirror h3 { font-size: 17px; font-weight: 600; margin: 0.8em 0 0.3em; color: #e0e0e0; }
@@ -327,6 +332,11 @@ body {
   user-select: none;
   transition: opacity 0.15s, background 0.15s;
   cursor: grab;
+  -webkit-user-select: none;
+}
+.outline-item-wrapper:not([draggable="false"]):hover {
+  /* 悬停时显示可拖拽提示 */
+  background: rgba(255,255,255,0.03);
 }
 .outline-item-wrapper:active { cursor: grabbing; }
 .outline-item-wrapper.active { background: #1a1a2e; }
@@ -338,23 +348,12 @@ body {
   border-radius: 4px;
 }
 
-/* Ghost drop zones (hidden by default, shown on drag-over) */
-.outline-drop-zone {
-  position: absolute;
-  left: 0; right: 0;
-  height: 6px;
-  z-index: 10;
-  display: none;
-  pointer-events: auto;
-}
-.outline-drop-above { top: -3px; }
-.outline-drop-below { bottom: -3px; }
-.outline-drop-above.active-drop, .outline-drop-below.active-drop {
-  display: block;
-  background: rgba(183,255,0,0.3);
-  height: 3px;
-  border-radius: 2px;
-}
+/* 拖拽时子元素不拦截 drag 事件 */
+.outline-item-wrapper.dragging .outline-item { pointer-events: none; }
+/* Drop zone 指示 */
+.outline-item-wrapper.drop-above { box-shadow: 0 -2px 0 #B7FF00; }
+.outline-item-wrapper.drop-below { box-shadow: 0 2px 0 #B7FF00; }
+.outline-item-wrapper.drop-inside { outline: 2px solid #B7FF00; outline-offset: -2px; border-radius: 4px; }
 
 /* Indent guide lines */
 .outline-indent-guides {
@@ -379,12 +378,15 @@ body {
 .app-loading .spinner { width: 20px; height: 20px; border: 2px solid #333; border-top-color: #B7FF00; border-radius: 50%; animation: spin 0.6s linear infinite; }
 
 /* ===== Doc Outline ===== */
-.doc-outline {
-  width: 240px; min-width: 240px; background: #0e0e0e;
+.doc-outline { background: #0e0e0e;
   border-right: 1px solid #222; display: flex; flex-direction: column;
-  flex-shrink: 0; transition: width 0.2s, min-width 0.2s; overflow: hidden;
+  flex-shrink: 0; overflow: hidden; transition: width 0.2s;
+  width: 240px; min-width: 240px;
 }
 .doc-outline.collapsed { width: 32px; min-width: 32px; }
+.doc-outline.collapsed .doc-outline-title,
+.doc-outline.collapsed .doc-outline-tree { display: none; }
+.doc-outline.collapsed .doc-outline-header { justify-content: center; padding: 8px 0; }
 .doc-outline-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px; border-bottom: 1px solid #222; flex-shrink: 0;
