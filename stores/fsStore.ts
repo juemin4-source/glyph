@@ -93,6 +93,22 @@ interface FsStore {
   renameEntry: (oldPath: string, newPath: string) => Promise<boolean>;
   deleteEntry: (entry: DirEntry) => Promise<boolean>;
 
+  // ══ Gate D: History & Provenance ══
+  actionHistory: AiActionSummary[];
+  actionHistoryLoading: boolean;
+  actionHistoryError: string | null;
+  provenance: ProvenanceRecord[];
+  provenanceLoading: boolean;
+  sourceMode: boolean;
+  recoveryResult: StartupRecoveryResult | null;
+
+  loadActionHistory: () => Promise<void>;
+  openActionDetail: (operationId: string) => Promise<import('../types/fs-ai').AiActionDetail | null>;
+  revertAction: (input: RevertAiActionInput) => Promise<import('../types/fs-ai').RevertAiActionResult | null>;
+  loadProvenance: (filePath: string) => Promise<void>;
+  setSourceMode: (on: boolean) => void;
+  runStartupRecovery: () => Promise<void>;
+
   updateViewport: (partial: Partial<ViewportState>) => void;
   persistSession: () => Promise<void>;
   clearError: () => void;
@@ -157,6 +173,14 @@ function emptyWorkspace() {
     viewport: initialViewport,
     contentRevision: 0,
     editRevision: 0,
+    // Gate D
+    actionHistory: [] as import('../types/fs-ai').AiActionSummary[],
+    actionHistoryLoading: false,
+    actionHistoryError: null as string | null,
+    provenance: [] as import('../types/fs-ai').ProvenanceRecord[],
+    provenanceLoading: false,
+    sourceMode: false,
+    recoveryResult: null as import('../types/fs-ai').StartupRecoveryResult | null,
   };
 }
 
