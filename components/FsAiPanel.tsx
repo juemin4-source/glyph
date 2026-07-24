@@ -24,7 +24,7 @@ import type {
   ProjectFileIndex,
   ReadEvidence,
   ReadonlyAiPhase,
-  ReadonlyAiTaskCard,
+  ReadonlyTaskCard,
   ReadonlyProviderChoice,
 } from '../types/fs-ai';
 import {
@@ -53,7 +53,7 @@ const PHASE_LABEL: Record<ReadonlyAiPhase, string> = {
   error: '失败',
 };
 
-function createTask(input: string): ReadonlyAiTaskCard {
+function createTask(input: string): ReadonlyTaskCard {
   return {
     id: `read-task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     userInput: input,
@@ -106,7 +106,7 @@ function EvidenceItem({ item, onOpenFile }: { item: ReadEvidence; onOpenFile: (p
   );
 }
 
-function TaskCard({ task, onOpenFile }: { task: ReadonlyAiTaskCard; onOpenFile: (path: string) => Promise<boolean> }) {
+function TaskCard({ task, onOpenFile }: { task: ReadonlyTaskCard; onOpenFile: (path: string) => Promise<boolean> }) {
   const [showEvidence, setShowEvidence] = useState(false);
   return (
     <article className={`fs-ai-task fs-ai-task-${task.phase}`}>
@@ -150,7 +150,7 @@ export default function FsAiPanel({
   onOpenFile,
 }: FsAiPanelProps) {
   const [input, setInput] = useState('');
-  const [tasks, setTasks] = useState<ReadonlyAiTaskCard[]>([]);
+  const [tasks, setTasks] = useState<ReadonlyTaskCard[]>([]);
   const [providers, setProviders] = useState<ReadonlyProviderChoice[]>([]);
   const [providerId, setProviderId] = useState<string>('');
   const [fileIndex, setFileIndex] = useState<ProjectFileIndex>({ files: [], truncated: false, unreadableDirectories: [] });
@@ -224,7 +224,7 @@ export default function FsAiPanel({
     });
   }, [input, mention]);
 
-  const patchTask = useCallback((id: string, patch: Partial<ReadonlyAiTaskCard>) => {
+  const patchTask = useCallback((id: string, patch: Partial<ReadonlyTaskCard>) => {
     setTasks((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
   }, []);
 

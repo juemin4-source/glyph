@@ -709,7 +709,7 @@ export default function Bookshelf({
             {fsProjects.map((fs) => (
               <div
                 key={fs.id}
-                onClick={() => onEnterFsProject(fs.rootPath, fs.name)}
+                onClick={() => onEnterFsProject?.(fs.rootPath, fs.name)}
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12,
                   padding: 14, border: '1px solid #2a2a2a', borderRadius: 8,

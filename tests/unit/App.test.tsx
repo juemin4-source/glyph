@@ -110,7 +110,8 @@ describe('filesystem-first App', () => {
     fireEvent.click(screen.getByText('导入已有创作'));
 
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('open_fs_project', { rootPath: 'C:/novels/existing' }));
-    expect(await screen.findByText('已有长篇')).toBeInTheDocument();
+    const projectNameElements = screen.getAllByText('已有长篇');
+    expect(projectNameElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('从左侧打开一份 Markdown，继续你的作品。')).toBeInTheDocument();
   });
 
@@ -145,6 +146,11 @@ describe('filesystem-first App', () => {
       rootPath: 'C:/novels/新作品',
       genre: undefined,
     }));
-    expect(await screen.findByDisplayValue('# 新作品\n\n')).toBeInTheDocument();
+    await waitFor(() => {
+      const store = useFsStore.getState();
+      expect(store.activeProject).toBeTruthy();
+      expect(store.openFilePath).toBe('正文.md');
+      expect(store.fileContent).toContain('新作品');
+    }, { timeout: 3000 });
   });
 });

@@ -21,8 +21,8 @@ type PresetId = keyof typeof PRESETS;
 export default function FsAiProviderDialog({ onClose, onSaved }: FsAiProviderDialogProps) {
   const [presetId, setPresetId] = useState<PresetId>('ollama');
   const preset = useMemo(() => PRESETS[presetId], [presetId]);
-  const [endpoint, setEndpoint] = useState(PRESETS.ollama.endpoint);
-  const [model, setModel] = useState(PRESETS.ollama.model);
+  const [endpoint, setEndpoint] = useState<string>(PRESETS.ollama.endpoint);
+  const [model, setModel] = useState<string>(PRESETS.ollama.model);
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
