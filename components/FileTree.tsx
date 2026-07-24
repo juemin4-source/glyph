@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, useRef, type MouseEvent } from 'react';
 import { ChevronRight, FileText, Folder, FolderOpen, MoreHorizontal, Plus, RefreshCw } from 'lucide-react';
 import type { DirEntry } from '../types/fs';
 import { useFsStore } from '../stores/fsStore';
@@ -132,6 +132,14 @@ export default function FileTree() {
     openFilePath,
   } = useFsStore();
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [creating, setCreating] = useState<'file' | 'folder' | null>(null);
+  const [createName, setCreateName] = useState('');
+  const createInputRef = useRef<HTMLInputElement>(null);
+  const [createError, setCreateError] = useState('');
+
+  useEffect(() => {
+    if (creating) createInputRef.current?.focus();
+  }, [creating]);
 
   useEffect(() => {
     if (!createMenuOpen) return;
@@ -142,18 +150,35 @@ export default function FileTree() {
 
   const defaultParent = useMemo(() => openFilePath ? parentPath(openFilePath) : '', [openFilePath]);
 
-  const handleNewFile = async () => {
+  const handleStartCreate = (type: 'file' | 'folder') => {
     setCreateMenuOpen(false);
-    const suggested = defaultParent ? `${defaultParent}/未命名.md` : '未命名.md';
-    const path = window.prompt('新建 Markdown（项目内相对路径）：', suggested)?.trim();
-    if (path) await createMarkdownFile(path);
+    setCreating(type);
+    setCreateName(type === 'file' ? '未命名.md' : '新文件夹');
+    setCreateError('');
   };
 
-  const handleNewFolder = async () => {
-    setCreateMenuOpen(false);
-    const suggested = defaultParent ? `${defaultParent}/新文件夹` : '新文件夹';
-    const path = window.prompt('新建文件夹（项目内相对路径）：', suggested)?.trim();
-    if (path) await createFolder(path);
+  const handleCreateSubmit = async () => {
+    const name = createName.trim();
+    if (!name) { setCreateError('名称不能为空'); return; }
+    const path = defaultParent ? `${defaultParent}/${name}` : name;
+    try {
+      if (creating === 'file') {
+        await createMarkdownFile(path);
+      } else {
+        await createFolder(path);
+      }
+      setCreating(null);
+      setCreateName('');
+      setCreateError('');
+    } catch (e) {
+      setCreateError(String(e));
+    }
+  };
+
+  const handleCreateCancel = () => {
+    setCreating(null);
+    setCreateName('');
+    setCreateError('');
   };
 
   return (
@@ -174,14 +199,41 @@ export default function FileTree() {
             </button>
             {createMenuOpen && (
               <div className="file-tree-create-menu" onClick={(event: MouseEvent<HTMLDivElement>) => event.stopPropagation()}>
-                <button onClick={() => void handleNewFile()}>新建 Markdown</button>
-                <button onClick={() => void handleNewFolder()}>新建文件夹</button>
+                <button onClick={() => void handleStartCreate('file')}>新建 Markdown</button>
+                <button onClick={() => void handleStartCreate('folder')}>新建文件夹</button>
               </div>
             )}
           </div>
         </div>
       </div>
 
+      {creating && (
+        <div className="file-tree-create-inline">
+          <span className="file-tree-create-label">
+            {creating === 'file' ? '新建 Markdown' : '新建文件夹'}
+          </span>
+          <div className="file-tree-create-row">
+            <input
+              ref={createInputRef}
+              className="file-tree-create-input"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleCreateSubmit();
+                if (e.key === 'Escape') handleCreateCancel();
+              }}
+              placeholder={creating === 'file' ? '文件名.md' : '文件夹名'}
+            />
+            <button className="file-tree-create-confirm" onClick={() => void handleCreateSubmit()} title="确认">
+              ✓
+            </button>
+            <button className="file-tree-create-cancel" onClick={handleCreateCancel} title="取消">
+              ✕
+            </button>
+          </div>
+          {createError && <span className="file-tree-create-error">{createError}</span>}
+        </div>
+      )}
       <div className="file-tree" onContextMenu={(event: MouseEvent<HTMLDivElement>) => event.preventDefault()}>
         {loading && rootEntries.length === 0 ? (
           <div className="file-tree-loading">正在读取目录…</div>

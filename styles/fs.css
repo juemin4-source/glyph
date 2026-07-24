@@ -589,6 +589,77 @@
   overflow: hidden;
 }
 
+/* ── File Tree Inline Create ── */
+.file-tree-create-inline {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border, #2a2a2a);
+  background: var(--surface, #1a1a1a);
+}
+
+.file-tree-create-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+  margin-bottom: 5px;
+}
+
+.file-tree-create-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.file-tree-create-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border, #3a3a3a);
+  border-radius: 4px;
+  background: var(--surface-raised, #222);
+  color: var(--text-primary, #ddd);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.file-tree-create-input:focus {
+  border-color: var(--accent, #B7FF00);
+}
+
+.file-tree-create-confirm,
+.file-tree-create-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border, #3a3a3a);
+  border-radius: 4px;
+  background: var(--surface-raised, #222);
+  color: var(--text-secondary, #888);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.file-tree-create-confirm:hover {
+  color: var(--accent, #B7FF00);
+  border-color: var(--accent, #B7FF00);
+}
+
+.file-tree-create-cancel:hover {
+  color: #f66;
+  border-color: #f66;
+}
+
+.file-tree-create-error {
+  display: block;
+  font-size: 10px;
+  color: #f66;
+  margin-top: 4px;
+}
+
 .fs-ai-panel {
   display: flex;
   flex-direction: column;
