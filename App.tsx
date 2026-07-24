@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Maximize, Minimize } from 'lucide-react';
+import { BookOpen, Maximize, Minimize, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import type { Project } from './types/world';
 import type { FileSyncStatus, FsProject } from './types/fs';
+import type { EditorSelectionContext } from './types/fs-ai';
 import * as api from './tauri-api';
 import { countWords } from './utils/markdown';
 import { ToastProvider, useToast } from './components/Toast';
@@ -9,6 +10,7 @@ import FsWelcome from './components/FsWelcome';
 import FsProjectCreateDialog from './components/FsProjectCreateDialog';
 import FileTree from './components/FileTree';
 import FsDocumentView from './components/FsDocumentView';
+import FsAiPanel from './components/FsAiPanel';
 import { useFsStore } from './stores/fsStore';
 import { useExternalChangeDetector } from './hooks/useExternalChangeDetector';
 
@@ -85,6 +87,7 @@ function AppInner() {
     loadProjects,
     createProject,
     openProject,
+    openFile,
     closeProject,
     removeProject,
     saveCurrentFile,
@@ -102,6 +105,8 @@ function AppInner() {
   const [legacyProjects, setLegacyProjects] = useState<Project[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(true);
+  const [editorSelection, setEditorSelection] = useState<EditorSelectionContext | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -293,6 +298,10 @@ function AppInner() {
     if (ok) showToast('已用当前内容覆盖外部版本', 'success');
   }, [overwriteExternalVersion, showToast]);
 
+  const handleSelectionChange = useCallback((selection: EditorSelectionContext | null) => {
+    setEditorSelection(selection);
+  }, []);
+
   const wordCount = useMemo(() => countWords(fileContent || ''), [fileContent]);
 
   if (!activeProject) {
@@ -330,6 +339,14 @@ function AppInner() {
           <span>{activeProject.rootPath}</span>
         </div>
         <div className="glyph-topbar-spacer" />
+        <button
+          className="glyph-topbar-btn"
+          onClick={() => setAiPanelOpen((value) => !value)}
+          title={aiPanelOpen ? '收起 AI 阅读' : '打开 AI 阅读'}
+          aria-label={aiPanelOpen ? '收起 AI 阅读' : '打开 AI 阅读'}
+        >
+          {aiPanelOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+        </button>
         <button
           className="glyph-topbar-btn"
           onClick={() => setFocusMode((value) => !value)}
@@ -384,8 +401,21 @@ function AppInner() {
             onContentChange={updateContent}
             onSave={saveCurrentFile}
             onViewportChange={updateViewport}
+            onSelectionChange={handleSelectionChange}
           />
         </main>
+
+        {!focusMode && aiPanelOpen && (
+          <aside className="glyph-ai-sidebar">
+            <FsAiPanel
+              project={activeProject}
+              currentFilePath={openFilePath}
+              currentFileContent={fileContent}
+              selection={editorSelection}
+              onOpenFile={openFile}
+            />
+          </aside>
+        )}
       </div>
 
       <footer className="fs-status-bar">

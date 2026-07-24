@@ -1,429 +1,375 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Send, Search, FileText, Loader, BookOpen, Settings, Key, Check, X, FileSearch, Info } from 'lucide-react';
+import {
+  BookOpenText,
+  ChevronDown,
+  ChevronRight,
+  FileSearch,
+  FileText,
+  Send,
+  Settings,
+  Sparkles,
+  Square,
+} from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import type { FsProject } from '../types/fs';
-import { collectContext, executeFsAiTask, searchProjectFiles, searchFileContents, parseFileReferences, resolveFileReferences } from '../lib/fs-ai-bridge';
-import type { FsAiTask, FsAiMessage, FsAiContext, FsAiEvidenceStep } from '../lib/fs-ai-bridge';
+import FsAiProviderDialog from './FsAiProviderDialog';
+import type {
+  EditorSelectionContext,
+  ProjectFileIndex,
+  ReadEvidence,
+  ReadonlyAiPhase,
+  ReadonlyAiTaskCard,
+  ReadonlyProviderChoice,
+} from '../types/fs-ai';
+import {
+  listProjectTextFiles,
+  listReadonlyProviders,
+  readableAiError,
+  runReadonlyAiTask,
+} from '../lib/fs-ai-bridge';
 
 interface FsAiPanelProps {
   project: FsProject;
   currentFilePath: string | null;
   currentFileContent: string | null;
+  selection: EditorSelectionContext | null;
+  onOpenFile: (path: string) => Promise<boolean>;
 }
 
-const FsAiPanel: React.FC<FsAiPanelProps> = ({ project, currentFilePath, currentFileContent }) => {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<FsAiMessage[]>([]);
-  const [status, setStatus] = useState<'idle' | 'thinking' | 'searching' | 'reading' | 'error'>('idle');
-  const [evidence, setEvidence] = useState<FsAiEvidenceStep[]>([]);
-  const [readFiles, setReadFiles] = useState<string[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
+const PHASE_LABEL: Record<ReadonlyAiPhase, string> = {
+  idle: '等待',
+  planning: '判断任务',
+  searching: '查找项目',
+  reading: '读取材料',
+  answering: '形成回答',
+  completed: '已完成',
+  cancelled: '已取消',
+  error: '失败',
+};
+
+function createTask(input: string): ReadonlyAiTaskCard {
+  return {
+    id: `read-task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    userInput: input,
+    createdAt: Date.now(),
+    phase: 'planning',
+    phaseDetail: '正在判断需要哪些项目材料',
+    answer: '',
+    evidence: [],
+    error: null,
+    providerLabel: null,
+  };
+}
+
+function mentionAtCursor(value: string, cursor: number): { start: number; query: string } | null {
+  const before = value.slice(0, cursor);
+  const bracedStart = before.lastIndexOf('@{');
+  if (bracedStart >= 0 && !before.slice(bracedStart + 2).includes('}')) {
+    return { start: bracedStart, query: before.slice(bracedStart + 2) };
+  }
+  const match = before.match(/(?:^|\s)@([^\s@{}]*)$/);
+  if (!match) return null;
+  const at = before.lastIndexOf('@');
+  return { start: at, query: match[1] };
+}
+
+function EvidenceItem({ item, onOpenFile }: { item: ReadEvidence; onOpenFile: (path: string) => Promise<boolean> }) {
+  const [expanded, setExpanded] = useState(false);
+  const canOpen = Boolean(item.filePath && item.kind !== 'read-error');
+  return (
+    <div className={`fs-ai-evidence-item fs-ai-evidence-${item.kind}`}>
+      <button className="fs-ai-evidence-heading" onClick={() => setExpanded((value) => !value)}>
+        {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <span className="fs-ai-source-id">[{item.id}]</span>
+        <span className="fs-ai-evidence-title">{item.title}</span>
+        {item.matchCount ? <span className="fs-ai-evidence-count">{item.matchCount}</span> : null}
+      </button>
+      {expanded && (
+        <div className="fs-ai-evidence-body">
+          {item.detail && <p>{item.detail}</p>}
+          {item.excerpt && <pre>{item.excerpt}</pre>}
+          {item.truncated && <span className="fs-ai-truncated">只展示了与任务相关的节选</span>}
+          {canOpen && (
+            <button className="fs-ai-open-source" onClick={() => void onOpenFile(item.filePath!)}>
+              <FileText size={13} /> 在编辑器中打开
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskCard({ task, onOpenFile }: { task: ReadonlyAiTaskCard; onOpenFile: (path: string) => Promise<boolean> }) {
   const [showEvidence, setShowEvidence] = useState(false);
-  const [providerEndpoint, setProviderEndpoint] = useState('http://localhost:11434/v1');
-  const [providerKey, setProviderKey] = useState('');
-  const [providerModel, setProviderModel] = useState('qwen3:8b');
-  const [configStatus, setConfigStatus] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  return (
+    <article className={`fs-ai-task fs-ai-task-${task.phase}`}>
+      <div className="fs-ai-user-message">{task.userInput}</div>
+      <div className="fs-ai-task-state">
+        <span className={`fs-ai-phase-dot fs-ai-phase-dot-${task.phase}`} />
+        <span>{PHASE_LABEL[task.phase]}</span>
+        {task.phaseDetail && <span className="fs-ai-phase-detail">· {task.phaseDetail}</span>}
+      </div>
 
-  useEffect(() => {
-    try { messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' as ScrollBehavior }); } catch {}
-  }, [messages]);
+      {task.answer && <div className="fs-ai-answer">{task.answer}</div>}
+      {task.error && <div className="fs-ai-error">{task.error}</div>}
 
-  // Check existing providers on mount
-  useEffect(() => {
-    const checkProviders = async () => {
-      try {
-        const { listProviderConfigs } = await import('../api/aiControlCenterApi');
-        const providers = await listProviderConfigs();
-        const active = providers.filter((p: { isActive: boolean }) => p.isActive);
-        if (active.length > 0) {
-          setProviderEndpoint(active[0].endpoint || '');
-          // models is a JSON string like '["qwen3:8b"]' — extract the model name
-          const modelsRaw = active[0].models;
-          if (modelsRaw) {
-            try {
-              const parsed = JSON.parse(modelsRaw);
-              const firstModel = Array.isArray(parsed) ? parsed[0] : parsed;
-              setProviderModel(String(firstModel || ''));
-            } catch {
-              setProviderModel(String(modelsRaw));
-            }
-          }
-        }
-      } catch {
-        // No providers configured yet
-      }
-    };
-    checkProviders();
+      {task.evidence.length > 0 && (
+        <div className="fs-ai-evidence">
+          <button className="fs-ai-evidence-toggle" onClick={() => setShowEvidence((value) => !value)}>
+            <FileSearch size={14} />
+            实际依据 {task.evidence.length} 项
+            {showEvidence ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </button>
+          {showEvidence && (
+            <div className="fs-ai-evidence-list">
+              {task.evidence.map((item) => (
+                <EvidenceItem key={`${task.id}-${item.id}`} item={item} onOpenFile={onOpenFile} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {task.providerLabel && <div className="fs-ai-provider-used">{task.providerLabel}</div>}
+    </article>
+  );
+}
+
+export default function FsAiPanel({
+  project,
+  currentFilePath,
+  currentFileContent,
+  selection,
+  onOpenFile,
+}: FsAiPanelProps) {
+  const [input, setInput] = useState('');
+  const [tasks, setTasks] = useState<ReadonlyAiTaskCard[]>([]);
+  const [providers, setProviders] = useState<ReadonlyProviderChoice[]>([]);
+  const [providerId, setProviderId] = useState<string>('');
+  const [fileIndex, setFileIndex] = useState<ProjectFileIndex>({ files: [], truncated: false, unreadableDirectories: [] });
+  const [loadingSetup, setLoadingSetup] = useState(true);
+  const [providerDialogOpen, setProviderDialogOpen] = useState(false);
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const taskListRef = useRef<HTMLDivElement | null>(null);
+
+  const refreshProviders = useCallback(async () => {
+    const nextProviders = await listReadonlyProviders().catch(() => []);
+    setProviders(nextProviders);
+    setProviderId((current) => nextProviders.some((provider) => provider.id === current)
+      ? current
+      : nextProviders[0]?.id ?? '');
   }, []);
 
-  const handleSaveProvider = useCallback(async () => {
-    setConfigStatus('saving');
-    try {
-      const { saveProviderConfig } = await import('../api/aiControlCenterApi');
-      await saveProviderConfig({
-        providerId: 'custom',
-        providerName: 'Custom API',
-        apiKeyEncrypted: providerKey,
-        endpoint: providerEndpoint,
-        models: [providerModel],
-        timeoutMs: 30000,
-        clearApiKey: false,
-      });
-      setConfigStatus('done');
-      setTimeout(() => { setShowSettings(false); setConfigStatus('idle'); }, 1500);
-    } catch (err) {
-      setConfigStatus('error');
-    }
-  }, [providerEndpoint, providerKey, providerModel]);
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-  }, []);
-
-  const handleSubmit = useCallback(async () => {
-    const text = input.trim();
-    if (!text) return;
+  useEffect(() => {
+    let disposed = false;
+    setLoadingSetup(true);
+    setTasks([]);
     setInput('');
+    Promise.all([
+      listReadonlyProviders().catch(() => []),
+      listProjectTextFiles(project.rootPath).catch(() => ({ files: [], truncated: false, unreadableDirectories: [] })),
+    ]).then(([nextProviders, nextIndex]) => {
+      if (disposed) return;
+      setProviders(nextProviders);
+      setProviderId((current) => nextProviders.some((provider) => provider.id === current) ? current : nextProviders[0]?.id ?? '');
+      setFileIndex(nextIndex);
+      setLoadingSetup(false);
+    });
+    return () => {
+      disposed = true;
+      abortRef.current?.abort();
+    };
+  }, [project.id, project.rootPath]);
 
-    // Guard: no real project loaded
-    if (!project.rootPath) {
-      const msg: FsAiMessage = {
-        role: 'assistant',
-        content: '请先打开或创建一个本地项目，我才能搜索和读取你的作品文件。\n\n在书架中选择"新建本地项目"或打开已有目录。',
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, msg]);
-      setStatus('idle');
+  useEffect(() => {
+    const node = taskListRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [tasks]);
+
+  const running = tasks.some((task) => ['planning', 'searching', 'reading', 'answering'].includes(task.phase));
+
+  const suggestions = useMemo(() => {
+    if (!mention) return [];
+    const query = mention.query.trim().toLowerCase();
+    return fileIndex.files
+      .filter((file) => !query || file.path.toLowerCase().includes(query) || file.name.toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [fileIndex.files, mention]);
+
+  const updateMention = useCallback((value: string) => {
+    const textarea = inputRef.current;
+    setMention(mentionAtCursor(value, textarea?.selectionStart ?? value.length));
+  }, []);
+
+  const insertReference = useCallback((path: string) => {
+    const textarea = inputRef.current;
+    if (!textarea || !mention) return;
+    const cursor = textarea.selectionStart;
+    const next = `${input.slice(0, mention.start)}@{${path}} ${input.slice(cursor)}`;
+    setInput(next);
+    setMention(null);
+    requestAnimationFrame(() => {
+      const position = mention.start + path.length + 4;
+      textarea.focus();
+      textarea.setSelectionRange(position, position);
+    });
+  }, [input, mention]);
+
+  const patchTask = useCallback((id: string, patch: Partial<ReadonlyAiTaskCard>) => {
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  }, []);
+
+  const submit = useCallback(async () => {
+    const value = input.trim();
+    if (!value || running) return;
+    const task = createTask(value);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setInput('');
+    setMention(null);
+    setTasks((items) => [...items.slice(-19), task]);
+
+    try {
+      const result = await runReadonlyAiTask({
+        userInput: value,
+        project,
+        currentFilePath,
+        currentFileContent,
+        selection,
+        providerId: providerId || undefined,
+        signal: controller.signal,
+        onProgress: (progress) => patchTask(task.id, {
+          phase: progress.phase,
+          phaseDetail: progress.detail,
+        }),
+      });
+      patchTask(task.id, {
+        phase: 'completed',
+        phaseDetail: '只读任务完成，作品没有被修改',
+        answer: result.answer,
+        evidence: result.evidence,
+        providerLabel: result.providerLabel,
+      });
+    } catch (error) {
+      const cancelled = controller.signal.aborted;
+      patchTask(task.id, {
+        phase: cancelled ? 'cancelled' : 'error',
+        phaseDetail: cancelled ? '任务已停止，作品没有变化' : '任务没有完成，作品没有变化',
+        error: cancelled ? null : readableAiError(error),
+      });
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }, [currentFileContent, currentFilePath, input, patchTask, project, providerId, running, selection]);
+
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Escape' && mention) {
+      event.preventDefault();
+      setMention(null);
       return;
     }
-
-    // Add user message
-    const userMsg: FsAiMessage = { role: 'user', content: text, timestamp: Date.now() };
-    setMessages(prev => [...prev, userMsg]);
-
-    setStatus('thinking');
-    setEvidence([]);
-    setReadFiles([]);
-
-    try {
-      // Collect filesystem context
-      const context = await collectContext(project, currentFilePath);
-
-      // Check for @file references in input
-      const fileRefs = parseFileReferences(text);
-      const refFilesToRead: string[] = [];
-      if (fileRefs.length > 0) {
-        setStatus('reading');
-        const resolved = await resolveFileReferences(project.rootPath, fileRefs);
-        for (const r of resolved) {
-          if (r.exactMatch) {
-            refFilesToRead.push(r.exactMatch);
-          } else if (r.matches.length > 0) {
-            refFilesToRead.push(r.matches[0]);
-          }
-        }
-      }
-
-      // Check if user's message looks like a search request
-      const isSearchRequest = text.includes('找') || text.includes('搜索') ||
-                              text.includes('查找') || text.includes('search') ||
-                              text.includes('关于') || text.includes('分析') ||
-                              text.includes('了解');
-
-      if (isSearchRequest && fileRefs.length === 0) {
-        setStatus('searching');
-
-        // Try content search first (more powerful)
-        const contentResults = await searchFileContents(project.rootPath, text, 5);
-
-        if (contentResults.length > 0) {
-          const newEvidence: FsAiEvidenceStep[] = [{
-            type: 'search',
-            detail: `内容搜索找到 ${contentResults.length} 个相关文件`,
-            files: contentResults.map(r => r.filePath),
-          }];
-          setEvidence(newEvidence);
-          setReadFiles(contentResults.map(r => r.filePath));
-
-          // Read found files
-          const filesToRead = contentResults.slice(0, 3).map(r => r.filePath);
-          const { readFile } = await import('../tauri-api');
-          const content = await Promise.all(
-            filesToRead.map(async (path) => {
-              try {
-                const c = await readFile(project.rootPath, path);
-                return { path, content: c };
-              } catch {
-                return { path, content: '(无法读取)' };
-              }
-            }),
-          );
-
-          newEvidence.push({
-            type: 'read',
-            detail: `读取了 ${content.length} 个相关文件`,
-            files: filesToRead,
-          });
-          setEvidence([...newEvidence]);
-
-          // Build response with evidence
-          const assistantMsg: FsAiMessage = {
-            role: 'assistant',
-            content: `我找到了以下相关文件：\n\n${content.map(f => `📄 **${f.path}**`).join('\n')}\n\n已读取这些文件的内容。以下是与"${text}"相关的内容：\n\n${content.map(f => `### ${f.path}\n\`\`\`\n${f.content.substring(0, 800)}\n\`\`\``).join('\n\n')}\n\n请告诉我你想进一步了解什么，或者我可以帮你分析这些材料。`,
-            timestamp: Date.now(),
-          };
-          setMessages(prev => [...prev, assistantMsg]);
-          setStatus('idle');
-          return;
-        }
-
-        // Fall back to filename search
-        const searchResults = await searchProjectFiles(project.rootPath, text);
-        if (searchResults.length > 0) {
-          setReadFiles(searchResults);
-          const content = await Promise.all(
-            searchResults.slice(0, 3).map(async (path) => {
-              try {
-                const { readFile } = await import('../tauri-api');
-                const c = await readFile(project.rootPath, path);
-                return { path, content: c };
-              } catch {
-                return { path, content: '(无法读取)' };
-              }
-            }),
-          );
-
-          setEvidence([{
-            type: 'search',
-            detail: `文件名搜索找到 ${searchResults.length} 个文件`,
-            files: searchResults,
-          }, {
-            type: 'read',
-            detail: `读取了 ${content.length} 个文件`,
-            files: content.map(c => c.path),
-          }]);
-
-          const assistantMsg: FsAiMessage = {
-            role: 'assistant',
-            content: `我通过文件名找到了以下相关文件：\n\n${content.map(f => `📄 ${f.path}`).join('\n')}\n\n已读取这些文件的内容，请告诉我你想针对这些材料做什么？`,
-            timestamp: Date.now(),
-          };
-          setMessages(prev => [...prev, assistantMsg]);
-          setStatus('idle');
-          return;
-        } else {
-          // Content search failed — proceed with AI chat
-          const assistantMsg: FsAiMessage = {
-            role: 'assistant',
-            content: '我搜索了项目文件，但没有找到直接相关的文件。你可以：\n\n1. 试试其他关键词\n2. 用 @文件名 直接指定文件\n3. 告诉我你想了解什么，我可以基于已有知识提供帮助',
-            timestamp: Date.now(),
-          };
-          setMessages(prev => [...prev, assistantMsg]);
-          setStatus('idle');
-          return;
-        }
-      }
-
-      // General AI chat
-      const task: FsAiTask = {
-        userInput: text,
-        context,
-        status: 'thinking',
-        messages: [...messages, userMsg],
-        readFiles: refFilesToRead,
-        searchResults: [],
-        evidence: [],
-      };
-
-      const result = await executeFsAiTask(task, {
-        endpoint: providerEndpoint,
-        model: { id: providerModel, name: providerModel, provider: 'custom', context: 8192 },
-      });
-
-      if (result.messages.length > messages.length + 1) {
-        const lastMsg = result.messages[result.messages.length - 1];
-        setMessages(prev => [...prev, lastMsg]);
-      }
-
-      if (result.evidence && result.evidence.length > 0) {
-        setEvidence(result.evidence);
-        const readEvidence = result.evidence.filter(e => e.type === 'read' || e.type === 'search');
-        const allFiles = readEvidence.flatMap(e => e.files).filter(Boolean);
-        if (allFiles.length > 0) {
-          setReadFiles(allFiles);
-        }
-      }
-
-      setStatus(result.status === 'error' ? 'error' : 'idle');
-    } catch (err) {
-      const errorMsg: FsAiMessage = {
-        role: 'assistant',
-        content: `操作失败：${err instanceof Error ? err.message : String(err)}`,
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
-      setStatus('error');
-    }
-  }, [input, project, currentFilePath, currentFileContent, messages]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
-  /** Get status display text */
-  const statusText = status === 'searching' ? '正在搜索项目文件...' :
-                     status === 'reading' ? '正在读取文件...' :
-                     status === 'thinking' ? '正在思考...' : '';
-
-  /** Evidence icons */
-  const evidenceIcon = (type: string) => {
-    switch (type) {
-      case 'search': return <Search size={12} />;
-      case 'read': return <FileText size={12} />;
-      case 'analyze': return <Info size={12} />;
-      default: return <Info size={12} />;
+    if (event.key === 'Enter' && !event.shiftKey && !mention) {
+      event.preventDefault();
+      void submit();
     }
   };
 
   return (
-    <div className="fs-ai-panel">
-      {/* Header */}
-      <div className="fs-ai-header">
-        <BookOpen size={16} />
-        <span>AI 助手</span>
-        <span className={`fs-ai-status-dot ${status !== 'idle' ? 'active' : ''}`} />
-        <div className="glyph-topbar-spacer" />
-        <button
-          className="fs-ai-settings-btn"
-          onClick={() => setShowSettings(v => !v)}
-          title="AI 设置"
-        >
-          <Settings size={14} />
-        </button>
-      </div>
-
-      {/* Settings panel */}
-      {showSettings && (
-        <div className="fs-ai-settings">
-          <div className="fs-ai-setting-field">
-            <label>API 地址</label>
-            <input value={providerEndpoint} onChange={e => setProviderEndpoint(e.target.value)} placeholder="http://localhost:11434/v1" />
-          </div>
-          <div className="fs-ai-setting-field">
-            <label>API Key</label>
-            <input value={providerKey} onChange={e => setProviderKey(e.target.value)} type="password" placeholder="sk-..." />
-          </div>
-          <div className="fs-ai-setting-field">
-            <label>模型</label>
-            <input value={providerModel} onChange={e => setProviderModel(e.target.value)} placeholder="gpt-4 / qwen3:8b" />
-          </div>
-          <button className="fs-ai-save-btn" onClick={handleSaveProvider} disabled={configStatus === 'saving'}>
-            {configStatus === 'saving' ? '保存中...' : configStatus === 'done' ? '✓ 已保存' : '保存配置'}
-          </button>
-          {configStatus === 'error' && <div className="fs-ai-setting-error">保存失败，请检查配置</div>}
+    <section className="fs-ai-panel" aria-label="AI 项目阅读">
+      <header className="fs-ai-header">
+        <div>
+          <strong><Sparkles size={15} /> AI 阅读</strong>
+          <span>只查找、读取和回答，不修改作品</span>
         </div>
-      )}
+        <BookOpenText size={18} />
+      </header>
 
-      {/* Messages */}
-      <div className="fs-ai-messages">
-        {messages.length === 0 && (
-          <div className="fs-ai-welcome">
-            <BookOpen size={32} />
-            <p>我是你的创作助手</p>
-            <p className="fs-ai-hints">
-              我可以帮你搜索项目文件、分析人物和情节、提供写作建议。
-            </p>
-            <p className="fs-ai-hints">
-              💡 输入 <code>@文件名</code> 引用具体文件
-            </p>
-            <div className="fs-ai-suggestions">
-              <button onClick={() => setInput('帮我看看项目里都有什么文件')}>
-                查看项目文件
-              </button>
-              <button onClick={() => setInput('分析当前文件的内容')}>
-                分析当前文件
-              </button>
-              <button onClick={() => setInput('帮我梳理主要人物关系')}>
-                梳理人物关系
-              </button>
-            </div>
-          </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <div key={i} className={`fs-ai-message ${msg.role}`}>
-            <div className="fs-ai-message-content">{msg.content}</div>
-            <div className="fs-ai-message-time">
-              {new Date(msg.timestamp).toLocaleTimeString()}
-            </div>
-          </div>
-        ))}
-
-        {/* Evidence display */}
-        {evidence.length > 0 && (
-          <div className="fs-ai-evidence">
-            <button
-              className="fs-ai-evidence-toggle"
-              onClick={() => setShowEvidence(v => !v)}
-            >
-              <FileSearch size={12} />
-              <span>AI 操作记录 ({evidence.length})</span>
-              <span className="fs-ai-evidence-arrow">{showEvidence ? '▼' : '▶'}</span>
-            </button>
-            {showEvidence && (
-              <div className="fs-ai-evidence-steps">
-                {evidence.map((step, i) => (
-                  <div key={i} className={`fs-ai-evidence-step fs-ai-evidence-${step.type}`}>
-                    <span className="fs-ai-evidence-icon">{evidenceIcon(step.type)}</span>
-                    <span className="fs-ai-evidence-detail">{step.detail}</span>
-                    {step.files.length > 0 && (
-                      <div className="fs-ai-evidence-files">
-                        {step.files.map((file, j) => (
-                          <span key={j} className="fs-ai-evidence-file">{file}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {status !== 'idle' && (
-          <div className="fs-ai-loading">
-            <Loader size={16} className="fs-ai-spinner" />
-            {' '}{statusText}
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
+      <div className="fs-ai-context-strip">
+        {currentFilePath ? <span title={currentFilePath}>当前：{currentFilePath}</span> : <span>尚未打开文件</span>}
+        {selection?.text.trim() && <span className="fs-ai-selection-chip">选区 {selection.text.length} 字</span>}
       </div>
 
-      {/* Input */}
-      <div className="fs-ai-input-area">
-        <textarea
-          className="fs-ai-input"
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder="输入创作任务...（用 @文件名 引用文件）"
-          rows={2}
-          disabled={status !== 'idle'}
-        />
-        <button
-          className="fs-ai-send-btn"
-          onClick={handleSubmit}
-          disabled={!input.trim() || status !== 'idle'}
+      <div className="fs-ai-provider-row">
+        <label htmlFor="fs-ai-provider">模型</label>
+        <select
+          id="fs-ai-provider"
+          value={providerId}
+          disabled={running || loadingSetup || providers.length === 0}
+          onChange={(event) => setProviderId(event.target.value)}
         >
-          <Send size={16} />
+          {providers.length === 0 ? <option value="">未配置可用模型</option> : null}
+          {providers.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
+        </select>
+        <button className="fs-ai-provider-settings" onClick={() => setProviderDialogOpen(true)} aria-label="配置 AI 模型" title="配置 AI 模型">
+          <Settings size={13} />
         </button>
       </div>
-    </div>
-  );
-};
 
-export default FsAiPanel;
+      <div className="fs-ai-task-list" ref={taskListRef}>
+        {tasks.length === 0 ? (
+          <div className="fs-ai-empty">
+            <FileSearch size={24} />
+            <strong>直接问你的作品</strong>
+            <p>例如：“布兰目前知道黑潮真相吗？”或“根据 @{'{人物/布兰.md}'} 检查这一段是否越界。”</p>
+          </div>
+        ) : tasks.map((task) => <TaskCard key={task.id} task={task} onOpenFile={onOpenFile} />)}
+      </div>
+
+      <div className="fs-ai-composer">
+        {mention && suggestions.length > 0 && (
+          <div className="fs-ai-mention-menu">
+            {suggestions.map((file) => (
+              <button key={file.path} onMouseDown={(event) => event.preventDefault()} onClick={() => insertReference(file.path)}>
+                <FileText size={13} />
+                <span>{file.path}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <textarea
+          ref={inputRef}
+          value={input}
+          disabled={running}
+          rows={3}
+          placeholder={providers.length === 0 ? '请先配置 AI 模型' : '询问项目内容；输入 @ 引用文件'}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            setInput(value);
+            requestAnimationFrame(() => updateMention(value));
+          }}
+          onClick={(event) => updateMention(event.currentTarget.value)}
+          onKeyUp={(event) => updateMention(event.currentTarget.value)}
+          onKeyDown={handleInputKeyDown}
+        />
+        <div className="fs-ai-composer-actions">
+          <span>Enter 发送 · Shift+Enter 换行</span>
+          {running ? (
+            <button className="fs-ai-stop" onClick={() => abortRef.current?.abort()} title="停止任务">
+              <Square size={14} /> 停止
+            </button>
+          ) : (
+            <button className="fs-ai-send" disabled={!input.trim() || providers.length === 0} onClick={() => void submit()} title="发送">
+              <Send size={14} /> 发送
+            </button>
+          )}
+        </div>
+      </div>
+
+      {providerDialogOpen && (
+        <FsAiProviderDialog
+          onClose={() => setProviderDialogOpen(false)}
+          onSaved={refreshProviders}
+        />
+      )}
+    </section>
+  );
+}

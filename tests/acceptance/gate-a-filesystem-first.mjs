@@ -17,7 +17,7 @@ const commands = read('src-tauri/src/fs_commands.rs');
 const watcher = read('src-tauri/src/fs_watcher.rs');
 const fsTypes = read('types/fs.ts');
 
-check('one filesystem-first workspace', !app.includes('isFsMode') && !app.includes('FsAiPanel'), 'App must not branch into legacy/FS workspaces or mount Gate B AI');
+check('one filesystem-first workspace', !app.includes('isFsMode') && app.includes('glyph-workspace') && app.includes('FsDocumentView'), 'App must not branch into legacy/FS workspaces');
 check('two explicit entry paths', app.includes('FsWelcome') && read('components/FsWelcome.tsx').includes('在织梦机开始创作') && read('components/FsWelcome.tsx').includes('导入已有创作'));
 check('truthful Markdown editor', editor.includes('<textarea') && !editor.includes('Tiptap') && !editor.includes('htmlToMarkdown'));
 check('single automatic-save owner', (app.match(/setTimeout\(\(\) => \{\s*void saveCurrentFile\(\)/g) || []).length === 1);

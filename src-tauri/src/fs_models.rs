@@ -141,4 +141,6 @@ pub struct SearchMatch {
 pub struct ContentSearchResult {
     pub matches: Vec<SearchMatch>,
     pub total_files_searched: u32,
+    /// True when search stopped at a result/file/depth safety limit.
+    pub truncated: bool,
 }

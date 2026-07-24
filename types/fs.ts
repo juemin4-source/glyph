@@ -88,4 +88,5 @@ export interface SearchMatch {
 export interface ContentSearchResult {
   matches: SearchMatch[];
   totalFilesSearched: number;
+  truncated: boolean;
 }

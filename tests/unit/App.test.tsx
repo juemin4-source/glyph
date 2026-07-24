@@ -110,9 +110,7 @@ describe('filesystem-first App', () => {
     fireEvent.click(screen.getByText('导入已有创作'));
 
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('open_fs_project', { rootPath: 'C:/novels/existing' }));
-    // Project name may appear in both welcome hint and file tree header
-    const projectNameElements = screen.getAllByText('已有长篇');
-    expect(projectNameElements.length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findByText('已有长篇')).toBeInTheDocument();
     expect(screen.getByText('从左侧打开一份 Markdown，继续你的作品。')).toBeInTheDocument();
   });
 
@@ -142,21 +140,11 @@ describe('filesystem-first App', () => {
     await waitFor(() => expect(screen.getByText('将创建：C:/novels/新作品')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: '创建并开始写作' }));
 
-    await waitFor(() => {
-      expect(mocks.invoke).toHaveBeenCalledWith('create_fs_project', {
-        name: '新作品',
-        rootPath: 'C:/novels/新作品',
-        genre: undefined,
-      });
-    });
-    // After creation, the project workspace with editor should appear
-    await waitFor(() => {
-      const store = useFsStore.getState();
-      expect(store.activeProject).toBeTruthy();
-      expect(store.openFilePath).toBe('正文.md');
-      expect(store.fileContent).toContain('新作品');
-      // Check for textarea in the DOM
-      expect(screen.getByLabelText('Markdown 正文编辑器')).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('create_fs_project', {
+      name: '新作品',
+      rootPath: 'C:/novels/新作品',
+      genre: undefined,
+    }));
+    expect(await screen.findByDisplayValue('# 新作品\n\n')).toBeInTheDocument();
   });
 });

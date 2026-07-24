@@ -9,6 +9,9 @@ use crate::db::Database;
 use crate::fs_models::*;
 use crate::fs_watcher::FileWatcher;
 
+const MAX_CONTENT_SEARCH_FILES: u32 = 10_000;
+const MAX_CONTENT_SEARCH_DEPTH: usize = 64;
+
 // ============================================================================
 //  Path Validation
 // ============================================================================
@@ -1058,8 +1061,9 @@ pub fn export_to_fs_project(
 //  Content Search
 // ============================================================================
 
-/// Search file contents within a project for a text query.
-/// Returns matching file paths with match count and preview snippets.
+/// Search project text files without following symbolic links or leaving the
+/// canonical project root. Gate B intentionally searches only author-facing
+/// text formats (Markdown and plain text by default).
 #[tauri::command]
 pub fn search_file_content(
     project_root: String,
@@ -1069,27 +1073,63 @@ pub fn search_file_content(
 ) -> Result<ContentSearchResult, String> {
     let root = fs::canonicalize(&project_root)
         .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
-
     if !root.is_dir() {
         return Err("NOT_A_DIRECTORY: root is not a directory".to_string());
     }
 
-    let max_matches = max_results.unwrap_or(20).min(50) as usize;
+    let query = query.trim();
+    if query.is_empty() {
+        return Err("EMPTY_QUERY: search query must not be empty".to_string());
+    }
+    if query.chars().count() > 200 {
+        return Err("QUERY_TOO_LONG: search query exceeds 200 characters".to_string());
+    }
+
+    let extensions: Vec<String> = file_pattern
+        .unwrap_or_else(|| "md,markdown,txt".to_string())
+        .split(|character| matches!(character, ',' | ';' | '|'))
+        .map(|item| item.trim().trim_start_matches('.').to_lowercase())
+        .filter(|item| !item.is_empty())
+        .collect();
+    let allowed_extensions = if extensions.is_empty() {
+        vec!["md".to_string(), "markdown".to_string(), "txt".to_string()]
+    } else {
+        extensions
+    };
+
+    let max_matches = max_results.unwrap_or(20).clamp(1, 50) as usize;
     let lower_query = query.to_lowercase();
     let mut matches: Vec<SearchMatch> = Vec::new();
     let mut total_files: u32 = 0;
+    let mut truncated = false;
 
-    // Recursively walk the directory
+    fn truncate_preview(value: &str, max_chars: usize) -> String {
+        let mut chars = value.chars();
+        let preview: String = chars.by_ref().take(max_chars).collect();
+        if chars.next().is_some() {
+            format!("{}...", preview)
+        } else {
+            preview
+        }
+    }
+
     fn visit_dirs(
         dir: &Path,
         root: &Path,
         lower_query: &str,
+        allowed_extensions: &[String],
         max_matches: usize,
+        depth: usize,
         matches: &mut Vec<SearchMatch>,
         total_files: &mut u32,
-        file_pattern: &Option<String>,
+        truncated: &mut bool,
     ) -> Result<(), String> {
-        if matches.len() >= max_matches {
+        if matches.len() >= max_matches || *total_files >= MAX_CONTENT_SEARCH_FILES {
+            *truncated = true;
+            return Ok(());
+        }
+        if depth > MAX_CONTENT_SEARCH_DEPTH {
+            *truncated = true;
             return Ok(());
         }
 
@@ -1097,100 +1137,111 @@ pub fn search_file_content(
             .map_err(|e| format!("READ_DIR_ERROR: {}", e))?;
 
         for entry in read_dir {
-            if matches.len() >= max_matches {
+            if matches.len() >= max_matches || *total_files >= MAX_CONTENT_SEARCH_FILES {
+                *truncated = true;
                 break;
             }
 
             let entry = entry.map_err(|e| format!("ENTRY_ERROR: {}", e))?;
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
-
-            // Skip hidden files/directories
             if name.starts_with('.') {
                 continue;
             }
 
-            if path.is_dir() {
-                // Skip .glyph directory
-                if name == ".glyph" {
-                    continue;
-                }
-                visit_dirs(&path, root, lower_query, max_matches, matches, total_files, file_pattern)?;
-            } else if path.is_file() {
-                // Check file pattern if specified
-                if let Some(pattern) = file_pattern {
-                    if !name.to_lowercase().contains(&pattern.to_lowercase()) {
-                        continue;
+            let metadata = match fs::symlink_metadata(&path) {
+                Ok(metadata) => metadata,
+                Err(_) => continue,
+            };
+            if metadata.file_type().is_symlink() {
+                // A project may contain links, but the read-only assistant must
+                // never follow one outside the project boundary.
+                continue;
+            }
+
+            if metadata.is_dir() {
+                visit_dirs(
+                    &path,
+                    root,
+                    lower_query,
+                    allowed_extensions,
+                    max_matches,
+                    depth + 1,
+                    matches,
+                    total_files,
+                    truncated,
+                )?;
+                continue;
+            }
+            if !metadata.is_file() || metadata.len() > 2 * 1024 * 1024 {
+                continue;
+            }
+
+            let extension = path
+                .extension()
+                .map(|value| value.to_string_lossy().to_lowercase())
+                .unwrap_or_default();
+            if !allowed_extensions.iter().any(|allowed| allowed == &extension) {
+                continue;
+            }
+
+            let content = match fs::read_to_string(&path) {
+                Ok(content) => content,
+                Err(_) => continue,
+            };
+            *total_files += 1;
+
+            let mut match_count = 0u32;
+            let mut previews: Vec<String> = Vec::new();
+            for line in content.lines() {
+                if line.to_lowercase().contains(lower_query) {
+                    match_count += 1;
+                    if previews.len() < 3 {
+                        previews.push(truncate_preview(line.trim(), 120));
                     }
-                }
-
-                // Only search text-like files (skip binaries by extension)
-                let ext = path.extension()
-                    .map(|e| e.to_string_lossy().to_lowercase())
-                    .unwrap_or_default();
-                match ext.as_str() {
-                    "md" | "txt" | "json" | "yaml" | "yml" | "toml" | "css" | "html" |
-                    "js" | "ts" | "tsx" | "jsx" | "rs" | "py" | "sh" | "bat" | "conf" |
-                    "ini" | "cfg" | "xml" | "svg" | "env" | "vue" | "svelte" => {},
-                    _ => continue,
-                }
-
-                // Check file size (skip > 1MB for search)
-                let metadata = path.metadata().map_err(|e| format!("METADATA_ERROR: {}", e))?;
-                if metadata.len() > 1_048_576 {
-                    continue;
-                }
-
-                let content = match fs::read_to_string(&path) {
-                    Ok(c) => c,
-                    Err(_) => continue,
-                };
-
-                *total_files += 1;
-                let mut match_count = 0u32;
-                let mut previews: Vec<String> = Vec::new();
-
-                for line in content.lines() {
-                    if line.to_lowercase().contains(lower_query) {
-                        match_count += 1;
-                        if previews.len() < 3 {
-                            let trimmed = line.trim();
-                            let preview = if trimmed.len() > 120 {
-                                format!("{}...", &trimmed[..117])
-                            } else {
-                                trimmed.to_string()
-                            };
-                            previews.push(preview);
-                        }
-                    }
-                }
-
-                if match_count > 0 {
-                    let rel_path = path.strip_prefix(root)
-                        .unwrap_or(&path)
-                        .to_string_lossy()
-                        .to_string()
-                        .replace('\\', "/");
-
-                    matches.push(SearchMatch {
-                        file_path: rel_path,
-                        match_count,
-                        previews,
-                    });
                 }
             }
+
+            if match_count == 0 {
+                continue;
+            }
+
+            let relative = path
+                .strip_prefix(root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .replace('\\', "/");
+            matches.push(SearchMatch {
+                file_path: relative,
+                match_count,
+                previews,
+            });
         }
         Ok(())
     }
 
-    visit_dirs(&root, &root, &lower_query, max_matches, &mut matches, &mut total_files, &file_pattern)?;
-
-    // Sort by match count descending
-    matches.sort_by(|a, b| b.match_count.cmp(&a.match_count));
+    visit_dirs(
+        &root,
+        &root,
+        &lower_query,
+        &allowed_extensions,
+        max_matches,
+        0,
+        &mut matches,
+        &mut total_files,
+        &mut truncated,
+    )?;
+    matches.sort_by(|left, right| {
+        right
+            .match_count
+            .cmp(&left.match_count)
+            .then_with(|| left.file_path.cmp(&right.file_path))
+    });
 
     Ok(ContentSearchResult {
         matches,
         total_files_searched: total_files,
+        truncated,
     })
 }
 
@@ -1399,5 +1450,73 @@ mod tests {
         let rel = relative_path(root, abs_path);
         assert_eq!(rel, "readme.md");
     }
+
+    // ── Gate B content search ──
+
+    #[test]
+    fn test_search_file_content_handles_long_chinese_preview() {
+        let (_dir, root) = setup_test_dir("search_chinese");
+        let line = format!("布兰{}", "很长的中文内容".repeat(40));
+        fs::write(root.join("人物.md"), line).unwrap();
+
+        let result = search_file_content(
+            root.to_string_lossy().to_string(),
+            "布兰".to_string(),
+            Some(10),
+            Some("md,txt".to_string()),
+        ).unwrap();
+
+        assert_eq!(result.matches.len(), 1);
+        assert!(result.matches[0].previews[0].chars().count() <= 123);
+    }
+
+    #[test]
+    fn test_search_file_content_rejects_empty_query() {
+        let (_dir, root) = setup_test_dir("search_empty");
+        let result = search_file_content(
+            root.to_string_lossy().to_string(),
+            "   ".to_string(),
+            None,
+            None,
+        );
+        assert!(result.unwrap_err().contains("EMPTY_QUERY"));
+    }
+
+    #[test]
+    fn test_search_file_content_only_reads_requested_text_extensions() {
+        let (_dir, root) = setup_test_dir("search_extensions");
+        fs::write(root.join("notes.txt"), "黑潮发生了").unwrap();
+        fs::write(root.join("data.json"), "黑潮发生了").unwrap();
+
+        let result = search_file_content(
+            root.to_string_lossy().to_string(),
+            "黑潮".to_string(),
+            Some(10),
+            Some("md,markdown,txt".to_string()),
+        ).unwrap();
+
+        assert!(result.matches.iter().any(|item| item.file_path == "notes.txt"));
+        assert!(!result.matches.iter().any(|item| item.file_path == "data.json"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_search_file_content_does_not_follow_symlink_outside_project() {
+        use std::os::unix::fs::symlink;
+        let (_dir, root) = setup_test_dir("search_symlink");
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("secret.md"), "不可读取的秘密").unwrap();
+        symlink(outside.path(), root.join("linked-outside")).unwrap();
+
+        let result = search_file_content(
+            root.to_string_lossy().to_string(),
+            "不可读取的秘密".to_string(),
+            Some(10),
+            None,
+        ).unwrap();
+
+        assert!(result.matches.is_empty());
+    }
+
 }
 

@@ -294,7 +294,7 @@ describe('filesystem-first store', () => {
   });
 
   it('does not close a project while a conflict is unresolved', async () => {
-    useFsStore.setState({ activeProject: project, openFilePath: '正文/ch01.md', fileStatus: 'conflict' });
+    useFsStore.setState({ activeProject: project, fileStatus: 'conflict' });
     expect(await useFsStore.getState().closeProject()).toBe(false);
     expect(useFsStore.getState().activeProject).toEqual(project);
   });

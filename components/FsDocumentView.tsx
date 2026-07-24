@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type ChangeEvent, type UIEvent } from 'react';
 import type { FileSyncStatus } from '../types/fs';
+import type { EditorSelectionContext } from '../types/fs-ai';
 import { countWords } from '../utils/markdown';
 
 interface FsDocumentViewProps {
@@ -18,6 +19,7 @@ interface FsDocumentViewProps {
     cursorColumn?: number;
     scrollPosition?: number;
   }) => void;
+  onSelectionChange: (selection: EditorSelectionContext | null) => void;
 }
 
 function offsetFromLineColumn(content: string, line: number, column: number): number {
@@ -60,6 +62,7 @@ export default function FsDocumentView({
   onContentChange,
   onSave,
   onViewportChange,
+  onSelectionChange,
 }: FsDocumentViewProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const restoredRevisionRef = useRef<number | null>(null);
@@ -75,6 +78,15 @@ export default function FsDocumentView({
       if (!textarea) return;
       textarea.setSelectionRange(offset, offset);
       textarea.scrollTop = scrollPosition;
+      const restoredPosition = lineColumnFromOffset(content, offset);
+      onSelectionChange({
+        start: offset,
+        end: offset,
+        text: '',
+        cursorOffset: offset,
+        startLine: restoredPosition.line,
+        endLine: restoredPosition.line,
+      });
     };
     if (typeof window.requestAnimationFrame === 'function') {
       const frame = window.requestAnimationFrame(restore);
@@ -82,7 +94,11 @@ export default function FsDocumentView({
     }
     const timer = window.setTimeout(restore, 0);
     return () => window.clearTimeout(timer);
-  }, [contentRevision, content, cursorLine, cursorColumn, scrollPosition]);
+  }, [contentRevision, content, cursorLine, cursorColumn, scrollPosition, onSelectionChange]);
+
+  useEffect(() => {
+    onSelectionChange(null);
+  }, [filePath, contentRevision, onSelectionChange]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -107,8 +123,19 @@ export default function FsDocumentView({
   const reportCursor = () => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const position = lineColumnFromOffset(content, textarea.selectionStart);
-    onViewportChange({ cursorLine: position.line, cursorColumn: position.column });
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const startPosition = lineColumnFromOffset(content, start);
+    const endPosition = lineColumnFromOffset(content, end);
+    onViewportChange({ cursorLine: startPosition.line, cursorColumn: startPosition.column });
+    onSelectionChange({
+      start,
+      end,
+      text: content.slice(start, end),
+      cursorOffset: start,
+      startLine: startPosition.line,
+      endLine: endPosition.line,
+    });
   };
 
   return (

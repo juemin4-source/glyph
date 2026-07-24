@@ -128,31 +128,55 @@ export async function callLlm(
   getModelRequirements(outputType);
 
   try {
-    const baseUrl = options.endpoint || getEndpointForProvider(model.providerId);
+    const baseUrl = (options.endpoint || getEndpointForProvider(model.providerId)).replace(/\/+$/, '');
     const isGemini = model.providerId === 'google';
+    const isAnthropic = model.providerId === 'anthropic';
     const apiUrl = isGemini
-      ? baseUrl + '/models/' + model.name + ':generateContent' + (token ? '?key=' + token : '')
-      : getChatEndpoint(model.providerId, baseUrl);
+      ? baseUrl + '/models/' + model.name + ':generateContent' + (token ? '?key=' + encodeURIComponent(token) : '')
+      : isAnthropic
+        ? (/\/messages$/.test(baseUrl) ? baseUrl : baseUrl + '/messages')
+        : getChatEndpoint(model.providerId, baseUrl);
+
+    const systemText = messages
+      .filter(message => message.role === 'system')
+      .map(message => message.content)
+      .join('\n\n');
+    const conversation = messages.filter(message => message.role !== 'system');
 
     const requestBody = isGemini
       ? JSON.stringify({
-          contents: messages.map(m => ({
-            ...(m.role === 'user' ? { role: 'user' } : m.role === 'assistant' ? { role: 'model' } : {}),
-            parts: [{ text: m.content }],
+          ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
+          contents: conversation.map(message => ({
+            role: message.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: message.content }],
           })),
           generationConfig: { maxOutputTokens: 4096 },
         })
-      : JSON.stringify({
-          model: model.name,
-          messages: messages.map(m => ({ role: m.role, content: m.content })),
-          max_tokens: 4096,
-        });
+      : isAnthropic
+        ? JSON.stringify({
+            model: model.name,
+            max_tokens: 4096,
+            ...(systemText ? { system: systemText } : {}),
+            messages: conversation.map(message => ({
+              role: message.role === 'assistant' ? 'assistant' : 'user',
+              content: message.content,
+            })),
+          })
+        : JSON.stringify({
+            model: model.name,
+            messages: messages.map(message => ({ role: message.role, content: message.content })),
+            max_tokens: 4096,
+          });
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(isGemini ? {} : (token ? { 'Authorization': 'Bearer ' + token } : {})),
+        ...(isAnthropic
+          ? (token ? { 'x-api-key': token, 'anthropic-version': '2023-06-01' } : { 'anthropic-version': '2023-06-01' })
+          : isGemini
+            ? {}
+            : (token ? { 'Authorization': 'Bearer ' + token } : {})),
       },
       body: requestBody,
       signal: requestSignal,
@@ -168,12 +192,14 @@ export async function callLlm(
     const data = await response.json();
     let content = '';
     if (isGemini) {
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      content = data.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('') || '';
+    } else if (isAnthropic) {
+      content = data.content?.map((part: { type?: string; text?: string }) => part.type === 'text' ? (part.text || '') : '').join('') || '';
     } else {
       content = data.choices?.[0]?.message?.content || '';
     }
-    const tokensIn = data.usage?.prompt_tokens || estimateTokens(JSON.stringify(messages));
-    const tokensOut = data.usage?.completion_tokens || estimateTokens(content);
+    const tokensIn = data.usage?.prompt_tokens || data.usage?.input_tokens || estimateTokens(JSON.stringify(messages));
+    const tokensOut = data.usage?.completion_tokens || data.usage?.output_tokens || estimateTokens(content);
 
     let parsed: ParseResult | undefined;
     if (outputSchema && content) {
