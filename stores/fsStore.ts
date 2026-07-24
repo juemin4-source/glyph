@@ -567,7 +567,7 @@ export const useFsStore = create<FsStore>((set, get) => {
         throw new Error('AI_WRITE_BLOCKED: AI 规划期间当前文件已经发生变化');
       }
       if (action === 'replace_selection' && selection
-          && (get().fileContent ?? '').slice(selection.start, selection.end) !== selection.text) {
+          && (get().fileContent ?? "").slice(selection.start, selection.end) !== selection.text) {
         throw new Error('AI_WRITE_BLOCKED: 选区已经变化');
       }
       if (get().fileStatus === 'dirty' || get().fileStatus === 'save-error') {

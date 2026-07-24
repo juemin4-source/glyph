@@ -111,6 +111,7 @@ function AppInner() {
   const [editorSelection, setEditorSelection] = useState<EditorSelectionContext | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeInProgress = useRef(false);
 
   useEffect(() => {
     void loadProjects();
@@ -186,30 +187,61 @@ function AppInner() {
       .then(async ({ getCurrentWindow }) => {
         const appWindow = getCurrentWindow();
         const stop = await appWindow.onCloseRequested(async (event) => {
-          const state = useFsStore.getState();
-          if (!state.activeProject) return;
-
           event.preventDefault();
-          if (state.fileStatus === 'conflict' || state.fileStatus === 'missing') {
-            showToast('作品仍有未处理的外部冲突，请先保留或选择一个版本。', 'warning');
-            return;
-          }
+          if (closeInProgress.current) return;
+          closeInProgress.current = true;
 
-          if (state.fileStatus === 'dirty' || state.fileStatus === 'saving' || state.fileStatus === 'save-error') {
-            const saved = await state.saveCurrentFile();
-            if (!saved || useFsStore.getState().fileStatus !== 'clean') {
-              showToast('当前正文尚未安全保存，已取消关闭。', 'error');
+          try {
+            const state = useFsStore.getState();
+            if (!state.activeProject) {
+              await appWindow.destroy();
               return;
             }
-          }
 
-          await useFsStore.getState().persistSession();
-          await appWindow.destroy();
+            if (state.fileStatus === 'conflict') {
+              const confirmed = window.confirm('当前正文与外部版本存在冲突。关闭前将自动保存一份“本地冲突”副本，是否继续？');
+              if (!confirmed) return;
+              const copy = await state.saveConflictCopy();
+              if (!copy) {
+                showToast('无法保存冲突副本，窗口保持打开。', 'error');
+                return;
+              }
+            } else if (state.fileStatus === 'missing') {
+              const confirmed = window.confirm('原文件已经不存在。关闭前将自动保存恢复副本，是否继续？');
+              if (!confirmed) return;
+              const copy = await state.saveMissingCopy();
+              if (!copy) {
+                showToast('无法保存恢复副本，窗口保持打开。', 'error');
+                return;
+              }
+            } else {
+              const closed = await state.closeProject();
+              if (!closed) {
+                const confirmed = window.confirm('当前正文无法正常保存。是否另存一份恢复副本后退出？');
+                if (!confirmed) return;
+                const copy = await useFsStore.getState().saveMissingCopy();
+                if (!copy) {
+                  showToast('恢复副本保存失败，窗口保持打开。', 'error');
+                  return;
+                }
+              }
+            }
+
+            await useFsStore.getState().persistSession();
+            await appWindow.destroy();
+          } catch (closeError) {
+            console.error('[window] close failed', closeError);
+            showToast(`关闭失败：${String(closeError)}`, 'error');
+          } finally {
+            closeInProgress.current = false;
+          }
         });
         if (disposed) stop();
         else unlisten = stop;
       })
-      .catch(() => undefined);
+      .catch((closeSetupError) => {
+        console.warn('[window] failed to register close handler', closeSetupError);
+      });
 
     return () => {
       disposed = true;
@@ -319,17 +351,19 @@ function AppInner() {
 
   if (!activeProject) {
     return (
-      <div className="app-layout fs-first-app">
-        <FsWelcome
-          projects={fsProjects}
-          legacyProjects={legacyProjects}
-          loading={loading}
-          onCreate={() => setShowCreateDialog(true)}
-          onOpenDirectory={() => void handleOpenDirectory()}
-          onOpenRecent={(project) => void handleOpenRecent(project)}
-          onRemoveRecent={(project) => void removeProject(project.id)}
-          onMigrateLegacy={(project) => void handleMigrateLegacy(project)}
-        />
+      <div className="app-layout fs-first-app fs-welcome-shell">
+        <div className="fs-welcome-scroll">
+          <FsWelcome
+            projects={fsProjects}
+            legacyProjects={legacyProjects}
+            loading={loading}
+            onCreate={() => setShowCreateDialog(true)}
+            onOpenDirectory={() => void handleOpenDirectory()}
+            onOpenRecent={(project) => void handleOpenRecent(project)}
+            onRemoveRecent={(project) => void removeProject(project.id)}
+            onMigrateLegacy={(project) => void handleMigrateLegacy(project)}
+          />
+        </div>
         {showCreateDialog && (
           <FsProjectCreateDialog
             onChooseParent={() => api.pickDirectory('选择作品保存位置')}

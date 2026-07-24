@@ -1,7 +1,7 @@
 {
   "name": "glyph",
   "private": true,
-  "version": "0.4.3",
+  "version": "0.4.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -32,7 +32,8 @@
     "accept:gate-a": "node tests/acceptance/gate-a-filesystem-first.mjs",
     "accept:gate-b": "node tests/acceptance/gate-b-readonly-agent.mjs",
     "test:gate-c": "vitest run tests/unit/fs-ai-bridge.test.ts",
-    "accept:gate-c": "node tests/acceptance/gate-c-single-file-actions.mjs"
+    "accept:gate-c": "node tests/acceptance/gate-c-single-file-actions.mjs",
+    "accept:gate-c-ux": "node tests/acceptance/gate-c-ux-repair.mjs"
   },
   "dependencies": {
     "@nut-tree/nut-js": "^3.1.2",

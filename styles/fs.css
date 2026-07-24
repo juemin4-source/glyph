@@ -1787,3 +1787,271 @@
   white-space: pre-wrap;
   user-select: text;
 }
+
+/* ======================================================
+   v0.4.4 — Restored visual Markdown writing experience
+   ====================================================== */
+
+.fs-welcome-shell {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fs-welcome-scroll {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: 0 18px 24px;
+}
+
+.fs-welcome-scroll .fs-welcome {
+  overflow: visible;
+}
+
+.fs-rich-markdown-editor {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fs-editor-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-canvas, #121212);
+}
+
+.fs-format-toolbar {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 10px;
+  border-bottom: 1px solid var(--border-default, #292929);
+  background: #151515;
+  flex-shrink: 0;
+}
+
+.fs-format-toolbar button,
+.fs-bubble-menu button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #858585;
+  cursor: pointer;
+}
+
+.fs-format-toolbar button:hover,
+.fs-bubble-menu button:hover {
+  background: rgba(255,255,255,.06);
+  color: #e0e0e0;
+}
+
+.fs-format-separator {
+  width: 1px;
+  height: 18px;
+  margin: 0 5px;
+  background: #2d2d2d;
+}
+
+.fs-format-hint {
+  margin-left: auto;
+  padding-right: 4px;
+  color: #555;
+  font-size: 10px;
+}
+
+.fs-editor-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.fs-visual-editor,
+.fs-source-editor {
+  box-sizing: border-box;
+  width: min(100%, 920px);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 42px 50px 96px;
+  outline: none;
+  color: var(--text-primary, #dedede);
+  caret-color: var(--accent, #b7ff00);
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  line-height: 1.92;
+  word-break: break-word;
+}
+
+.fs-visual-editor[contenteditable="true"]:empty::before {
+  content: attr(data-placeholder);
+  color: #555;
+  pointer-events: none;
+}
+
+.fs-visual-editor[contenteditable="false"] {
+  cursor: default;
+  caret-color: transparent;
+}
+
+.fs-visual-editor h1,
+.fs-visual-editor h2,
+.fs-visual-editor h3,
+.fs-visual-editor h4,
+.fs-visual-editor h5,
+.fs-visual-editor h6 {
+  color: #f0f0f0;
+  line-height: 1.35;
+}
+
+.fs-visual-editor h1 { margin: 1.45em 0 .7em; font-size: 2em; }
+.fs-visual-editor h2 { margin: 1.35em 0 .65em; font-size: 1.55em; }
+.fs-visual-editor h3 { margin: 1.2em 0 .55em; font-size: 1.25em; }
+.fs-visual-editor h4,
+.fs-visual-editor h5,
+.fs-visual-editor h6 { margin: 1em 0 .5em; font-size: 1.05em; }
+.fs-visual-editor > :first-child { margin-top: 0; }
+.fs-visual-editor p { margin: 0 0 .86em; }
+.fs-visual-editor strong { color: #f1f1f1; }
+.fs-visual-editor em { color: #d5d5d5; }
+.fs-visual-editor a { color: #9ebc72; text-decoration: underline; text-underline-offset: 3px; }
+.fs-visual-editor .wiki-link { color: #9ebc72; border-bottom: 1px dashed #66774d; }
+.fs-visual-editor ul,
+.fs-visual-editor ol { margin: .65em 0 1em; padding-left: 1.8em; }
+.fs-visual-editor li { margin: .25em 0; }
+.fs-visual-editor blockquote {
+  margin: 1em 0;
+  padding: .5em 1em;
+  border-left: 3px solid #667b43;
+  border-radius: 0 6px 6px 0;
+  background: rgba(183,255,0,.035);
+  color: #aaa;
+}
+.fs-visual-editor blockquote p:last-child { margin-bottom: 0; }
+.fs-visual-editor code {
+  padding: .12em .38em;
+  border-radius: 4px;
+  background: #242424;
+  color: #c9d8ae;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: .86em;
+}
+.fs-visual-editor pre {
+  margin: 1em 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: 1px solid #2c2c2c;
+  border-radius: 8px;
+  background: #0f0f0f;
+  white-space: pre-wrap;
+}
+.fs-visual-editor pre code { padding: 0; background: transparent; color: #c9c9c9; }
+.fs-visual-editor hr { margin: 2em auto; width: 46%; border: 0; border-top: 1px solid #383838; }
+.fs-visual-editor img { max-width: 100%; border-radius: 8px; }
+
+.fs-source-editor {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  resize: none;
+  border: 0;
+  background: transparent;
+  font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", monospace;
+  font-size: 14px;
+  line-height: 1.8;
+  tab-size: 2;
+}
+
+.fs-editor-preview {
+  user-select: text;
+}
+
+.fs-bubble-menu {
+  position: fixed;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid #383838;
+  border-radius: 8px;
+  background: #1b1b1b;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+}
+
+.fs-bubble-menu button {
+  width: 30px;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.fs-slash-menu {
+  position: fixed;
+  z-index: 1600;
+  width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid #383838;
+  border-radius: 10px;
+  background: #1a1a1a;
+  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+}
+
+.fs-slash-menu > button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #aaa;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fs-slash-menu > button:hover,
+.fs-slash-menu > button.active {
+  background: rgba(255,255,255,.055);
+  color: #e2e2e2;
+}
+
+.fs-slash-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: #242424;
+  color: #a5bd7d;
+}
+
+.fs-slash-menu button > span:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.fs-slash-menu strong { font-size: 12px; font-weight: 600; }
+.fs-slash-menu small { color: #666; font-size: 10px; }
+.fs-slash-empty { padding: 16px; color: #666; font-size: 12px; text-align: center; }
+
+@media (max-width: 820px) {
+  .fs-welcome-scroll { padding-inline: 8px; }
+  .fs-visual-editor,
+  .fs-source-editor { padding: 30px 24px 72px; }
+  .fs-format-hint { display: none; }
+}

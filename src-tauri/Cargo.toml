@@ -1,6 +1,6 @@
 [package]
 name = "glyph"
-version = "0.4.3"
+version = "0.4.4"
 description = "Glyph — AI-native writing platform"
 authors = ["Chancellor OS"]
 edition = "2021"

@@ -1,6 +1,6 @@
 # Glyph / 织梦机 — 工程约束
 
-> 当前候选版本：v0.4.3 Gate C  
+> 当前候选版本：v0.4.4 Gate C UX 修复  
 > 当前分支目标：本地文件优先的 AI 单文件正式行动
 
 ## 产品主线
@@ -57,7 +57,7 @@ Glyph 是面向长篇作者的本地 AI 创作工作台。
 ## Gate A 不变量
 
 - 只有一个统一工作区，禁止恢复 `isFsMode` 双产品结构。
-- Markdown 编辑采用单一无损文本路径，禁止恢复 HTML ↔ 正则 Markdown 往返。
+- Markdown 文件始终是唯一事实源；可视化编辑必须通过结构化 DOM 序列化回写 Markdown，禁止恢复 HTML ↔ 正则 Markdown 往返。源码模式必须始终可用。
 - 自动保存只有一个责任主体。
 - 自身写入与外部变更通过文件版本区分。
 - 外部冲突时暂停自动保存，禁止静默覆盖。
@@ -67,7 +67,8 @@ Glyph 是面向长篇作者的本地 AI 创作工作台。
 
 ```text
 App.tsx                                      # 统一工作区，挂载编辑器与项目副手
-components/FsDocumentView.tsx                # 真实 Markdown 编辑器与选区上下文
+components/FsDocumentView.tsx                # 可视化 / 源码 / 预览 Markdown 编辑器与选区上下文
+utils/markdown-editor.ts                     # 结构化 Markdown ↔ 编辑 DOM 转换
 components/FsAiPanel.tsx                     # Gate C 任务、行动、证据与未提交草稿
 lib/fs-ai-bridge.ts                          # 规划、取证、生成与写入提案
 stores/fsStore.ts                            # 工作区复核与正式提交接管

@@ -163,7 +163,6 @@ function scoreFileReference(file: DirEntry, reference: string): number {
   const name = file.name.toLowerCase();
   const ref = normalizeRelativePath(reference).toLowerCase();
   const refName = ref.split('/').pop() || ref;
-  // Match against filename without extension: "旗丞" matches "旗丞.txt"
   const stem = name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : name;
   if (path === ref) return 100;
   if (path.endsWith(`/${ref}`)) return 95;
