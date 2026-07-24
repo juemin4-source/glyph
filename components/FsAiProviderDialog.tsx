@@ -73,7 +73,7 @@ export default function FsAiProviderDialog({ onClose, onSaved }: FsAiProviderDia
         <header>
           <div>
             <strong>配置 AI 模型</strong>
-            <span>Gate B 只会把本次任务需要的项目节选发送给所选模型。</span>
+            <span>项目副手只会把完成本次任务需要的项目节选发送给所选模型。</span>
           </div>
           <button onClick={onClose} aria-label="关闭"><X size={16} /></button>
         </header>

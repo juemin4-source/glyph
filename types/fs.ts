@@ -90,3 +90,24 @@ export interface ContentSearchResult {
   totalFilesSearched: number;
   truncated: boolean;
 }
+
+export interface AiFileActionInput {
+  operationId: string;
+  actionType: 'create' | 'modify';
+  targetPath: string;
+  content: string;
+  expectedVersion: string | null;
+  instruction: string;
+  changeSummary: string;
+  evidencePaths: string[];
+}
+
+export interface AiFileActionOutput {
+  operationId: string;
+  actionType: 'create' | 'modify';
+  targetPath: string;
+  modifiedAt: number;
+  version: string;
+  snapshotPath: string | null;
+  recordPath: string;
+}

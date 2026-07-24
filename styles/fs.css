@@ -1230,7 +1230,7 @@
 }
 
 /* ======================================================
-   Glyph Gate B: Read-only project assistant
+   Glyph Gate C: bounded single-file project assistant
    ====================================================== */
 
 .glyph-ai-sidebar {
@@ -1714,3 +1714,76 @@
 }
 .fs-ai-provider-dialog footer button.primary { border-color: #55683b; background: rgba(183,255,0,.1); color: #c1dc93; }
 .fs-ai-provider-dialog footer button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Gate C action/result affordances */
+.fs-ai-phase-dot-preparing,
+.fs-ai-phase-dot-generating,
+.fs-ai-phase-dot-committing {
+  background: #c1a35f;
+  box-shadow: 0 0 0 3px rgba(193,163,95,.09);
+  animation: fs-ai-pulse 1.2s ease-in-out infinite;
+}
+
+.fs-ai-phase-dot-blocked { background: #c28a5b; }
+
+.fs-ai-action-summary,
+.fs-ai-commit-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 7px;
+  background: rgba(255,255,255,.02);
+  color: #888;
+  font-size: 10px;
+}
+
+.fs-ai-action-summary strong,
+.fs-ai-commit-result strong { color: #b8b8b8; }
+
+.fs-ai-action-summary span,
+.fs-ai-commit-result span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-ai-commit-result {
+  flex-wrap: wrap;
+  border-color: rgba(121,184,137,.18);
+  background: rgba(121,184,137,.055);
+}
+
+.fs-ai-commit-result button {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #99bd82;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-ai-draft {
+  margin-top: 6px;
+  border-top: 1px solid rgba(255,255,255,.045);
+}
+
+.fs-ai-draft pre {
+  max-height: 260px;
+  margin: 0 0 6px;
+  padding: 9px;
+  overflow: auto;
+  border: 1px solid rgba(194,138,91,.16);
+  border-radius: 6px;
+  background: #101010;
+  color: #aaa;
+  font: 10px/1.6 ui-monospace, "Cascadia Code", monospace;
+  white-space: pre-wrap;
+  user-select: text;
+}

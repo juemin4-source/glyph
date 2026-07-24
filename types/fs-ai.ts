@@ -9,14 +9,24 @@ export interface EditorSelectionContext {
   endLine: number;
 }
 
-export type ReadonlyAiPhase =
+export type AiActionKind =
+  | 'answer'
+  | 'create_file'
+  | 'replace_selection'
+  | 'insert_at_cursor'
+  | 'replace_file';
+
+export type ProjectAiPhase =
   | 'idle'
   | 'planning'
   | 'searching'
   | 'reading'
-  | 'answering'
+  | 'preparing'
+  | 'generating'
+  | 'committing'
   | 'completed'
   | 'cancelled'
+  | 'blocked'
   | 'error';
 
 export interface ReadPlan {
@@ -24,6 +34,12 @@ export interface ReadPlan {
   includeCurrentFile: boolean;
   requestedFiles: string[];
   focus: string;
+}
+
+export interface ProjectAiPlan extends ReadPlan {
+  action: AiActionKind;
+  targetPath: string | null;
+  changeSummary: string;
 }
 
 export type EvidenceKind =
@@ -46,20 +62,64 @@ export interface ReadEvidence {
   truncated?: boolean;
 }
 
-export interface ReadonlyAiProgress {
-  phase: ReadonlyAiPhase;
+export interface ProjectAiProgress {
+  phase: ProjectAiPhase;
   detail: string;
   files?: string[];
 }
 
-export interface ReadonlyAiResult {
-  answer: string;
-  evidence: ReadEvidence[];
-  plan: ReadPlan;
-  providerLabel: string;
+export interface PreparedWriteTarget {
+  action: Exclude<AiActionKind, 'answer'>;
+  targetPath: string;
+  baseContent: string | null;
+  baseVersion: string | null;
+  baseEditorRevision: number | null;
+  selection: EditorSelectionContext | null;
+  cursorOffset: number | null;
 }
 
-export interface ReadonlyAiTaskInput {
+export interface AiWriteProposal {
+  operationId: string;
+  action: Exclude<AiActionKind, 'answer'>;
+  targetPath: string;
+  instruction: string;
+  changeSummary: string;
+  generatedContent: string;
+  finalContent: string;
+  baseContent: string | null;
+  expectedVersion: string | null;
+  baseEditorRevision: number | null;
+  evidencePaths: string[];
+}
+
+export interface AiFileActionCommit {
+  operationId: string;
+  actionType: 'create' | 'modify';
+  targetPath: string;
+  modifiedAt: number;
+  version: string;
+  snapshotPath: string | null;
+  recordPath: string;
+}
+
+export type AiCommitStatus = 'committed' | 'blocked';
+
+export interface AiCommitOutcome {
+  status: AiCommitStatus;
+  commit: AiFileActionCommit | null;
+  reason: string | null;
+}
+
+export interface ProjectAiResult {
+  answer: string;
+  evidence: ReadEvidence[];
+  plan: ProjectAiPlan;
+  providerLabel: string;
+  commit: AiFileActionCommit | null;
+  draft: string | null;
+}
+
+export interface ProjectAiTaskInput {
   userInput: string;
   project: FsProject;
   currentFilePath: string | null;
@@ -67,7 +127,13 @@ export interface ReadonlyAiTaskInput {
   selection: EditorSelectionContext | null;
   providerId?: string;
   signal?: AbortSignal;
-  onProgress?: (progress: ReadonlyAiProgress) => void;
+  onProgress?: (progress: ProjectAiProgress) => void;
+  prepareWrite: (plan: ProjectAiPlan, context: {
+    currentFilePath: string | null;
+    currentFileContent: string | null;
+    selection: EditorSelectionContext | null;
+  }) => Promise<PreparedWriteTarget>;
+  commitWrite: (proposal: AiWriteProposal) => Promise<AiCommitOutcome>;
 }
 
 export interface ReadonlyProviderChoice {
@@ -104,14 +170,17 @@ export interface SearchExecution {
   error: string | null;
 }
 
-export interface ReadonlyTaskCard {
+export interface ProjectAiTaskCard {
   id: string;
   userInput: string;
   createdAt: number;
-  phase: ReadonlyAiPhase;
+  phase: ProjectAiPhase;
   phaseDetail: string;
   answer: string;
   evidence: ReadEvidence[];
   error: string | null;
   providerLabel: string | null;
+  plan: ProjectAiPlan | null;
+  commit: AiFileActionCommit | null;
+  draft: string | null;
 }

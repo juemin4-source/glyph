@@ -144,3 +144,29 @@ pub struct ContentSearchResult {
     /// True when search stopped at a result/file/depth safety limit.
     pub truncated: bool,
 }
+
+/// One bounded AI file action. Gate C permits only create or modify of one Markdown file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiFileActionInput {
+    pub operation_id: String,
+    pub action_type: String,
+    pub target_path: String,
+    pub content: String,
+    pub expected_version: Option<String>,
+    pub instruction: String,
+    pub change_summary: String,
+    pub evidence_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiFileActionOutput {
+    pub operation_id: String,
+    pub action_type: String,
+    pub target_path: String,
+    pub modified_at: i64,
+    pub version: String,
+    pub snapshot_path: Option<String>,
+    pub record_path: String,
+}

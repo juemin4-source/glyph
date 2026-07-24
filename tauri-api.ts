@@ -18,6 +18,8 @@ import type {
   ContentSearchResult,
   FileReadResult,
   FileWriteResult,
+  AiFileActionInput,
+  AiFileActionOutput,
 } from './types/fs';
 
 // ══════════════════════════════════════════
@@ -258,6 +260,14 @@ export async function pickDirectory(title: string): Promise<string | null> {
     options: { directory: true, multiple: false, title },
   });
   return typeof selected === 'string' ? selected : null;
+}
+
+
+export function commitAiFileAction(
+  projectRoot: string,
+  input: AiFileActionInput,
+): Promise<AiFileActionOutput> {
+  return invoke('commit_ai_file_action', { projectRoot, input });
 }
 
 export function createTextFile(

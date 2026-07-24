@@ -2,8 +2,10 @@ import {
   BookOpenText,
   ChevronDown,
   ChevronRight,
+  FilePlus2,
   FileSearch,
   FileText,
+  PencilLine,
   Send,
   Settings,
   Sparkles,
@@ -20,18 +22,22 @@ import {
 import type { FsProject } from '../types/fs';
 import FsAiProviderDialog from './FsAiProviderDialog';
 import type {
+  AiCommitOutcome,
+  AiWriteProposal,
   EditorSelectionContext,
+  PreparedWriteTarget,
+  ProjectAiPhase,
+  ProjectAiPlan,
+  ProjectAiTaskCard,
   ProjectFileIndex,
   ReadEvidence,
-  ReadonlyAiPhase,
-  ReadonlyTaskCard,
   ReadonlyProviderChoice,
 } from '../types/fs-ai';
 import {
+  listProjectAiProviders,
   listProjectTextFiles,
-  listReadonlyProviders,
   readableAiError,
-  runReadonlyAiTask,
+  runProjectAiTask,
 } from '../lib/fs-ai-bridge';
 
 interface FsAiPanelProps {
@@ -40,30 +46,50 @@ interface FsAiPanelProps {
   currentFileContent: string | null;
   selection: EditorSelectionContext | null;
   onOpenFile: (path: string) => Promise<boolean>;
+  onPrepareWrite: (plan: ProjectAiPlan, context: {
+    currentFilePath: string | null;
+    currentFileContent: string | null;
+    selection: EditorSelectionContext | null;
+  }) => Promise<PreparedWriteTarget>;
+  onCommitWrite: (proposal: AiWriteProposal) => Promise<AiCommitOutcome>;
 }
 
-const PHASE_LABEL: Record<ReadonlyAiPhase, string> = {
+const PHASE_LABEL: Record<ProjectAiPhase, string> = {
   idle: '等待',
   planning: '判断任务',
   searching: '查找项目',
   reading: '读取材料',
-  answering: '形成回答',
+  preparing: '锁定目标',
+  generating: '生成内容',
+  committing: '正式提交',
   completed: '已完成',
   cancelled: '已取消',
+  blocked: '未写入',
   error: '失败',
 };
 
-function createTask(input: string): ReadonlyTaskCard {
+const ACTION_LABEL: Record<ProjectAiPlan['action'], string> = {
+  answer: '只读回答',
+  create_file: '新建文件',
+  replace_selection: '改写选区',
+  insert_at_cursor: '续写正文',
+  replace_file: '整文件修改',
+};
+
+function createTask(input: string): ProjectAiTaskCard {
   return {
-    id: `read-task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `project-task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     userInput: input,
     createdAt: Date.now(),
     phase: 'planning',
-    phaseDetail: '正在判断需要哪些项目材料',
+    phaseDetail: '正在判断回答、创建或修改',
     answer: '',
     evidence: [],
     error: null,
     providerLabel: null,
+    plan: null,
+    commit: null,
+    draft: null,
   };
 }
 
@@ -106,8 +132,9 @@ function EvidenceItem({ item, onOpenFile }: { item: ReadEvidence; onOpenFile: (p
   );
 }
 
-function TaskCard({ task, onOpenFile }: { task: ReadonlyTaskCard; onOpenFile: (path: string) => Promise<boolean> }) {
+function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean> }) {
   const [showEvidence, setShowEvidence] = useState(false);
+  const [showDraft, setShowDraft] = useState(false);
   return (
     <article className={`fs-ai-task fs-ai-task-${task.phase}`}>
       <div className="fs-ai-user-message">{task.userInput}</div>
@@ -117,21 +144,43 @@ function TaskCard({ task, onOpenFile }: { task: ReadonlyTaskCard; onOpenFile: (p
         {task.phaseDetail && <span className="fs-ai-phase-detail">· {task.phaseDetail}</span>}
       </div>
 
+      {task.plan && (
+        <div className="fs-ai-action-summary">
+          {task.plan.action === 'create_file' ? <FilePlus2 size={13} /> : task.plan.action === 'answer' ? <BookOpenText size={13} /> : <PencilLine size={13} />}
+          <strong>{ACTION_LABEL[task.plan.action]}</strong>
+          {task.plan.targetPath && <span>{task.plan.targetPath}</span>}
+        </div>
+      )}
+
       {task.answer && <div className="fs-ai-answer">{task.answer}</div>}
       {task.error && <div className="fs-ai-error">{task.error}</div>}
+
+      {task.commit && (
+        <div className="fs-ai-commit-result">
+          <strong>{task.commit.actionType === 'create' ? '文件已创建' : '文件已修改'}</strong>
+          <button onClick={() => void onOpenFile(task.commit!.targetPath)}>{task.commit.targetPath}</button>
+          {task.commit.snapshotPath && <span>修改前快照已保存</span>}
+        </div>
+      )}
+
+      {task.draft && (
+        <div className="fs-ai-draft">
+          <button className="fs-ai-evidence-toggle" onClick={() => setShowDraft((value) => !value)}>
+            <FileText size={14} /> 未提交草稿 {showDraft ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </button>
+          {showDraft && <pre>{task.draft}</pre>}
+        </div>
+      )}
 
       {task.evidence.length > 0 && (
         <div className="fs-ai-evidence">
           <button className="fs-ai-evidence-toggle" onClick={() => setShowEvidence((value) => !value)}>
-            <FileSearch size={14} />
-            实际依据 {task.evidence.length} 项
+            <FileSearch size={14} /> 实际依据 {task.evidence.length} 项
             {showEvidence ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           </button>
           {showEvidence && (
             <div className="fs-ai-evidence-list">
-              {task.evidence.map((item) => (
-                <EvidenceItem key={`${task.id}-${item.id}`} item={item} onOpenFile={onOpenFile} />
-              ))}
+              {task.evidence.map((item) => <EvidenceItem key={`${task.id}-${item.id}`} item={item} onOpenFile={onOpenFile} />)}
             </div>
           )}
         </div>
@@ -148,11 +197,13 @@ export default function FsAiPanel({
   currentFileContent,
   selection,
   onOpenFile,
+  onPrepareWrite,
+  onCommitWrite,
 }: FsAiPanelProps) {
   const [input, setInput] = useState('');
-  const [tasks, setTasks] = useState<ReadonlyTaskCard[]>([]);
+  const [tasks, setTasks] = useState<ProjectAiTaskCard[]>([]);
   const [providers, setProviders] = useState<ReadonlyProviderChoice[]>([]);
-  const [providerId, setProviderId] = useState<string>('');
+  const [providerId, setProviderId] = useState('');
   const [fileIndex, setFileIndex] = useState<ProjectFileIndex>({ files: [], truncated: false, unreadableDirectories: [] });
   const [loadingSetup, setLoadingSetup] = useState(true);
   const [providerDialogOpen, setProviderDialogOpen] = useState(false);
@@ -162,11 +213,9 @@ export default function FsAiPanel({
   const taskListRef = useRef<HTMLDivElement | null>(null);
 
   const refreshProviders = useCallback(async () => {
-    const nextProviders = await listReadonlyProviders().catch(() => []);
+    const nextProviders = await listProjectAiProviders().catch(() => []);
     setProviders(nextProviders);
-    setProviderId((current) => nextProviders.some((provider) => provider.id === current)
-      ? current
-      : nextProviders[0]?.id ?? '');
+    setProviderId((current) => nextProviders.some((provider) => provider.id === current) ? current : nextProviders[0]?.id ?? '');
   }, []);
 
   useEffect(() => {
@@ -175,7 +224,7 @@ export default function FsAiPanel({
     setTasks([]);
     setInput('');
     Promise.all([
-      listReadonlyProviders().catch(() => []),
+      listProjectAiProviders().catch(() => []),
       listProjectTextFiles(project.rootPath).catch(() => ({ files: [], truncated: false, unreadableDirectories: [] })),
     ]).then(([nextProviders, nextIndex]) => {
       if (disposed) return;
@@ -195,7 +244,7 @@ export default function FsAiPanel({
     if (node) node.scrollTop = node.scrollHeight;
   }, [tasks]);
 
-  const running = tasks.some((task) => ['planning', 'searching', 'reading', 'answering'].includes(task.phase));
+  const running = tasks.some((task) => ['planning', 'searching', 'reading', 'preparing', 'generating', 'committing'].includes(task.phase));
 
   const suggestions = useMemo(() => {
     if (!mention) return [];
@@ -224,7 +273,7 @@ export default function FsAiPanel({
     });
   }, [input, mention]);
 
-  const patchTask = useCallback((id: string, patch: Partial<ReadonlyTaskCard>) => {
+  const patchTask = useCallback((id: string, patch: Partial<ProjectAiTaskCard>) => {
     setTasks((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
   }, []);
 
@@ -239,7 +288,7 @@ export default function FsAiPanel({
     setTasks((items) => [...items.slice(-19), task]);
 
     try {
-      const result = await runReadonlyAiTask({
+      const result = await runProjectAiTask({
         userInput: value,
         project,
         currentFilePath,
@@ -247,29 +296,35 @@ export default function FsAiPanel({
         selection,
         providerId: providerId || undefined,
         signal: controller.signal,
-        onProgress: (progress) => patchTask(task.id, {
-          phase: progress.phase,
-          phaseDetail: progress.detail,
-        }),
+        prepareWrite: onPrepareWrite,
+        commitWrite: onCommitWrite,
+        onProgress: (progress) => patchTask(task.id, { phase: progress.phase, phaseDetail: progress.detail }),
       });
       patchTask(task.id, {
-        phase: 'completed',
-        phaseDetail: '只读任务完成，作品没有被修改',
+        phase: result.commit ? 'completed' : result.draft ? 'blocked' : 'completed',
+        phaseDetail: result.commit ? '作品已经安全更新' : result.draft ? '生成完成，但没有写入正式作品' : '只读任务完成',
         answer: result.answer,
         evidence: result.evidence,
         providerLabel: result.providerLabel,
+        plan: result.plan,
+        commit: result.commit,
+        draft: result.draft,
       });
+      if (result.commit?.actionType === 'create') {
+        const nextIndex = await listProjectTextFiles(project.rootPath).catch(() => null);
+        if (nextIndex) setFileIndex(nextIndex);
+      }
     } catch (error) {
       const cancelled = controller.signal.aborted;
       patchTask(task.id, {
         phase: cancelled ? 'cancelled' : 'error',
-        phaseDetail: cancelled ? '任务已停止，作品没有变化' : '任务没有完成，作品没有变化',
+        phaseDetail: cancelled ? '任务已停止，正式作品没有变化' : '任务没有完成',
         error: cancelled ? null : readableAiError(error),
       });
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [currentFileContent, currentFilePath, input, patchTask, project, providerId, running, selection]);
+  }, [currentFileContent, currentFilePath, input, onCommitWrite, onPrepareWrite, patchTask, project, providerId, running, selection]);
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Escape' && mention) {
@@ -284,11 +339,11 @@ export default function FsAiPanel({
   };
 
   return (
-    <section className="fs-ai-panel" aria-label="AI 项目阅读">
+    <section className="fs-ai-panel" aria-label="AI 项目副手">
       <header className="fs-ai-header">
         <div>
-          <strong><Sparkles size={15} /> AI 阅读</strong>
-          <span>只查找、读取和回答，不修改作品</span>
+          <strong><Sparkles size={15} /> AI 副手</strong>
+          <span>可查阅项目，并在明确范围内创建或修改一个 Markdown 文件</span>
         </div>
         <BookOpenText size={18} />
       </header>
@@ -300,12 +355,7 @@ export default function FsAiPanel({
 
       <div className="fs-ai-provider-row">
         <label htmlFor="fs-ai-provider">模型</label>
-        <select
-          id="fs-ai-provider"
-          value={providerId}
-          disabled={running || loadingSetup || providers.length === 0}
-          onChange={(event) => setProviderId(event.target.value)}
-        >
+        <select id="fs-ai-provider" value={providerId} disabled={running || loadingSetup || providers.length === 0} onChange={(event) => setProviderId(event.target.value)}>
           {providers.length === 0 ? <option value="">未配置可用模型</option> : null}
           {providers.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
         </select>
@@ -317,9 +367,9 @@ export default function FsAiPanel({
       <div className="fs-ai-task-list" ref={taskListRef}>
         {tasks.length === 0 ? (
           <div className="fs-ai-empty">
-            <FileSearch size={24} />
-            <strong>直接问你的作品</strong>
-            <p>例如：“布兰目前知道黑潮真相吗？”或“根据 @{'{人物/布兰.md}'} 检查这一段是否越界。”</p>
+            <Sparkles size={24} />
+            <strong>直接交代作品任务</strong>
+            <p>例如：“布兰目前知道什么？”、“把选中段落写得更克制”或“按施工卡新建下一章”。</p>
           </div>
         ) : tasks.map((task) => <TaskCard key={task.id} task={task} onOpenFile={onOpenFile} />)}
       </div>
@@ -329,8 +379,7 @@ export default function FsAiPanel({
           <div className="fs-ai-mention-menu">
             {suggestions.map((file) => (
               <button key={file.path} onMouseDown={(event) => event.preventDefault()} onClick={() => insertReference(file.path)}>
-                <FileText size={13} />
-                <span>{file.path}</span>
+                <FileText size={13} /><span>{file.path}</span>
               </button>
             ))}
           </div>
@@ -340,7 +389,7 @@ export default function FsAiPanel({
           value={input}
           disabled={running}
           rows={3}
-          placeholder={providers.length === 0 ? '请先配置 AI 模型' : '询问项目内容；输入 @ 引用文件'}
+          placeholder={providers.length === 0 ? '请先配置 AI 模型' : '提问、续写、改选区或新建文件；输入 @ 引用文件'}
           onChange={(event) => {
             const value = event.currentTarget.value;
             setInput(value);
@@ -353,23 +402,14 @@ export default function FsAiPanel({
         <div className="fs-ai-composer-actions">
           <span>Enter 发送 · Shift+Enter 换行</span>
           {running ? (
-            <button className="fs-ai-stop" onClick={() => abortRef.current?.abort()} title="停止任务">
-              <Square size={14} /> 停止
-            </button>
+            <button className="fs-ai-stop" onClick={() => abortRef.current?.abort()} title="停止任务"><Square size={14} /> 停止</button>
           ) : (
-            <button className="fs-ai-send" disabled={!input.trim() || providers.length === 0} onClick={() => void submit()} title="发送">
-              <Send size={14} /> 发送
-            </button>
+            <button className="fs-ai-send" disabled={!input.trim() || providers.length === 0} onClick={() => void submit()} title="发送"><Send size={14} /> 发送</button>
           )}
         </div>
       </div>
 
-      {providerDialogOpen && (
-        <FsAiProviderDialog
-          onClose={() => setProviderDialogOpen(false)}
-          onSaved={refreshProviders}
-        />
-      )}
+      {providerDialogOpen && <FsAiProviderDialog onClose={() => setProviderDialogOpen(false)} onSaved={refreshProviders} />}
     </section>
   );
 }

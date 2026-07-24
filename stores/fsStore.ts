@@ -1,12 +1,21 @@
 import { create } from 'zustand';
 import type {
+  AiFileActionInput,
   DirEntry,
   ExternalConflict,
   FileSyncStatus,
   FsProject,
   SessionState,
 } from '../types/fs';
+import type {
+  AiCommitOutcome,
+  AiWriteProposal,
+  EditorSelectionContext,
+  PreparedWriteTarget,
+  ProjectAiPlan,
+} from '../types/fs-ai';
 import {
+  commitAiFileAction,
   createDirectory,
   createFsProject,
   createTextFile,
@@ -70,6 +79,14 @@ interface FsStore {
   overwriteExternalVersion: () => Promise<boolean>;
   saveConflictCopy: () => Promise<string | null>;
   saveMissingCopy: () => Promise<string | null>;
+
+  prepareAiWrite: (
+    plan: ProjectAiPlan,
+    expectedFilePath: string | null,
+    expectedFileContent: string | null,
+    selection: EditorSelectionContext | null,
+  ) => Promise<PreparedWriteTarget>;
+  commitAiWrite: (proposal: AiWriteProposal) => Promise<AiCommitOutcome>;
 
   createMarkdownFile: (path: string) => Promise<boolean>;
   createFolder: (path: string) => Promise<boolean>;
@@ -520,6 +537,127 @@ export const useFsStore = create<FsStore>((set, get) => {
       } catch (error) {
         set({ error: String(error) });
         return null;
+      }
+    },
+
+    prepareAiWrite: async (plan, expectedFilePath, expectedFileContent, selection) => {
+      const action = plan.action;
+      if (action === 'answer') throw new Error('AI_WRITE_BLOCKED: 当前任务没有写入动作');
+      const project = get().activeProject;
+      if (!project) throw new Error('AI_WRITE_BLOCKED: 当前没有打开作品');
+
+      if (action === 'create_file') {
+        const targetPath = normalizeRelative(plan.targetPath || '');
+        if (!targetPath) throw new Error('AI_WRITE_BLOCKED: 没有有效的新文件路径');
+        return {
+          action,
+          targetPath,
+          baseContent: null,
+          baseVersion: null,
+          baseEditorRevision: null,
+          selection: null,
+          cursorOffset: null,
+        };
+      }
+
+      if (!get().openFilePath || get().fileContent === null) {
+        throw new Error('AI_WRITE_BLOCKED: 请先打开要修改的 Markdown 文件');
+      }
+      if (get().openFilePath !== expectedFilePath || get().fileContent !== expectedFileContent) {
+        throw new Error('AI_WRITE_BLOCKED: AI 规划期间当前文件已经发生变化');
+      }
+      if (action === 'replace_selection' && selection
+          && (get().fileContent ?? '').slice(selection.start, selection.end) !== selection.text) {
+        throw new Error('AI_WRITE_BLOCKED: 选区已经变化');
+      }
+      if (get().fileStatus === 'dirty' || get().fileStatus === 'save-error') {
+        const saved = await get().saveCurrentFile();
+        if (!saved) throw new Error('AI_WRITE_BLOCKED: 当前正文尚未安全保存');
+      }
+      const state = get();
+      if (state.fileStatus !== 'clean' || !state.openFilePath || state.fileContent === null || !state.diskVersion) {
+        throw new Error('AI_WRITE_BLOCKED: 当前文件存在冲突、缺失或保存问题');
+      }
+      if (action === 'replace_selection' && (!selection || selection.start === selection.end)) {
+        throw new Error('AI_WRITE_BLOCKED: 请先选择要改写的文字');
+      }
+      const targetPath = state.openFilePath;
+      return {
+        action,
+        targetPath,
+        baseContent: state.fileContent,
+        baseVersion: state.diskVersion,
+        baseEditorRevision: state.editRevision,
+        selection: action === 'replace_selection' ? selection : null,
+        cursorOffset: selection?.cursorOffset ?? state.fileContent.length,
+      };
+    },
+
+    commitAiWrite: async (proposal) => {
+      const project = get().activeProject;
+      if (!project) return { status: 'blocked', commit: null, reason: '当前作品已经关闭' };
+
+      if (proposal.action !== 'create_file') {
+        const state = get();
+        const unchanged = state.openFilePath === proposal.targetPath
+          && state.fileStatus === 'clean'
+          && state.editRevision === proposal.baseEditorRevision
+          && state.diskVersion === proposal.expectedVersion
+          && state.fileContent === proposal.baseContent;
+        if (!unchanged) {
+          return { status: 'blocked', commit: null, reason: 'AI 生成期间当前文件已经发生变化' };
+        }
+      }
+
+      const input: AiFileActionInput = {
+        operationId: proposal.operationId,
+        actionType: proposal.action === 'create_file' ? 'create' : 'modify',
+        targetPath: proposal.targetPath,
+        content: proposal.finalContent,
+        expectedVersion: proposal.expectedVersion,
+        instruction: proposal.instruction,
+        changeSummary: proposal.changeSummary,
+        evidencePaths: proposal.evidencePaths,
+      };
+
+      try {
+        const result = await commitAiFileAction(project.rootPath, input);
+        if (get().activeProject?.id !== project.id) {
+          return { status: 'blocked', commit: null, reason: '作品已经切换；文件已提交但当前工作区没有接管结果' };
+        }
+        await get().refreshVisibleTree();
+        if (proposal.action === 'create_file') {
+          await get().openFile(proposal.targetPath);
+        } else if (get().openFilePath === proposal.targetPath) {
+          set((state) => ({
+            fileContent: proposal.finalContent,
+            diskModifiedAt: result.modifiedAt,
+            diskVersion: result.version,
+            fileStatus: 'clean',
+            externalConflict: null,
+            contentRevision: state.contentRevision + 1,
+            editRevision: 0,
+            error: null,
+          }));
+        }
+        return { status: 'committed', commit: result, reason: null };
+      } catch (error) {
+        const message = String(error);
+        if (message.includes('EXTERNAL_MODIFICATION') || message.includes('FILE_MISSING')) {
+          if (proposal.action !== 'create_file' && get().openFilePath === proposal.targetPath) {
+            try {
+              const external = await readFileState(project.rootPath, proposal.targetPath);
+              set({ fileStatus: 'conflict', externalConflict: external, error: 'AI 提交前文件已被其他程序修改，本次没有覆盖。' });
+            } catch {
+              set({ fileStatus: 'missing', error: 'AI 提交前目标文件已经不存在。' });
+            }
+          }
+          return { status: 'blocked', commit: null, reason: '目标文件在提交前发生了外部变化' };
+        }
+        if (message.includes('FILE_EXISTS')) {
+          return { status: 'blocked', commit: null, reason: '目标文件已经存在，系统没有覆盖' };
+        }
+        throw error;
       }
     },
 

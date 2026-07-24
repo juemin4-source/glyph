@@ -214,6 +214,7 @@ pub fn run() {
             fs_commands::search_file_content,
             fs_commands::write_file,
             fs_commands::write_file_checked,
+            fs_commands::commit_ai_file_action,
             fs_commands::create_text_file,
             fs_commands::create_file,
             fs_commands::create_directory,

@@ -697,6 +697,151 @@ pub fn create_text_file(
     })
 }
 
+
+fn validate_ai_target_path(path: &str) -> Result<(), String> {
+    let relative = validate_relative_path(path)?;
+    let first = relative.components().next().map(|part| part.as_os_str().to_string_lossy().to_string()).unwrap_or_default();
+    if first.eq_ignore_ascii_case(".glyph") || first.eq_ignore_ascii_case(".glyph-trash") {
+        return Err("AI_TARGET_FORBIDDEN: internal directories cannot be written".to_string());
+    }
+    let extension = relative.extension().and_then(|value| value.to_str()).unwrap_or("").to_lowercase();
+    if extension != "md" && extension != "markdown" {
+        return Err("AI_TARGET_TYPE_FORBIDDEN: Gate C writes Markdown files only".to_string());
+    }
+    Ok(())
+}
+
+fn validate_operation_id(value: &str) -> Result<String, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() || trimmed.len() > 96 || !trimmed.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_') {
+        return Err("INVALID_OPERATION_ID".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+fn write_ai_action_record(
+    record_path: &Path,
+    operation_id: &str,
+    input: &AiFileActionInput,
+    status: &str,
+    snapshot_path: Option<&str>,
+    old_version: Option<&str>,
+    new_version: Option<&str>,
+    error: Option<&str>,
+) -> Result<(), String> {
+    let instruction: String = input.instruction.chars().take(4_000).collect();
+    let change_summary: String = input.change_summary.chars().take(1_000).collect();
+    let evidence_paths: Vec<String> = input.evidence_paths.iter().take(32).map(|value| value.chars().take(500).collect()).collect();
+    let value = serde_json::json!({
+        "glyphVersion": "0.4.3",
+        "operationId": operation_id,
+        "actionType": input.action_type,
+        "targetPath": input.target_path,
+        "status": status,
+        "instruction": instruction,
+        "changeSummary": change_summary,
+        "evidencePaths": evidence_paths,
+        "snapshotPath": snapshot_path,
+        "oldVersion": old_version,
+        "newVersion": new_version,
+        "error": error,
+        "updatedAt": now_millis(),
+    });
+    let content = serde_json::to_string_pretty(&value).map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+    atomic_write(record_path, &content)
+}
+
+/// Commit one bounded AI file action. Generation happens outside this command;
+/// this boundary performs the final single-file transaction and records it.
+#[tauri::command]
+pub fn commit_ai_file_action(
+    project_root: String,
+    input: AiFileActionInput,
+) -> Result<AiFileActionOutput, String> {
+    if input.content.len() > 4 * 1024 * 1024 {
+        return Err("AI_OUTPUT_TOO_LARGE: content exceeds 4MB".to_string());
+    }
+    if input.action_type != "create" && input.action_type != "modify" {
+        return Err("AI_ACTION_FORBIDDEN: only create or modify is allowed".to_string());
+    }
+    validate_ai_target_path(&input.target_path)?;
+    let operation_id = validate_operation_id(&input.operation_id)?;
+    let root = fs::canonicalize(&project_root).map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let glyph_dir = safe_internal_directory(&root, ".glyph", true)?;
+    let actions_dir = safe_internal_directory(&glyph_dir, "actions", true)?;
+    let snapshots_dir = safe_internal_directory(&glyph_dir, "snapshots", true)?;
+    let record_path = actions_dir.join(format!("{}.json", operation_id));
+    if record_path.exists() {
+        return Err("AI_OPERATION_EXISTS: operation id already exists".to_string());
+    }
+    let target = resolve_project_path(&project_root, &input.target_path)?;
+    let record_relative = relative_path(&project_root, &record_path);
+
+    write_ai_action_record(&record_path, &operation_id, &input, "prepared", None, None, None, None)?;
+
+    if input.action_type == "create" {
+        if target.exists() {
+            let _ = write_ai_action_record(&record_path, &operation_id, &input, "failed", None, None, None, Some("FILE_EXISTS"));
+            return Err("FILE_EXISTS: file already exists".to_string());
+        }
+        if let Err(error) = atomic_create(&target, &input.content) {
+            let _ = write_ai_action_record(&record_path, &operation_id, &input, "failed", None, None, None, Some(&error));
+            return Err(error);
+        }
+        let metadata = target.metadata().map_err(|e| format!("METADATA_ERROR: {}", e))?;
+        let version = content_version(&input.content);
+        if let Err(error) = write_ai_action_record(&record_path, &operation_id, &input, "completed", None, None, Some(&version), None) {
+            eprintln!("[gate-c] action record finalization failed after create: {}", error);
+        }
+        return Ok(AiFileActionOutput {
+            operation_id,
+            action_type: "create".to_string(),
+            target_path: input.target_path,
+            modified_at: modified_at(&metadata),
+            version,
+            snapshot_path: None,
+            record_path: record_relative,
+        });
+    }
+
+    if !target.exists() || !target.is_file() {
+        let _ = write_ai_action_record(&record_path, &operation_id, &input, "failed", None, None, None, Some("FILE_MISSING"));
+        return Err("FILE_MISSING: target file no longer exists".to_string());
+    }
+    let expected = input.expected_version.as_deref().ok_or_else(|| "AI_EXPECTED_VERSION_REQUIRED".to_string())?;
+    let old_content = fs::read_to_string(&target).map_err(|e| format!("READ_ERROR: {}", e))?;
+    let old_version = content_version(&old_content);
+    if old_version != expected {
+        let _ = write_ai_action_record(&record_path, &operation_id, &input, "failed", None, Some(&old_version), None, Some("EXTERNAL_MODIFICATION"));
+        return Err(format!("EXTERNAL_MODIFICATION: expected {}, found {}", expected, old_version));
+    }
+
+    let snapshot_file = snapshots_dir.join(format!("{}.md", operation_id));
+    atomic_create(&snapshot_file, &old_content)?;
+    let snapshot_relative = relative_path(&project_root, &snapshot_file);
+    write_ai_action_record(&record_path, &operation_id, &input, "committing", Some(&snapshot_relative), Some(&old_version), None, None)?;
+
+    if let Err(error) = atomic_write_checked(&target, &input.content, Some(expected)) {
+        let _ = write_ai_action_record(&record_path, &operation_id, &input, "failed", Some(&snapshot_relative), Some(&old_version), None, Some(&error));
+        return Err(error);
+    }
+
+    let metadata = target.metadata().map_err(|e| format!("METADATA_ERROR: {}", e))?;
+    let version = content_version(&input.content);
+    if let Err(error) = write_ai_action_record(&record_path, &operation_id, &input, "completed", Some(&snapshot_relative), Some(&old_version), Some(&version), None) {
+        eprintln!("[gate-c] action record finalization failed after modify: {}", error);
+    }
+    Ok(AiFileActionOutput {
+        operation_id,
+        action_type: "modify".to_string(),
+        target_path: input.target_path,
+        modified_at: modified_at(&metadata),
+        version,
+        snapshot_path: Some(snapshot_relative),
+        record_path: record_relative,
+    })
+}
+
 /// Create a new empty file.
 #[tauri::command]
 pub fn create_file(
@@ -1516,6 +1661,97 @@ mod tests {
         ).unwrap();
 
         assert!(result.matches.is_empty());
+    }
+
+    // ── Gate C bounded AI file actions ──
+
+    fn ai_input(operation_id: &str, action_type: &str, target_path: &str, content: &str, expected_version: Option<String>) -> AiFileActionInput {
+        AiFileActionInput {
+            operation_id: operation_id.to_string(),
+            action_type: action_type.to_string(),
+            target_path: target_path.to_string(),
+            content: content.to_string(),
+            expected_version,
+            instruction: "测试任务".to_string(),
+            change_summary: "测试变化".to_string(),
+            evidence_paths: vec!["人物/布兰.md".to_string()],
+        }
+    }
+
+    #[test]
+    fn test_ai_create_commits_one_markdown_and_records_action() {
+        let (_dir, root) = setup_test_dir("ai_create");
+        fs::create_dir_all(root.join(".glyph")).unwrap();
+        let output = commit_ai_file_action(
+            root.to_string_lossy().to_string(),
+            ai_input("ai-create-1", "create", "正文/ch32.md", "# 第三十二章", None),
+        ).unwrap();
+
+        assert_eq!(fs::read_to_string(root.join("正文/ch32.md")).unwrap(), "# 第三十二章");
+        assert!(root.join(&output.record_path).exists());
+        assert!(output.snapshot_path.is_none());
+    }
+
+    #[test]
+    fn test_ai_create_never_overwrites_existing_file() {
+        let (_dir, root) = setup_test_dir("ai_create_exists");
+        fs::create_dir_all(root.join(".glyph")).unwrap();
+        fs::write(root.join("existing.md"), "原文").unwrap();
+        let result = commit_ai_file_action(
+            root.to_string_lossy().to_string(),
+            ai_input("ai-create-2", "create", "existing.md", "替换", None),
+        );
+
+        assert!(result.unwrap_err().contains("FILE_EXISTS"));
+        assert_eq!(fs::read_to_string(root.join("existing.md")).unwrap(), "原文");
+    }
+
+    #[test]
+    fn test_ai_modify_snapshots_before_checked_write() {
+        let (_dir, root) = setup_test_dir("ai_modify");
+        fs::create_dir_all(root.join(".glyph")).unwrap();
+        let target = root.join("test.md");
+        let old = fs::read_to_string(&target).unwrap();
+        let old_version = content_version(&old);
+        let output = commit_ai_file_action(
+            root.to_string_lossy().to_string(),
+            ai_input("ai-modify-1", "modify", "test.md", "# 新内容", Some(old_version)),
+        ).unwrap();
+
+        assert_eq!(fs::read_to_string(&target).unwrap(), "# 新内容");
+        let snapshot = output.snapshot_path.expect("modify must return snapshot");
+        assert_eq!(fs::read_to_string(root.join(snapshot)).unwrap(), old);
+        assert!(root.join(output.record_path).exists());
+    }
+
+    #[test]
+    fn test_ai_modify_rejects_stale_version_without_changing_file() {
+        let (_dir, root) = setup_test_dir("ai_modify_stale");
+        fs::create_dir_all(root.join(".glyph")).unwrap();
+        let result = commit_ai_file_action(
+            root.to_string_lossy().to_string(),
+            ai_input("ai-modify-2", "modify", "test.md", "# 不应写入", Some("stale".to_string())),
+        );
+
+        assert!(result.unwrap_err().contains("EXTERNAL_MODIFICATION"));
+        assert_eq!(fs::read_to_string(root.join("test.md")).unwrap(), "# Hello");
+    }
+
+    #[test]
+    fn test_ai_action_rejects_internal_or_non_markdown_targets() {
+        let (_dir, root) = setup_test_dir("ai_forbidden");
+        fs::create_dir_all(root.join(".glyph")).unwrap();
+        let internal = commit_ai_file_action(
+            root.to_string_lossy().to_string(),
+            ai_input("ai-forbidden-1", "create", ".glyph/evil.md", "x", None),
+        );
+        let binary = commit_ai_file_action(
+            root.to_string_lossy().to_string(),
+            ai_input("ai-forbidden-2", "create", "evil.exe", "x", None),
+        );
+
+        assert!(internal.unwrap_err().contains("AI_TARGET_FORBIDDEN"));
+        assert!(binary.unwrap_err().contains("AI_TARGET_TYPE_FORBIDDEN"));
     }
 
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Maximize, Minimize, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import type { Project } from './types/world';
 import type { FileSyncStatus, FsProject } from './types/fs';
-import type { EditorSelectionContext } from './types/fs-ai';
+import type { AiWriteProposal, EditorSelectionContext, ProjectAiPlan } from './types/fs-ai';
 import * as api from './tauri-api';
 import { countWords } from './utils/markdown';
 import { ToastProvider, useToast } from './components/Toast';
@@ -96,6 +96,8 @@ function AppInner() {
     overwriteExternalVersion,
     saveConflictCopy,
     saveMissingCopy,
+    prepareAiWrite,
+    commitAiWrite,
     updateContent,
     updateViewport,
     persistSession,
@@ -304,6 +306,17 @@ function AppInner() {
 
   const wordCount = useMemo(() => countWords(fileContent || ''), [fileContent]);
 
+  const handlePrepareAiWrite = useCallback(
+    (plan: ProjectAiPlan, context: { currentFilePath: string | null; currentFileContent: string | null; selection: EditorSelectionContext | null }) =>
+      prepareAiWrite(plan, context.currentFilePath, context.currentFileContent, context.selection),
+    [prepareAiWrite],
+  );
+
+  const handleCommitAiWrite = useCallback(
+    (proposal: AiWriteProposal) => commitAiWrite(proposal),
+    [commitAiWrite],
+  );
+
   if (!activeProject) {
     return (
       <div className="app-layout fs-first-app">
@@ -342,8 +355,8 @@ function AppInner() {
         <button
           className="glyph-topbar-btn"
           onClick={() => setAiPanelOpen((value) => !value)}
-          title={aiPanelOpen ? '收起 AI 阅读' : '打开 AI 阅读'}
-          aria-label={aiPanelOpen ? '收起 AI 阅读' : '打开 AI 阅读'}
+          title={aiPanelOpen ? '收起 AI 副手' : '打开 AI 副手'}
+          aria-label={aiPanelOpen ? '收起 AI 副手' : '打开 AI 副手'}
         >
           {aiPanelOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
         </button>
@@ -413,6 +426,8 @@ function AppInner() {
               currentFileContent={fileContent}
               selection={editorSelection}
               onOpenFile={openFile}
+              onPrepareWrite={handlePrepareAiWrite}
+              onCommitWrite={handleCommitAiWrite}
             />
           </aside>
         )}
