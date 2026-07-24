@@ -6,6 +6,7 @@ import { useFsStore } from '../stores/fsStore';
 interface TreeNodeProps {
   entry: DirEntry;
   depth: number;
+  onDrop: (sourcePath: string, targetDir: string, position: 'inside' | 'after') => void;
 }
 
 function parentPath(path: string): string {
@@ -24,7 +25,7 @@ function isEditableText(entry: DirEntry): boolean {
   return extension === 'md' || extension === 'markdown' || extension === 'txt';
 }
 
-function TreeNode({ entry, depth }: TreeNodeProps) {
+function TreeNode({ entry, depth, onDrop }: TreeNodeProps) {
   const {
     expandedPaths,
     childrenByPath,
@@ -35,10 +36,12 @@ function TreeNode({ entry, depth }: TreeNodeProps) {
     deleteEntry,
   } = useFsStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dragOver, setDragOver] = useState<'above' | 'below' | 'inside' | null>(null);
   const expanded = entry.isDir && expandedPaths.has(entry.path);
   const children = childrenByPath[entry.path] || [];
   const active = !entry.isDir && openFilePath === entry.path;
   const editable = isEditableText(entry);
+  const dragRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -70,18 +73,74 @@ function TreeNode({ entry, depth }: TreeNodeProps) {
     await deleteEntry(entry);
   };
 
+  // ── Drag and Drop ──
+  const handleDragStart = (e: React.DragEvent) => {
+    if (entry.isDir) { e.preventDefault(); return; }
+    e.dataTransfer.setData('text/plain', entry.path);
+    e.dataTransfer.effectAllowed = 'move';
+    dragRef.current?.classList.add('dragging');
+  };
+
+  const handleDragEnd = () => {
+    dragRef.current?.classList.remove('dragging');
+    setDragOver(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!dragRef.current) return;
+    const rect = dragRef.current.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const h = rect.height;
+    if (entry.isDir && y > h * 0.3 && y < h * 0.7) {
+      setDragOver('inside');
+    } else if (y < h * 0.4) {
+      setDragOver('above');
+    } else {
+      setDragOver('below');
+    }
+  };
+
+  const handleDragLeave = () => setDragOver(null);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(null);
+    const sourcePath = e.dataTransfer.getData('text/plain');
+    if (!sourcePath || sourcePath === entry.path) return;
+    if (dragOver === 'inside' && entry.isDir) {
+      onDrop(sourcePath, entry.path, 'inside');
+    } else {
+      const targetDir = parentPath(entry.path);
+      onDrop(sourcePath, targetDir, 'inside');
+    }
+  };
+
+  let dropClass = '';
+  if (dragOver === 'above') dropClass = 'drop-above';
+  else if (dragOver === 'below') dropClass = 'drop-below';
+  else if (dragOver === 'inside') dropClass = 'drop-inside';
+
   return (
     <div className="file-tree-node">
       <div
-        className={`file-tree-item ${active ? 'active' : ''} ${!entry.isDir && !editable ? 'unsupported' : ''}`}
+        ref={dragRef}
+        className={`file-tree-item ${active ? 'active' : ''} ${!entry.isDir && !editable ? 'unsupported' : ''} ${dropClass}`}
         style={{ paddingLeft: depth * 14 + 8 }}
         aria-disabled={!entry.isDir && !editable}
         title={!entry.isDir && !editable ? '阶段一仅编辑 Markdown 与纯文本文件' : entry.path}
+        draggable={!entry.isDir && editable}
         onClick={() => void handleOpen()}
         onContextMenu={(event: MouseEvent<HTMLDivElement>) => {
           event.preventDefault();
           setMenuOpen(true);
         }}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <span className={`folder-arrow ${expanded ? 'expanded' : ''}`}>
           {entry.isDir ? <ChevronRight size={13} /> : null}
@@ -113,12 +172,16 @@ function TreeNode({ entry, depth }: TreeNodeProps) {
           {children.length === 0 ? (
             <div className="file-tree-empty" style={{ paddingLeft: (depth + 1) * 14 + 28 }}>空文件夹</div>
           ) : (
-            children.map((child) => <TreeNode key={child.path} entry={child} depth={depth + 1} />)
+            children.map((child) => <TreeNode key={child.path} entry={child} depth={depth + 1} onDrop={onDrop} />)
           )}
         </div>
       )}
     </div>
   );
+}
+
+function joinPath(parent: string, child: string): string {
+  return parent ? `${parent}/${child}` : child;
 }
 
 export default function FileTree() {
@@ -129,6 +192,7 @@ export default function FileTree() {
     refreshVisibleTree,
     createMarkdownFile,
     createFolder,
+    renameEntry,
     openFilePath,
   } = useFsStore();
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
@@ -179,6 +243,18 @@ export default function FileTree() {
     setCreating(null);
     setCreateName('');
     setCreateError('');
+  };
+
+  const handleMove = async (sourcePath: string, targetDir: string, _position: 'inside' | 'before' | 'after') => {
+    const sourceName = sourcePath.split('/').pop() || '';
+    const newPath = joinPath(targetDir, sourceName);
+    if (newPath === sourcePath) return;
+    try {
+      await renameEntry(sourcePath, newPath);
+      await refreshVisibleTree();
+    } catch (e) {
+      console.error('Move failed:', e);
+    }
   };
 
   return (
@@ -240,7 +316,7 @@ export default function FileTree() {
         ) : rootEntries.length === 0 ? (
           <div className="file-tree-empty">项目里还没有文件</div>
         ) : (
-          rootEntries.map((entry) => <TreeNode key={entry.path} entry={entry} depth={0} />)
+          rootEntries.map((entry) => <TreeNode key={entry.path} entry={entry} depth={0} onDrop={handleMove} />)
         )}
       </div>
     </div>
