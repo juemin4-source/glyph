@@ -170,3 +170,124 @@ pub struct AiFileActionOutput {
     pub snapshot_path: Option<String>,
     pub record_path: String,
 }
+
+// ═══════════════════════════════════════════════
+//  Gate D: Action History, Revert, Provenance
+// ═══════════════════════════════════════════════
+
+/// Summary of one action record, suitable for list displays.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiActionSummary {
+    pub operation_id: String,
+    pub action_type: String,
+    pub target_path: String,
+    pub status: String,
+    pub instruction: String,
+    pub change_summary: String,
+    pub evidence_paths: Vec<String>,
+    pub snapshot_path: Option<String>,
+    pub old_version: Option<String>,
+    pub new_version: Option<String>,
+    pub error: Option<String>,
+    pub updated_at: i64,
+    pub reverted_at: Option<i64>,
+}
+
+/// Full detail of one action record, read from the JSON file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiActionDetail {
+    pub glyph_version: String,
+    pub operation_id: String,
+    pub action_type: String,
+    pub target_path: String,
+    pub status: String,
+    pub instruction: String,
+    pub change_summary: String,
+    pub evidence_paths: Vec<String>,
+    pub snapshot_path: Option<String>,
+    pub old_version: Option<String>,
+    pub new_version: Option<String>,
+    pub error: Option<String>,
+    pub updated_at: i64,
+    pub reverted_at: Option<i64>,
+}
+
+/// Input for reverting an AI action.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RevertAiActionInput {
+    pub operation_id: String,
+    pub project_root: String,
+    pub target_path: String,
+    pub expected_version: String,
+}
+
+/// Result of reverting an AI action.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RevertAiActionResult {
+    pub operation_id: String,
+    pub target_path: String,
+    pub restored: bool,
+    pub restored_version: String,
+    pub pre_revert_snapshot: String,
+    pub reason: Option<String>,
+}
+
+/// Input for creating a provenance record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvenanceRecordInput {
+    pub project_root: String,
+    pub action_id: String,
+    pub file_path: String,
+    /// The text block that AI wrote (used for anchoring)
+    pub text_block: String,
+    /// Start offset in the document at creation time
+    pub start_offset: i64,
+    /// End offset
+    pub end_offset: i64,
+}
+
+/// One provenance entry stored in .glyph/provenance/
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvenanceRecord {
+    pub provenance_id: String,
+    pub action_id: String,
+    pub file_path: String,
+    pub created_at: i64,
+    pub text_block: String,
+    pub start_offset: i64,
+    pub end_offset: i64,
+    /// "ai_original" | "ai_edited_by_user" | "uncertain" | "removed"
+    pub current_state: String,
+    pub last_verified_version: String,
+}
+
+/// One provenance entry for frontend display.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvenanceSummary {
+    pub provenance_id: String,
+    pub action_id: String,
+    pub file_path: String,
+    pub created_at: i64,
+    pub text_block: String,
+    pub start_offset: i64,
+    pub end_offset: i64,
+    pub current_state: String,
+    pub last_verified_version: String,
+}
+
+/// Result of a startup recovery scan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupRecoveryResult {
+    pub actions_checked: u32,
+    pub actions_recovered: u32,
+    pub actions_failed: u32,
+    pub details: Vec<String>,
+}

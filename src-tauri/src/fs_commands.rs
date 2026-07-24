@@ -842,6 +842,300 @@ pub fn commit_ai_file_action(
     })
 }
 
+// ============================================================================
+//  Gate D: Action History, Revert, Provenance
+// ============================================================================
+
+/// List AI action records for a project, sorted by time descending.
+#[tauri::command]
+pub fn list_ai_actions(
+    project_root: String,
+    max_results: Option<u32>,
+) -> Result<Vec<AiActionSummary>, String> {
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let glyph_dir = root.join(".glyph");
+    let actions_dir = glyph_dir.join("actions");
+    if !actions_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let max = max_results.unwrap_or(50).min(200) as usize;
+    let mut records: Vec<AiActionSummary> = Vec::new();
+    let read_dir = fs::read_dir(&actions_dir)
+        .map_err(|e| format!("READ_ERROR: {}", e))?;
+    for entry in read_dir {
+        if records.len() >= max { break; }
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        if path.extension().map_or(true, |ext| ext != "json") {
+            continue;
+        }
+        match fs::read_to_string(&path) {
+            Ok(content) => {
+                match serde_json::from_str::<serde_json::Value>(&content) {
+                    Ok(val) => {
+                        let op_id = val.get("operationId").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let at = val.get("actionType").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let tp = val.get("targetPath").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let st = val.get("status").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let inst = val.get("instruction").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let cs = val.get("changeSummary").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let ep: Vec<String> = val.get("evidencePaths").and_then(|v| v.as_array())
+                            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                            .unwrap_or_default();
+                        let sp = val.get("snapshotPath").and_then(|v| v.as_str().map(String::from));
+                        let ov = val.get("oldVersion").and_then(|v| v.as_str().map(String::from));
+                        let nv = val.get("newVersion").and_then(|v| v.as_str().map(String::from));
+                        let err = val.get("error").and_then(|v| v.as_str().map(String::from));
+                        let ua = val.get("updatedAt").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let ra = val.get("revertedAt").and_then(|v| v.as_i64());
+                        records.push(AiActionSummary {
+                            operation_id: op_id, action_type: at, target_path: tp,
+                            status: st, instruction: inst, change_summary: cs,
+                            evidence_paths: ep, snapshot_path: sp, old_version: ov,
+                            new_version: nv, error: err, updated_at: ua, reverted_at: ra,
+                        });
+                    }
+                    Err(_) => continue,
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+    records.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    Ok(records)
+}
+
+/// Get full detail of one AI action.
+#[tauri::command]
+pub fn get_ai_action(
+    project_root: String,
+    operation_id: String,
+) -> Result<AiActionDetail, String> {
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let record_path = root.join(".glyph").join("actions").join(format!("{}.json", operation_id));
+    let content = fs::read_to_string(&record_path)
+        .map_err(|_| format!("ACTION_NOT_FOUND: operation {} not found", operation_id))?;
+    serde_json::from_str(&content)
+        .map_err(|e| format!("PARSE_ERROR: {}", e))
+}
+
+/// Revert an AI action — restore the pre-action snapshot.
+/// Only succeeds if the current file version matches the post-action version.
+#[tauri::command]
+pub fn revert_ai_action(
+    project_root: String,
+    input: RevertAiActionInput,
+) -> Result<RevertAiActionResult, String> {
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let glyph_dir = safe_internal_directory(&root, ".glyph", true)?;
+    let actions_dir = safe_internal_directory(&glyph_dir, "actions", true)?;
+    let snapshots_dir = safe_internal_directory(&glyph_dir, "snapshots", true)?;
+
+    // Read the action record
+    let record_path = actions_dir.join(format!("{}.json", input.operation_id));
+    let record_content = fs::read_to_string(&record_path)
+        .map_err(|_| format!("ACTION_NOT_FOUND: {}", input.operation_id))?;
+    let record: serde_json::Value = serde_json::from_str(&record_content)
+        .map_err(|e| format!("PARSE_ERROR: {}", e))?;
+
+    let snapshot_rel = record.get("snapshotPath").and_then(|v| v.as_str()).ok_or("NO_SNAPSHOT")?;
+    let old_version = record.get("oldVersion").and_then(|v| v.as_str()).ok_or("NO_OLD_VERSION")?;
+
+    // Resolve target file and verify version
+    let target = resolve_project_path(&project_root, &input.target_path)?;
+    let metadata = target.metadata().map_err(|_| "TARGET_MISSING")?;
+    let modified = modified_at(&metadata);
+    let current_version = format!("v{}", modified);
+    if current_version != input.expected_version {
+        return Ok(RevertAiActionResult {
+            operation_id: input.operation_id.clone(),
+            target_path: input.target_path,
+            restored: false,
+            restored_version: String::new(),
+            pre_revert_snapshot: String::new(),
+            reason: Some("VERSION_MISMATCH: file has been modified since the action".to_string()),
+        });
+    }
+
+    // Read snapshot content
+    let snapshot_path = root.join(snapshot_rel);
+    let snapshot_content = fs::read_to_string(&snapshot_path)
+        .map_err(|_| "SNAPSHOT_UNREADABLE")?;
+
+    // Create pre-revert snapshot of current content
+    let pre_revert_op_id = format!("pre-revert-{}", input.operation_id);
+    let pre_snapshot = snapshots_dir.join(format!("{}.md", pre_revert_op_id));
+    let current_content = fs::read_to_string(&target)
+        .map_err(|_| "CURRENT_UNREADABLE")?;
+    atomic_create(&pre_snapshot, &current_content)?;
+    let pre_rel = relative_path(&project_root, &pre_snapshot);
+
+    // Write back the old snapshot content
+    atomic_write(&target, &snapshot_content)?;
+
+    // Mark action as reverted
+    let reverted_at = now_millis();
+    let mut record = record;
+    if let Some(obj) = record.as_object_mut() {
+        obj.insert("status".to_string(), serde_json::Value::String("reverted".to_string()));
+        obj.insert("revertedAt".to_string(), serde_json::Value::Number(serde_json::Number::from(reverted_at)));
+    }
+    let updated = serde_json::to_string_pretty(&record)
+        .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+    fs::write(&record_path, &updated)
+        .map_err(|e| format!("WRITE_ERROR: {}", e))?;
+
+    // Update modified time for version
+    let restored_version = format!("v{}", reverted_at);
+
+    Ok(RevertAiActionResult {
+        operation_id: input.operation_id,
+        target_path: input.target_path,
+        restored: true,
+        restored_version,
+        pre_revert_snapshot: pre_rel,
+        reason: None,
+    })
+}
+
+/// List provenance records for a file.
+#[tauri::command]
+pub fn list_file_provenance(
+    project_root: String,
+    file_path: String,
+) -> Result<Vec<ProvenanceRecord>, String> {
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let prov_dir = root.join(".glyph").join("provenance");
+    if !prov_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let file_stem = file_path.replace('/', "_").replace('\\', "_");
+    let prov_file = prov_dir.join(format!("{}.json", file_stem));
+    if !prov_file.is_file() {
+        return Ok(Vec::new());
+    }
+    let content = fs::read_to_string(&prov_file)
+        .map_err(|_| "PROVENANCE_UNREADABLE".to_string())?;
+    let records: Vec<ProvenanceRecord> = serde_json::from_str(&content)
+        .map_err(|e| format!("PARSE_ERROR: {}", e))?;
+    Ok(records)
+}
+
+/// Save provenance records for a file (atomic replace).
+#[tauri::command]
+pub fn save_file_provenance(
+    project_root: String,
+    file_path: String,
+    records: Vec<ProvenanceRecordInput>,
+) -> Result<(), String> {
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let glyph_dir = safe_internal_directory(&root, ".glyph", true)?;
+    let prov_dir = safe_internal_directory(&glyph_dir, "provenance", true)?;
+    let file_stem = file_path.replace('/', "_").replace('\\', "_");
+    let prov_file = prov_dir.join(format!("{}.json", file_stem));
+
+    let now = now_millis();
+    let provenance_records: Vec<ProvenanceRecord> = records.into_iter().map(|r| {
+        ProvenanceRecord {
+            provenance_id: format!("prov-{}-{}", r.action_id, r.start_offset),
+            action_id: r.action_id,
+            file_path: r.file_path,
+            created_at: now,
+            text_block: r.text_block,
+            start_offset: r.start_offset,
+            end_offset: r.end_offset,
+            current_state: "ai_original".to_string(),
+            last_verified_version: String::new(),
+        }
+    }).collect();
+
+    let content = serde_json::to_string_pretty(&provenance_records)
+        .map_err(|e| format!("SERIALIZE_ERROR: {}", e))?;
+    atomic_write(&prov_file, &content)
+}
+
+/// Scan incomplete actions on startup.
+#[tauri::command]
+pub fn startup_recovery_scan(
+    project_root: String,
+) -> Result<StartupRecoveryResult, String> {
+    let root = fs::canonicalize(&project_root)
+        .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
+    let actions_dir = root.join(".glyph").join("actions");
+    if !actions_dir.is_dir() {
+        return Ok(StartupRecoveryResult {
+            actions_checked: 0, actions_recovered: 0, actions_failed: 0, details: Vec::new(),
+        });
+    }
+
+    let mut checked = 0u32;
+    let mut recovered = 0u32;
+    let mut failed = 0u32;
+    let mut details: Vec<String> = Vec::new();
+
+    let read_dir = match fs::read_dir(&actions_dir) {
+        Ok(d) => d,
+        Err(_) => return Ok(StartupRecoveryResult {
+            actions_checked: 0, actions_recovered: 0, actions_failed: 0, details: Vec::new(),
+        }),
+    };
+
+    for entry in read_dir {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        if path.extension().map_or(true, |ext| ext != "json") { continue; }
+        checked += 1;
+
+        let content = match fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => { failed += 1; continue; }
+        };
+        let mut record: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(_) => { failed += 1; continue; }
+        };
+
+        let status = record.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        let incomplete = matches!(status, "planned" | "generating" | "ready_to_commit" | "committing");
+        if !incomplete { continue; }
+
+        let target_path = record.get("targetPath").and_then(|v| v.as_str()).unwrap_or("");
+        let target = root.join(target_path);
+        let (new_status, note) = if target.is_file() {
+            recovered += 1;
+            ("completed_recovered".to_string(), "file exists, marked recovered".to_string())
+        } else {
+            failed += 1;
+            ("failed".to_string(), "target missing".to_string())
+        };
+
+        if let Some(obj) = record.as_object_mut() {
+            obj.insert("status".to_string(), serde_json::Value::String(new_status));
+            obj.insert("recoveryNote".to_string(), serde_json::Value::String(note));
+        }
+        let updated = serde_json::to_string_pretty(&record).unwrap_or(content);
+        let _ = fs::write(&path, &updated);
+    }
+
+    Ok(StartupRecoveryResult {
+        actions_checked: checked,
+        actions_recovered: recovered,
+        actions_failed: failed,
+        details,
+    })
+}
+
 /// Create a new empty file.
 #[tauri::command]
 pub fn create_file(

@@ -209,6 +209,52 @@ export function searchFileContent(
 }
 
 // ══════════════════════════════════════════
+//  Gate D: Action History, Revert, Provenance
+// ══════════════════════════════════════════
+
+export function listAiActions(
+  projectRoot: string,
+  maxResults?: number,
+): Promise<import('./types/fs-ai').AiActionSummary[]> {
+  return invoke('list_ai_actions', { projectRoot, maxResults });
+}
+
+export function getAiAction(
+  projectRoot: string,
+  operationId: string,
+): Promise<import('./types/fs-ai').AiActionDetail> {
+  return invoke('get_ai_action', { projectRoot, operationId });
+}
+
+export function revertAiAction(
+  projectRoot: string,
+  input: import('./types/fs-ai').RevertAiActionInput,
+): Promise<import('./types/fs-ai').RevertAiActionResult> {
+  return invoke('revert_ai_action', { projectRoot, input });
+}
+
+export function listFileProvenance(
+  projectRoot: string,
+  filePath: string,
+): Promise<import('./types/fs-ai').ProvenanceRecord[]> {
+  return invoke('list_file_provenance', { projectRoot, filePath });
+}
+
+export function startupRecoveryScan(
+  projectRoot: string,
+): Promise<import('./types/fs-ai').StartupRecoveryResult> {
+  return invoke('startup_recovery_scan', { projectRoot });
+}
+
+export function saveFileProvenance(
+  projectRoot: string,
+  filePath: string,
+  records: import('./types/fs-ai').ProvenanceRecord[],
+): Promise<void> {
+  return invoke('save_file_provenance', { projectRoot, filePath, records });
+}
+
+// ══════════════════════════════════════════
 //  Gate A: File/Directory Operations
 // ══════════════════════════════════════════
 

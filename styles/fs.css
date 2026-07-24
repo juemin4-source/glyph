@@ -1300,25 +1300,6 @@
   background: transparent;
 }
 
-/* ── File Tree Drag and Drop ── */
-.file-tree-item.dragging {
-  opacity: 0.4;
-}
-
-.file-tree-item.drop-above {
-  box-shadow: inset 0 2px 0 var(--accent, #B7FF00);
-}
-
-.file-tree-item.drop-below {
-  box-shadow: inset 0 -2px 0 var(--accent, #B7FF00);
-}
-
-.file-tree-item.drop-inside {
-  outline: 1px solid var(--accent, #B7FF00);
-  outline-offset: -1px;
-  background: rgba(183, 255, 0, 0.06);
-}
-
 /* ======================================================
    Glyph Gate C: bounded single-file project assistant
    ====================================================== */

@@ -154,6 +154,64 @@ export interface ResolvedFileReference {
   candidates: string[];
 }
 
+// ══════════════════════════════════════════
+//  Gate D: Action History & Provenance
+// ══════════════════════════════════════════
+
+export interface AiActionSummary {
+  operationId: string;
+  actionType: string;
+  targetPath: string;
+  status: string;
+  instruction: string;
+  changeSummary: string;
+  evidencePaths: string[];
+  snapshotPath: string | null;
+  oldVersion: string | null;
+  newVersion: string | null;
+  error: string | null;
+  updatedAt: number;
+  revertedAt: number | null;
+}
+
+export interface AiActionDetail extends AiActionSummary {
+  glyphVersion: string;
+}
+
+export interface RevertAiActionInput {
+  operationId: string;
+  targetPath: string;
+  expectedVersion: string;
+}
+
+export interface RevertAiActionResult {
+  operationId: string;
+  targetPath: string;
+  restored: boolean;
+  restoredVersion: string;
+  preRevertSnapshot: string;
+  reason: string | null;
+}
+
+export interface ProvenanceRecord {
+  provenanceId: string;
+  actionId: string;
+  filePath: string;
+  createdAt: number;
+  textBlock: string;
+  startOffset: number;
+  endOffset: number;
+  currentState: 'ai_original' | 'ai_edited_by_user' | 'uncertain' | 'removed';
+  lastVerifiedVersion: string;
+}
+
+export interface StartupRecoveryResult {
+  actionsChecked: number;
+  actionsRecovered: number;
+  actionsFailed: number;
+  details: string[];
+}
+
 export interface ProjectFileIndex {
   files: DirEntry[];
   truncated: boolean;

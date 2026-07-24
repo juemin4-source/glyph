@@ -226,6 +226,13 @@ pub fn run() {
             fs_commands::watch_project,
             fs_commands::unwatch_project,
             fs_commands::export_to_fs_project,
+            // Gate D: Action history, revert, provenance
+            fs_commands::list_ai_actions,
+            fs_commands::get_ai_action,
+            fs_commands::revert_ai_action,
+            fs_commands::list_file_provenance,
+            fs_commands::save_file_provenance,
+            fs_commands::startup_recovery_scan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

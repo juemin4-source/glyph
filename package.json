@@ -1,7 +1,7 @@
 {
   "name": "glyph",
   "private": true,
-  "version": "0.4.5",
+  "version": "0.4.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -33,6 +33,7 @@
     "accept:gate-b": "node tests/acceptance/gate-b-readonly-agent.mjs",
     "test:gate-c": "vitest run tests/unit/fs-ai-bridge.test.ts",
     "accept:gate-c": "node tests/acceptance/gate-c-single-file-actions.mjs",
+    "accept:gate-d": "node tests/acceptance/gate-d-long-term-control.mjs",
     "accept:gate-c-ux": "node tests/acceptance/gate-c-ux-repair.mjs"
   },
   "dependencies": {
