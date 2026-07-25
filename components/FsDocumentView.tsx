@@ -25,7 +25,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import type { FileSyncStatus } from '../types/fs';
-import type { EditorSelectionContext } from '../types/fs-ai';
+import type { EditorSelectionContext, ProvenanceRecord } from '../types/fs-ai';
 import { countWords } from '../utils/markdown';
 import { editorHtmlToMarkdown, markdownToEditorHtml } from '../utils/markdown-editor';
 
@@ -46,6 +46,9 @@ interface FsDocumentViewProps {
     scrollPosition?: number;
   }) => void;
   onSelectionChange: (selection: EditorSelectionContext | null) => void;
+  sourceMode?: boolean;
+  provenance?: ProvenanceRecord[];
+  onSourceModeToggle?: () => void;
 }
 
 type EditMode = 'wysiwyg' | 'source' | 'preview';
@@ -238,6 +241,33 @@ function caretPosition(range: Range): FloatingPosition {
   return { top: rect.bottom + 8, left: Math.max(12, Math.min(rect.left, window.innerWidth - 280)) };
 }
 
+interface ProvenanceMarker {
+  topPct: number;
+  heightPct: number;
+  state: string;
+  label: string;
+}
+
+function computeProvenanceMarkers(content: string, records: ProvenanceRecord[]): ProvenanceMarker[] {
+  if (!content || records.length === 0) return [];
+  const total = content.length;
+  if (total === 0) return [];
+  return records.map((record) => {
+    const start = Math.max(0, Math.min(record.startOffset, total - 1));
+    const end = Math.max(start, Math.min(record.endOffset, total));
+    const topPct = (start / total) * 100;
+    const heightPct = Math.max(0.5, ((end - start) / total) * 100);
+    const stateLabel = record.currentState === 'ai_original' ? 'AI 写入' :
+      record.currentState === 'ai_edited_by_user' ? '用户已编辑' : '来源可能失准';
+    return {
+      topPct,
+      heightPct,
+      state: record.currentState,
+      label: `${stateLabel}: ${record.textBlock.slice(0, 60)}`,
+    };
+  });
+}
+
 export default function FsDocumentView({
   content,
   filePath,
@@ -251,6 +281,9 @@ export default function FsDocumentView({
   onSave,
   onViewportChange,
   onSelectionChange,
+  sourceMode = false,
+  provenance = [],
+  onSourceModeToggle,
 }: FsDocumentViewProps) {
   const [editMode, setEditMode] = useState<EditMode>('wysiwyg');
   const [bubblePosition, setBubblePosition] = useState<FloatingPosition>(null);
@@ -508,6 +541,15 @@ export default function FsDocumentView({
             <button className={`edit-mode-tab ${editMode === 'source' ? 'active' : ''}`} onClick={() => setEditMode('source')}><FileEdit size={13} />源码</button>
             <button className={`edit-mode-tab ${editMode === 'preview' ? 'active' : ''}`} onClick={() => setEditMode('preview')}><Eye size={13} />预览</button>
           </div>
+          {onSourceModeToggle && (
+            <button
+              className={`fs-source-mode-toggle ${sourceMode ? 'active' : ''}`}
+              onClick={onSourceModeToggle}
+              title={sourceMode ? '关闭来源模式' : '显示 AI 写入标记'}
+            >
+              {sourceMode ? '来源' : '纯净'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -532,11 +574,23 @@ export default function FsDocumentView({
         </div>
       )}
 
-      <div className="fs-editor-area">
+      <div className={`fs-editor-area ${sourceMode && provenance.length > 0 ? 'fs-provenance-mode' : ''}`}>
+        {sourceMode && provenance.length > 0 && (
+          <div className="fs-provenance-strip" aria-hidden="true">
+            {computeProvenanceMarkers(content || '', provenance).map((marker, i) => (
+              <div
+                key={i}
+                className={`fs-provenance-marker fs-provenance-marker-${marker.state}`}
+                style={{ top: `${marker.topPct}%`, height: `${marker.heightPct}%` }}
+                title={marker.label}
+              />
+            ))}
+          </div>
+        )}
         {editMode === 'source' ? (
           <textarea
             ref={sourceRef}
-            className="editor-source-textarea fs-source-editor"
+            className={`editor-source-textarea fs-source-editor ${sourceMode ? 'fs-source-provenance' : ''}`}
             aria-label="Markdown 源码编辑器"
             value={content}
             onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -553,7 +607,7 @@ export default function FsDocumentView({
         ) : (
           <div
             ref={visualScrollRef}
-            className={`fs-editor-scroll ${editMode === 'preview' ? 'is-preview' : ''}`}
+            className={`fs-editor-scroll ${editMode === 'preview' ? 'is-preview' : ''} ${sourceMode ? 'fs-source-provenance' : ''}`}
             onScroll={(event: UIEvent<HTMLDivElement>) => onViewportChange({ scrollPosition: event.currentTarget.scrollTop })}
           >
             <div

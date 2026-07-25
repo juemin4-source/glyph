@@ -249,7 +249,7 @@ export function startupRecoveryScan(
 export function saveFileProvenance(
   projectRoot: string,
   filePath: string,
-  records: import('./types/fs-ai').ProvenanceRecord[],
+  records: import('./types/fs-ai').ProvenanceRecordInput[],
 ): Promise<void> {
   return invoke('save_file_provenance', { projectRoot, filePath, records });
 }

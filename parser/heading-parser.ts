@@ -26,6 +26,7 @@ export class HeadingParser implements MarkdownParser {
         parentId = stack[stack.length - 1].id
       }
 
+      const now = new Date().toISOString()
       const node: StoryNode = {
         id,
         projectId,
@@ -34,8 +35,8 @@ export class HeadingParser implements MarkdownParser {
         content: '',
         x: 100 + order * 180,
         y: level === 1 ? 50 : 200,
-        createdAt: '',
-        updatedAt: ''
+        createdAt: now,
+        updatedAt: now
       }
 
       nodes.push(node)

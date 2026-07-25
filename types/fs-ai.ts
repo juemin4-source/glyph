@@ -205,6 +205,15 @@ export interface ProvenanceRecord {
   lastVerifiedVersion: string;
 }
 
+/** Input shape matching Rust ProvenanceRecordInput (fewer fields, used for saving). */
+export interface ProvenanceRecordInput {
+  actionId: string;
+  filePath: string;
+  textBlock: string;
+  startOffset: number;
+  endOffset: number;
+}
+
 export interface StartupRecoveryResult {
   actionsChecked: number;
   actionsRecovered: number;

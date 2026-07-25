@@ -2126,3 +2126,320 @@
   .fs-source-editor { padding: 30px 24px 72px; }
   .fs-format-hint { display: none; }
 }
+
+/* ══ Gate D: Tabs — switch between AI task & history ══ */
+.fs-ai-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: 0 12px;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.fs-ai-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #666;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.fs-ai-tab:hover { color: #aaa; }
+.fs-ai-tab-active { color: #d4d4d4; border-bottom-color: #a5bd7d; }
+
+/* ══ Gate D: Revert button ══ */
+.fs-ai-revert-row {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.fs-ai-revert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(225,119,119,.07);
+  border: 1px solid #4d3434;
+  color: #d98d8d;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.fs-ai-revert-btn:hover { background: rgba(225,119,119,.14); }
+.fs-ai-revert-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ══ Gate D: History panel detail ══ */
+.fs-ai-history-detail {
+  padding: 4px 12px 8px 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fs-ai-history-field strong {
+  display: block;
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.fs-ai-history-field p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #aaa;
+}
+
+.fs-ai-history-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.fs-ai-action-path {
+  color: #7a9a5a;
+  font-size: 10px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-ai-action-time {
+  color: #555;
+  font-size: 9px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.fs-ai-task-reverted {
+  opacity: .55;
+}
+
+.fs-ai-task-reverted .fs-ai-action-summary {
+  text-decoration: line-through;
+  text-decoration-color: #555;
+}
+
+/* ══ Gate D: Source mode toggle & provenance strip ══ */
+.fs-source-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid rgba(255,255,255,.08);
+  color: #666;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+  margin-left: 6px;
+}
+
+.fs-source-mode-toggle:hover { color: #aaa; border-color: rgba(255,255,255,.15); }
+.fs-source-mode-toggle.active { color: #a5bd7d; border-color: #4b553c; background: rgba(165,189,125,.06); }
+
+.fs-provenance-mode {
+  position: relative;
+}
+
+.fs-provenance-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.fs-provenance-marker {
+  position: absolute;
+  left: 0;
+  width: 4px;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: help;
+  opacity: .6;
+  transition: opacity .15s;
+}
+
+.fs-provenance-marker:hover { opacity: 1; }
+.fs-provenance-marker-ai_original { background: #a5bd7d; }
+.fs-provenance-marker-ai_edited_by_user { background: #c1a35f; }
+.fs-provenance-marker-uncertain { background: #858585; }
+.fs-provenance-marker-removed { background: #555; }
+
+.fs-source-provenance {
+  padding-left: 20px !important;
+}
+
+/* ══ Gate D: Revert conflict dialog ══ */
+.fs-revert-conflict-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: 80vh;
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #d4d4d4;
+}
+
+.fs-revert-conflict-dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.fs-revert-conflict-dialog header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fs-revert-conflict-dialog header strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #d98d8d;
+}
+
+.fs-revert-conflict-dialog header span {
+  color: #777;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.fs-revert-conflict-dialog header button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #666;
+  cursor: pointer;
+}
+
+.fs-revert-conflict-dialog header button:hover {
+  color: #aaa;
+  border-color: rgba(255,255,255,.1);
+}
+
+.fs-revert-conflict-info {
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #999;
+}
+
+.fs-revert-conflict-info strong {
+  color: #aaa;
+}
+
+.fs-revert-conflict-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 20px;
+}
+
+.fs-revert-conflict-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  margin-bottom: 8px;
+}
+
+.fs-revert-conflict-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #666;
+  font-size: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.fs-revert-conflict-tab:hover { color: #aaa; }
+.fs-revert-conflict-tab.active { color: #d4d4d4; border-bottom-color: #a5bd7d; }
+
+.fs-revert-conflict-pre {
+  flex: 1;
+  min-height: 120px;
+  max-height: 300px;
+  overflow: auto;
+  background: #111;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #aaa;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.fs-revert-conflict-actions {
+  padding: 12px 20px 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fs-revert-conflict-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  color: #d4d4d4;
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.fs-revert-conflict-btn:hover { background: rgba(255,255,255,.1); }
+.fs-revert-conflict-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fs-revert-conflict-btn.secondary { color: #999; }
+.fs-revert-conflict-btn.danger { color: #d98d8d; border-color: #4d3434; }
+.fs-revert-conflict-btn.danger:hover { background: rgba(225,119,119,.1); }
+
+.fs-revert-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.fs-revert-confirm-row span {
+  flex: 1;
+  font-size: 10px;
+  color: #d98d8d;
+}

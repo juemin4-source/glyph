@@ -17,6 +17,13 @@ const mocks = vi.hoisted(() => ({
   deleteDirectory: vi.fn(),
   getSessionState: vi.fn(),
   saveSessionState: vi.fn(),
+  // Gate D
+  listAiActions: vi.fn(),
+  getAiAction: vi.fn(),
+  revertAiAction: vi.fn(),
+  listFileProvenance: vi.fn(),
+  saveFileProvenance: vi.fn(),
+  startupRecoveryScan: vi.fn(),
 }));
 
 vi.mock('../../tauri-api', () => mocks);
@@ -72,9 +79,17 @@ beforeEach(async () => {
     editRevision: 0,
     viewport: { cursorLine: 0, cursorColumn: 0, scrollPosition: 0 },
     restoredSession: null,
+    actionHistory: [],
+    actionHistoryError: null,
+    provenance: [],
+    sourceMode: false,
+    recoveryResult: null,
   });
   mocks.listDirectory.mockResolvedValue(entries);
   mocks.getSessionState.mockResolvedValue({ ...session, lastOpenFilePath: null, openFilePaths: [] });
+  mocks.listFileProvenance.mockResolvedValue([]);
+  mocks.listAiActions.mockResolvedValue([]);
+  mocks.startupRecoveryScan.mockResolvedValue({ actionsChecked: 0, actionsRecovered: 0, actionsFailed: 0, details: [] });
 });
 
 describe('filesystem-first store', () => {
@@ -318,5 +333,88 @@ describe('filesystem-first store', () => {
         lastScrollPosition: 888,
       }),
     );
+  });
+
+  // ══ Gate D tests ══
+
+  it('loads action history from the backend', async () => {
+    const actions = [
+      { operationId: 'op-1', actionType: 'modify', targetPath: '正文/ch01.md', status: 'completed', instruction: '重写开头', changeSummary: '角色名统一', evidencePaths: [], snapshotPath: null, oldVersion: 'v1', newVersion: 'v2', error: null, updatedAt: 1000, revertedAt: null },
+    ];
+    mocks.listAiActions.mockResolvedValue(actions);
+    useFsStore.setState({ activeProject: project });
+
+    await useFsStore.getState().loadActionHistory();
+
+    expect(useFsStore.getState().actionHistory).toEqual(actions);
+    expect(useFsStore.getState().actionHistoryLoading).toBe(false);
+  });
+
+  it('handles loadActionHistory error gracefully', async () => {
+    mocks.listAiActions.mockRejectedValue(new Error('COMMAND_FAILED'));
+    useFsStore.setState({ activeProject: project });
+
+    await useFsStore.getState().loadActionHistory();
+
+    expect(useFsStore.getState().actionHistoryLoading).toBe(false);
+    expect(useFsStore.getState().actionHistoryError).toContain('COMMAND_FAILED');
+  });
+
+  it('reverts a completed action and refreshes history', async () => {
+    const revertResult = {
+      operationId: 'op-1', targetPath: '正文/ch01.md', restored: true,
+      restoredVersion: 'v1', preRevertSnapshot: '', reason: null,
+    };
+    mocks.revertAiAction.mockResolvedValue(revertResult);
+    mocks.readFileState.mockResolvedValue({ content: '# 旧版本', modifiedAt: 500, version: 'v1' });
+    useFsStore.setState({
+      activeProject: project,
+      openFilePath: '正文/ch01.md',
+      fileContent: '# 新版本',
+      diskModifiedAt: 1000,
+      diskVersion: 'v2',
+      fileStatus: 'clean',
+    });
+
+    const result = await useFsStore.getState().revertAction({
+      operationId: 'op-1', targetPath: '正文/ch01.md', expectedVersion: 'v2',
+    });
+
+    expect(result?.restored).toBe(true);
+    expect(useFsStore.getState().fileContent).toBe('# 旧版本');
+    expect(useFsStore.getState().diskVersion).toBe('v1');
+  });
+
+  it('loads provenance for the open file', async () => {
+    const records = [
+      { provenanceId: 'p-1', actionId: 'op-1', filePath: '正文/ch01.md', createdAt: 1000, textBlock: '旧开头', startOffset: 0, endOffset: 100, currentState: 'ai_original' as const, lastVerifiedVersion: 'v2' },
+    ];
+    mocks.listFileProvenance.mockResolvedValue(records);
+    useFsStore.setState({ activeProject: project });
+
+    await useFsStore.getState().loadProvenance('正文/ch01.md');
+
+    expect(useFsStore.getState().provenance).toEqual(records);
+  });
+
+  it('toggles source mode', () => {
+    expect(useFsStore.getState().sourceMode).toBe(false);
+    useFsStore.getState().setSourceMode(true);
+    expect(useFsStore.getState().sourceMode).toBe(true);
+    useFsStore.getState().setSourceMode(false);
+    expect(useFsStore.getState().sourceMode).toBe(false);
+  });
+
+  it('runs startup recovery and loads history if actions found', async () => {
+    mocks.startupRecoveryScan.mockResolvedValue({
+      actionsChecked: 3, actionsRecovered: 2, actionsFailed: 0,
+      details: ['恢复 op-1', '恢复 op-2'],
+    });
+    useFsStore.setState({ activeProject: project });
+
+    await useFsStore.getState().runStartupRecovery();
+
+    expect(useFsStore.getState().recoveryResult?.actionsChecked).toBe(3);
+    expect(mocks.listAiActions).toHaveBeenCalled();
   });
 });

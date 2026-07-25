@@ -11,6 +11,7 @@ import FsProjectCreateDialog from './components/FsProjectCreateDialog';
 import FileTree from './components/FileTree';
 import FsDocumentView from './components/FsDocumentView';
 import FsAiPanel from './components/FsAiPanel';
+import AiHistoryPanel from './components/AiHistoryPanel';
 import { useFsStore } from './stores/fsStore';
 import { useExternalChangeDetector } from './hooks/useExternalChangeDetector';
 
@@ -102,12 +103,16 @@ function AppInner() {
     updateViewport,
     persistSession,
     clearError,
+    sourceMode,
+    provenance,
+    setSourceMode,
   } = useFsStore();
 
   const [legacyProjects, setLegacyProjects] = useState<Project[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(true);
+  const [aiPanelTab, setAiPanelTab] = useState<'task' | 'history'>('task');
   const [editorSelection, setEditorSelection] = useState<EditorSelectionContext | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -449,20 +454,41 @@ function AppInner() {
             onSave={saveCurrentFile}
             onViewportChange={updateViewport}
             onSelectionChange={handleSelectionChange}
+            sourceMode={sourceMode}
+            provenance={provenance}
+            onSourceModeToggle={() => setSourceMode(!sourceMode)}
           />
         </main>
 
         {!focusMode && aiPanelOpen && (
           <aside className="glyph-ai-sidebar">
-            <FsAiPanel
-              project={activeProject}
-              currentFilePath={openFilePath}
-              currentFileContent={fileContent}
-              selection={editorSelection}
-              onOpenFile={openFile}
-              onPrepareWrite={handlePrepareAiWrite}
-              onCommitWrite={handleCommitAiWrite}
-            />
+            <div className="fs-ai-tabs">
+              <button
+                className={`fs-ai-tab ${aiPanelTab === 'task' ? 'fs-ai-tab-active' : ''}`}
+                onClick={() => setAiPanelTab('task')}
+              >
+                当前任务
+              </button>
+              <button
+                className={`fs-ai-tab ${aiPanelTab === 'history' ? 'fs-ai-tab-active' : ''}`}
+                onClick={() => setAiPanelTab('history')}
+              >
+                历史
+              </button>
+            </div>
+            {aiPanelTab === 'task' ? (
+              <FsAiPanel
+                project={activeProject}
+                currentFilePath={openFilePath}
+                currentFileContent={fileContent}
+                selection={editorSelection}
+                onOpenFile={openFile}
+                onPrepareWrite={handlePrepareAiWrite}
+                onCommitWrite={handleCommitAiWrite}
+              />
+            ) : (
+              <AiHistoryPanel onOpenFile={openFile} />
+            )}
           </aside>
         )}
       </div>

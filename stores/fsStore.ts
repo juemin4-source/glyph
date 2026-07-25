@@ -13,6 +13,11 @@ import type {
   EditorSelectionContext,
   PreparedWriteTarget,
   ProjectAiPlan,
+  // Gate D types
+  AiActionSummary,
+  ProvenanceRecord,
+  StartupRecoveryResult,
+  RevertAiActionInput,
 } from '../types/fs-ai';
 import {
   commitAiFileAction,
@@ -30,6 +35,13 @@ import {
   renameFile,
   saveSessionState,
   writeFileChecked,
+  // Gate D
+  getAiAction,
+  listAiActions,
+  listFileProvenance,
+  revertAiAction,
+  saveFileProvenance,
+  startupRecoveryScan,
 } from '../tauri-api';
 
 interface ViewportState {
@@ -271,6 +283,8 @@ export const useFsStore = create<FsStore>((set, get) => {
         set((state) => ({
           fsProjects: [project, ...state.fsProjects.filter((item) => item.id !== project.id)],
         }));
+        // Gate D: start recovery scan after opening project
+        get().runStartupRecovery().catch(() => {});
         return project;
       } catch (error) {
         set({ loading: false, error: String(error) });
@@ -370,6 +384,8 @@ export const useFsStore = create<FsStore>((set, get) => {
           restoredSession: null,
           loading: false,
         }));
+        // Gate D: load provenance after opening file
+        get().loadProvenance(normalized).catch(() => {});
         return true;
       } catch (error) {
         if (requestId === openRequestSequence) set({ loading: false, error: String(error) });
@@ -418,6 +434,33 @@ export const useFsStore = create<FsStore>((set, get) => {
               externalConflict: null,
             };
           });
+          // Gate D: update provenance state after user save
+          if (get().openFilePath === path && get().provenance.length > 0) {
+            const currentProvenance = get().provenance;
+            const fileContent = get().fileContent;
+            const updated = currentProvenance.map((p) => {
+              const blockStillPresent = fileContent && fileContent.includes(p.textBlock);
+              if (!blockStillPresent && p.currentState === 'ai_original') {
+                return { ...p, currentState: 'ai_edited_by_user' as const };
+              }
+              return p;
+            });
+            const changed = updated.some((u, i) => u.currentState !== currentProvenance[i]?.currentState);
+            if (changed) {
+              set({ provenance: updated });
+              const activeProj = get().activeProject;
+              const currentOpenPath = get().openFilePath;
+              if (activeProj && currentOpenPath) {
+                saveFileProvenance(activeProj.rootPath, currentOpenPath, updated.map(u => ({
+                  actionId: u.actionId,
+                  filePath: u.filePath,
+                  textBlock: u.textBlock,
+                  startOffset: u.startOffset,
+                  endOffset: u.endOffset,
+                }))).catch(() => {});
+              }
+            }
+          }
           return true;
         } catch (error) {
           if (get().activeProject?.id !== projectId || get().openFilePath !== path) return false;
@@ -664,6 +707,19 @@ export const useFsStore = create<FsStore>((set, get) => {
             error: null,
           }));
         }
+        // Gate D: save provenance after successful commit
+        try {
+          await saveFileProvenance(project.rootPath, proposal.targetPath, [{
+            actionId: proposal.operationId,
+            filePath: proposal.targetPath,
+            textBlock: proposal.finalContent.slice(0, 200),
+            startOffset: 0,
+            endOffset: proposal.finalContent.length,
+          }]);
+        } catch (e) {
+          console.warn('[gate-d] provenance save failed (non-fatal):', e);
+        }
+        await get().loadActionHistory().catch(() => {});
         return { status: 'committed', commit: result, reason: null };
       } catch (error) {
         const message = String(error);
@@ -804,6 +860,92 @@ export const useFsStore = create<FsStore>((set, get) => {
         await saveSessionState(projectRoot, state);
       } catch (error) {
         console.warn('[session] failed to persist session', error);
+      }
+    },
+
+    // ══ Gate D: Action History & Provenance ══
+
+    loadActionHistory: async () => {
+      const project = get().activeProject;
+      if (!project) return;
+      set({ actionHistoryLoading: true, actionHistoryError: null });
+      try {
+        const actions = await listAiActions(project.rootPath);
+        set({ actionHistory: actions, actionHistoryLoading: false });
+      } catch (e) {
+        set({ actionHistoryLoading: false, actionHistoryError: String(e) });
+      }
+    },
+
+    openActionDetail: async (operationId) => {
+      const project = get().activeProject;
+      if (!project) return null;
+      try {
+        return await getAiAction(project.rootPath, operationId);
+      } catch {
+        return null;
+      }
+    },
+
+    revertAction: async (input) => {
+      const project = get().activeProject;
+      if (!project) return null;
+      try {
+        const result = await revertAiAction(project.rootPath, input);
+        // If restored, refresh file and history
+        if (result.restored) {
+          if (get().openFilePath === input.targetPath) {
+            try {
+              const fileResult = await readFileState(project.rootPath, input.targetPath);
+              set({
+                fileContent: fileResult.content,
+                diskModifiedAt: fileResult.modifiedAt,
+                diskVersion: fileResult.version,
+                fileStatus: 'clean',
+                editRevision: 0,
+              });
+            } catch { /* file may have been deleted during revert */ }
+          }
+          await get().loadActionHistory();
+        }
+        return result;
+      } catch (e) {
+        return {
+          operationId: input.operationId,
+          targetPath: input.targetPath,
+          restored: false,
+          restoredVersion: '',
+          preRevertSnapshot: '',
+          reason: String(e),
+        };
+      }
+    },
+
+    loadProvenance: async (filePath) => {
+      const project = get().activeProject;
+      if (!project) { set({ provenance: [] }); return; }
+      set({ provenanceLoading: true });
+      try {
+        const records = await listFileProvenance(project.rootPath, filePath);
+        set({ provenance: records ?? [], provenanceLoading: false });
+      } catch {
+        set({ provenance: [], provenanceLoading: false });
+      }
+    },
+
+    setSourceMode: (on) => set({ sourceMode: on }),
+
+    runStartupRecovery: async () => {
+      const project = get().activeProject;
+      if (!project) return;
+      try {
+        const result = await startupRecoveryScan(project.rootPath);
+        set({ recoveryResult: result });
+        if (result.actionsChecked > 0) {
+          await get().loadActionHistory();
+        }
+      } catch {
+        set({ recoveryResult: null });
       }
     },
 

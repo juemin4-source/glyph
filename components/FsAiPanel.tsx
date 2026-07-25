@@ -6,6 +6,7 @@ import {
   FileSearch,
   FileText,
   PencilLine,
+  RotateCcw,
   Send,
   Settings,
   Sparkles,
@@ -20,6 +21,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import type { FsProject } from '../types/fs';
+import { useFsStore } from '../stores/fsStore';
 import FsAiProviderDialog from './FsAiProviderDialog';
 import type {
   AiCommitOutcome,
@@ -135,6 +137,32 @@ function EvidenceItem({ item, onOpenFile }: { item: ReadEvidence; onOpenFile: (p
 function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean> }) {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
+  const [reverting, setReverting] = useState(false);
+  const [revertError, setRevertError] = useState<string | null>(null);
+  const revertAction = useFsStore((s) => s.revertAction);
+  const loadActionHistory = useFsStore((s) => s.loadActionHistory);
+
+  const handleRevert = useCallback(async () => {
+    if (!task.commit || reverting) return;
+    setReverting(true);
+    setRevertError(null);
+    try {
+      const result = await revertAction({
+        operationId: task.commit.operationId,
+        targetPath: task.commit.targetPath,
+        expectedVersion: task.commit.version,
+      });
+      if (result && !result.restored) {
+        setRevertError(result.reason || '撤销失败');
+      }
+      await loadActionHistory();
+    } catch (e) {
+      setRevertError(String(e));
+    } finally {
+      setReverting(false);
+    }
+  }, [task.commit, reverting, revertAction, loadActionHistory]);
+
   return (
     <article className={`fs-ai-task fs-ai-task-${task.phase}`}>
       <div className="fs-ai-user-message">{task.userInput}</div>
@@ -160,6 +188,12 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
           <strong>{task.commit.actionType === 'create' ? '文件已创建' : '文件已修改'}</strong>
           <button onClick={() => void onOpenFile(task.commit!.targetPath)}>{task.commit.targetPath}</button>
           {task.commit.snapshotPath && <span>修改前快照已保存</span>}
+          <div className="fs-ai-revert-row">
+            <button className="fs-ai-revert-btn" onClick={handleRevert} disabled={reverting}>
+              <RotateCcw size={13} /> {reverting ? '撤销中…' : '撤销本次修改'}
+            </button>
+          </div>
+          {revertError && <div className="fs-ai-error" style={{ marginTop: 4 }}>{revertError}</div>}
         </div>
       )}
 
