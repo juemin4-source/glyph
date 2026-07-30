@@ -46,6 +46,7 @@ function loadConversation(projectId: string, existingTasks: ProjectAiTaskCard[])
 import type { FsProject } from '../types/fs';
 import type { AiActionDetail } from '../types/fs-ai';
 import { useFsStore } from '../stores/fsStore';
+import { useCanonStore } from '../stores/canonStore';
 import FsAiProviderDialog from './FsAiProviderDialog';
 import AiRevertConflictDialog from './AiRevertConflictDialog';
 import { createTextFile, readFileState } from '../tauri-api';
@@ -447,6 +448,46 @@ export default function FsAiPanel({
     });
   }, [project.id]);
 
+  const scanProject = useCanonStore((s) => s.scanProject);
+
+  /** Slash command router: /cmd ...args */
+  async function runCommand(cmd: string, args: string, taskId: string): Promise<boolean> {
+    const task = taskId;
+
+    if (cmd === 'scan') {
+      patchTask(task, { phase: 'searching', phaseDetail: '正在扫描项目…' });
+      try {
+        await scanProject(project.rootPath);
+        const candidates = useCanonStore.getState().scanCandidates;
+        if (candidates.length > 0) {
+          const names = candidates.map((c) => `- ${c.type} **${c.name}**（${c.sourcePath}）`).join('\n');
+          patchTask(task, {
+            phase: 'completed',
+            phaseDetail: `发现 ${candidates.length} 个候选设定`,
+            answer: `## 扫描完成\n\n发现 ${candidates.length} 个候选设定：\n\n${names}\n\n打开「设定」标签查看和确认。`,
+          });
+        } else {
+          patchTask(task, {
+            phase: 'completed',
+            phaseDetail: '未发现新设定',
+            answer: '扫描完成，未发现新的候选设定。',
+          });
+        }
+      } catch (e: any) {
+        patchTask(task, { phase: 'error', phaseDetail: '扫描失败', error: String(e?.message || e) });
+      }
+      return true;
+    }
+
+    // Unknown command
+    patchTask(task, {
+      phase: 'error',
+      phaseDetail: '未知命令',
+      error: `未知命令 /${cmd}。可用命令：/scan`,
+    });
+    return true;
+  }
+
   const submit = useCallback(async () => {
     const value = input.trim();
     if (!value || running) return;
@@ -456,6 +497,17 @@ export default function FsAiPanel({
     setInput('');
     setMention(null);
     setTasks((items) => [...items.slice(-19), task]);
+
+    // Slash command dispatch
+    if (value.startsWith('/')) {
+      const spaceIdx = value.indexOf(' ');
+      const cmd = spaceIdx > 0 ? value.slice(1, spaceIdx).toLowerCase() : value.slice(1).toLowerCase();
+      const args = spaceIdx > 0 ? value.slice(spaceIdx + 1).trim() : '';
+      if (await runCommand(cmd, args, task.id)) {
+        saveConversation(project.id, [...tasks.slice(-19), task]);
+        return;
+      }
+    }
 
     try {
       const result = await runProjectAiTask({
