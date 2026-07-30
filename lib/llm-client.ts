@@ -183,10 +183,12 @@ export async function callLlm(
     });
 
     if (!response.ok) {
+      let detail = '';
+      try { const errBody = await response.text(); detail = errBody.slice(0, 300); } catch { /* ignore */ }
       if (response.status === 401) throw new LlmError('auth_failed', 'API Key 认证失败');
       if (response.status === 429) throw new LlmError('rate_limited', '请求频率过高');
-      if (response.status >= 500) throw new LlmError('server_error', '服务端错误 (' + response.status + ')');
-      throw new LlmError('unknown', '请求失败 (' + response.status + ')');
+      if (response.status >= 500) throw new LlmError('server_error', '服务端错误 (' + response.status + ') ' + detail);
+      throw new LlmError('unknown', '请求失败 (' + response.status + ') ' + detail);
     }
 
     const data = await response.json();
@@ -252,10 +254,12 @@ export async function callLlmStream(
     });
 
     if (!response.ok) {
+      let detail = '';
+      try { const errBody = await response.text(); detail = errBody.slice(0, 300); } catch { /* ignore */ }
       if (response.status === 401) throw new LlmError('auth_failed', 'API Key 认证失败');
       if (response.status === 429) throw new LlmError('rate_limited', '请求频率过高');
-      if (response.status >= 500) throw new LlmError('server_error', '服务端错误 (' + response.status + ')');
-      throw new LlmError('unknown', '请求失败 (' + response.status + ')');
+      if (response.status >= 500) throw new LlmError('server_error', '服务端错误 (' + response.status + ') ' + detail);
+      throw new LlmError('unknown', '请求失败 (' + response.status + ') ' + detail);
     }
 
     const reader = response.body?.getReader();
