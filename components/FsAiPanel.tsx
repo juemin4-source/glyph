@@ -54,6 +54,8 @@ import FsAiProviderDialog from './FsAiProviderDialog';
 import AiRevertConflictDialog from './AiRevertConflictDialog';
 import { createTextFile, readFile, readFileState, writeFile } from '../tauri-api';
 import { markdownToEditorHtml } from '../utils/markdown-editor';
+import { analyzeWorld } from '../lib/skills/world-architect';
+import { listProviderConfigs, resolveProviderCredential } from '../api/aiControlCenterApi';
 import type {
   AiCommitOutcome,
   AiWriteProposal,
@@ -583,40 +585,95 @@ export default function FsAiPanel({
     },
 
     整理: {
-      label: '整理设定', desc: 'AI 自行分析项目，按世界观方法论创建设定文档',
+      label: '整理设定', desc: '分析正文，按世界构建框架提取设定并创建文件',
       handler: async (_args, task) => {
-        patchTask(task, { phase: 'planning', phaseDetail: 'AI 正在分析项目并规划设定结构…' });
+        patchTask(task, { phase: 'planning', phaseDetail: '正在扫描项目文件…' });
         if (!abortRef.current) abortRef.current = new AbortController();
-        // Read context summary for /整理 too
-        let ctxSummary = '';
-        try { ctxSummary = await readFile(project.rootPath, '.glyph/context-summary.md'); } catch { /* ok */ }
+
         try {
-          const result = await runProjectAiTask({
-            userInput: '【任务】创建该项目的设定集。\n\n要求：\n1. 在项目下创建"设定集/"目录，按类别放设定文件（世界观、人物、地点、组织等）\n2. 每个设定文件要详细、有依据（引用原文）\n3. 如果已有设定文件，检查一致性和完整性\n\n【禁止】不要总结全文情节或写读后感。只提取和整理设定信息。\n\n完成后列出你创建/修改了哪些文件。',
-            project,
-            currentFilePath,
-            currentFileContent,
-            selection,
-            providerId: providerId || undefined,
+          // 1. Read all project .md files
+          const fileIndex = await listProjectTextFiles(project.rootPath);
+          const texts: { path: string; content: string }[] = [];
+          for (const f of fileIndex.files) {
+            try {
+              const content = await readFile(project.rootPath, f.path);
+              texts.push({ path: f.path, content });
+            } catch { /* skip unreadable */ }
+          }
+          if (texts.length === 0) return '项目中没有可读取的 Markdown 文件。';
+
+          // 2. Get AI provider
+          const providers = await listProviderConfigs().catch(() => []);
+          const active = providers.find((p) => p.isActive);
+          if (!active) return '请先配置 AI 模型（设置 → AI 模型）后再运行 /整理。';
+          const apiKey = await resolveProviderCredential(active.providerId).catch(() => '');
+
+          // 3. Build model config
+          const modelName = active.models.split(',')[0].trim();
+          const model = {
+            id: `${active.providerId}:${modelName}`,
+            name: modelName,
+            providerId: active.providerId,
+            providerName: active.providerName,
+            description: '', costPer1KTokens: 0, icon: '', available: true,
+          };
+
+          // 4. Run world analysis
+          const result = await analyzeWorld({
+            texts,
+            model,
+            endpoint: active.endpoint,
+            apiKey,
             signal: abortRef.current.signal,
-            contextSummary: ctxSummary,
-            prepareWrite: onPrepareWrite,
-            commitWrite: onCommitWrite,
-            onProgress: (progress) => patchTask(task, { phase: progress.phase as any, phaseDetail: progress.detail }),
+            onProgress: (detail) => patchTask(task, { phase: 'generating', phaseDetail: detail }),
           });
-          const report = [
-            result.commit ? `✅ AI 已创建/修改文件：\n- \`${result.commit.targetPath}\`` : '',
-            result.draft ? `📝 有未提交的草稿：\n> ${result.draft.slice(0, 200)}` : '',
-            result.answer || '',
-          ].filter(Boolean).join('\n\n');
-          // Update project context summary after organize
-          const answerSummary = result.answer?.slice(0, 500) || '';
-          const commitSummary = result.commit ? `, 操作文件: ${result.commit.targetPath}` : '';
-          const summaryContent = `# 项目上下文摘要\n\n## 最近一次整理\n- 时间: ${new Date().toLocaleString('zh-CN')}\n- 结果: ${answerSummary.split('\n')[0] || '已完成'}${commitSummary}\n\n## 实体索引\n（等待 /scan 更新）\n\n## 未解决的问题\n（待补充）\n\n## 最近变更\n- [${new Date().toISOString().slice(0, 10)}] 执行了 /整理\n`;
-          writeFile(project.rootPath, '.glyph/context-summary.md', summaryContent).catch(() => {});
-          return report || '整理完成。AI 没有产生可写入的设定内容。';
+
+          // 5. Write files
+          let writtenCount = 0;
+          for (const file of result.files) {
+            try {
+              await createTextFile(project.rootPath, file.path, file.content);
+              writtenCount++;
+            } catch { /* file may already exist */ }
+          }
+
+          // 6. Update context summary
+          const summary = [
+            '# 项目上下文摘要',
+            '',
+            `## 最近一次整理（${new Date().toLocaleString('zh-CN')}）`,
+            `- 分析文件：${texts.length} 个`,
+            `- 创建文件：${writtenCount} 个`,
+            result.sparrowSchema.coreQuestion ? `- 核心追问：${result.sparrowSchema.coreQuestion.slice(0, 60)}` : '',
+            `- 提取地点：${result.earth.locations.length} 个`,
+            `- 提取势力：${result.people.factions.length} 个`,
+            `- 人物：${result.characters.allies.length + 1} 个`,
+            '',
+            '## 最近变更',
+            `- [${new Date().toISOString().slice(0, 10)}] 执行了 /整理，创建了 ${writtenCount} 个设定文件`,
+          ].filter(Boolean).join('\n');
+          writeFile(project.rootPath, '.glyph/context-summary.md', summary).catch(() => {});
+
+          // 7. Return report
+          const fileList = result.files.map((f) => `- \`${f.path}\``).join('\n');
+          return [
+            `## 设定整理完成`,
+            ``,
+            `分析了 ${texts.length} 个文件，创建了 ${writtenCount} 个设定文件。`,
+            ``,
+            `### 创建的文件`,
+            fileList || '（无）',
+            ``,
+            `### 设定概览`,
+            result.sparrowSchema.coreQuestion ? `- **核心追问**：${result.sparrowSchema.coreQuestion.slice(0, 100)}` : '',
+            result.sparrowSchema.coreMechanism ? `- **核心机制**：${result.sparrowSchema.coreMechanism.slice(0, 100)}` : '',
+            result.earth.locations.length ? `- **关键地点**：${result.earth.locations.map((l) => l.name).join('、')}` : '',
+            `- **文件可在 设定集/ 目录中查看和编辑。**`,
+          ].filter(Boolean).join('\n');
         } catch (e: any) {
-          return `整理过程出错：${e?.message || e}`;
+          const msg = e?.message || String(e);
+          if (msg.includes('abort') || msg.includes('cancel')) return '整理已取消。';
+          return `整理过程出错：${msg}`;
         }
       },
     },
