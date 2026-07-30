@@ -21,8 +21,11 @@ import {
   type KeyboardEvent,
 } from 'react';
 import type { FsProject } from '../types/fs';
+import type { AiActionDetail } from '../types/fs-ai';
 import { useFsStore } from '../stores/fsStore';
 import FsAiProviderDialog from './FsAiProviderDialog';
+import AiRevertConflictDialog from './AiRevertConflictDialog';
+import { createTextFile, readFileState } from '../tauri-api';
 import type {
   AiCommitOutcome,
   AiWriteProposal,
@@ -139,8 +142,13 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
   const [showDraft, setShowDraft] = useState(false);
   const [reverting, setReverting] = useState(false);
   const [revertError, setRevertError] = useState<string | null>(null);
+  const [conflictDetail, setConflictDetail] = useState<AiActionDetail | null>(null);
+  const [conflictCurrentContent, setConflictCurrentContent] = useState('');
+  const [conflictLoading, setConflictLoading] = useState(false);
   const revertAction = useFsStore((s) => s.revertAction);
   const loadActionHistory = useFsStore((s) => s.loadActionHistory);
+  const openActionDetail = useFsStore((s) => s.openActionDetail);
+  const activeProject = useFsStore((s) => s.activeProject);
 
   const handleRevert = useCallback(async () => {
     if (!task.commit || reverting) return;
@@ -153,7 +161,31 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
         expectedVersion: task.commit.version,
       });
       if (result && !result.restored) {
-        setRevertError(result.reason || '撤销失败');
+        if (result.reason && result.reason.includes('VERSION_MISMATCH')) {
+          // Open conflict dialog
+          setConflictLoading(true);
+          try {
+            const detail = await openActionDetail(task.commit!.operationId);
+            if (detail) {
+              setConflictDetail(detail);
+              if (activeProject) {
+                try {
+                  const fileState = await readFileState(activeProject.rootPath, task.commit!.targetPath);
+                  setConflictCurrentContent(fileState.content);
+                } catch {
+                  setConflictCurrentContent('（无法读取当前文件内容）');
+                }
+              }
+            }
+          } catch {
+            // fallback: show error text
+            setRevertError(result.reason || '撤销失败');
+          } finally {
+            setConflictLoading(false);
+          }
+        } else {
+          setRevertError(result.reason || '撤销失败');
+        }
       }
       await loadActionHistory();
     } catch (e) {
@@ -161,7 +193,50 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
     } finally {
       setReverting(false);
     }
-  }, [task.commit, reverting, revertAction, loadActionHistory]);
+  }, [task.commit, reverting, revertAction, loadActionHistory, openActionDetail, activeProject]);
+
+  const handleCloseConflict = useCallback(() => {
+    setConflictDetail(null);
+  }, []);
+
+  const handleKeepCurrent = useCallback(() => {
+    setConflictDetail(null);
+  }, []);
+
+  const handleViewOlder = useCallback(async () => {
+    if (!conflictDetail?.snapshotPath || !activeProject) return;
+    setConflictLoading(true);
+    try {
+      const snapshotState = await readFileState(activeProject.rootPath, conflictDetail.snapshotPath);
+      // Show snapshot by temporarily replacing the revertError with snapshot content
+      setRevertError('【快照内容】\n───\n' + snapshotState.content.slice(0, 1000) + '\n───\n（快照前 1000 字，关闭冲突面板后消失）');
+    } catch {
+      setRevertError('（无法读取快照文件）');
+    } finally {
+      setConflictLoading(false);
+    }
+  }, [conflictDetail, activeProject]);
+
+  const handleSaveOlder = useCallback(async () => {
+    if (!conflictDetail?.snapshotPath || !activeProject) return;
+    setConflictLoading(true);
+    try {
+      const snapshotState = await readFileState(activeProject.rootPath, conflictDetail.snapshotPath);
+      const savePath = conflictDetail.targetPath.replace(/\.md$/i, '') + '.AI修改前快照.md';
+      await createTextFile(activeProject.rootPath, savePath, snapshotState.content);
+      setConflictDetail(null);
+      setRevertError(`快照已另存为 ${savePath}`);
+    } catch {
+      setRevertError('（保存快照失败）');
+    } finally {
+      setConflictLoading(false);
+    }
+  }, [conflictDetail, activeProject]);
+
+  const handleOverwrite = useCallback(async () => {
+    setConflictDetail(null);
+    setRevertError('覆盖功能需要后端支持，暂不可用。请先另存快照，再手动还原。');
+  }, []);
 
   return (
     <article className={`fs-ai-task fs-ai-task-${task.phase}`}>
@@ -193,8 +268,21 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
               <RotateCcw size={13} /> {reverting ? '撤销中…' : '撤销本次修改'}
             </button>
           </div>
-          {revertError && <div className="fs-ai-error" style={{ marginTop: 4 }}>{revertError}</div>}
+          {conflictLoading && <div className="fs-ai-error" style={{ marginTop: 4, fontStyle: 'italic' }}>正在读取快照…</div>}
+          {revertError && !conflictDetail && <div className="fs-ai-error" style={{ marginTop: 4 }}>{revertError}</div>}
         </div>
+      )}
+
+      {conflictDetail && (
+        <AiRevertConflictDialog
+          action={conflictDetail}
+          currentContent={conflictCurrentContent}
+          onClose={handleCloseConflict}
+          onViewOlder={handleViewOlder}
+          onSaveOlder={handleSaveOlder}
+          onKeepCurrent={handleKeepCurrent}
+          onOverwrite={handleOverwrite}
+        />
       )}
 
       {task.draft && (
