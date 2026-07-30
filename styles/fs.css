@@ -2350,6 +2350,45 @@
   display: none;
 }
 
+/* ══ Retry row & version info ══ */
+
+.fs-ai-retry-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  border-top: 1px solid var(--border-light, #1e1e1e);
+  margin-top: var(--space-2, 8px);
+}
+
+.fs-ai-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted, #6b6b6b);
+  font-size: var(--text-xs, 11px);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.fs-ai-retry-btn:hover {
+  color: var(--text-secondary, #a0a0a0);
+  background: var(--bg-raised, #1e1e1e);
+}
+
+.fs-ai-version-info {
+  font-size: var(--text-xs, 10px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.fs-ai-version-current {
+  color: var(--accent, #B7FF00);
+}
+
 /* ══ Gate D: Source mode toggle & provenance strip ══ */
 .fs-source-mode-toggle {
   display: inline-flex;

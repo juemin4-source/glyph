@@ -338,4 +338,8 @@ export interface ProjectAiTaskCard {
   plan: ProjectAiPlan | null;
   commit: AiFileActionCommit | null;
   draft: string | null;
+  /** Version history from retries, ordered oldest first */
+  versions?: { answer: string; commit: AiFileActionCommit | null; draft: string | null; createdAt: number }[];
+  /** Index into versions[] for current display (undefined = original) */
+  currentVersion?: number;
 }

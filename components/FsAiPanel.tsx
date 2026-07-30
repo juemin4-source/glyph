@@ -165,8 +165,8 @@ function EvidenceItem({ item, onOpenFile }: { item: ReadEvidence; onOpenFile: (p
   );
 }
 
-function TaskCard({ task, onOpenFile, onDelete, defaultCollapsed }:
-  { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean>; onDelete?: (id: string) => void; defaultCollapsed?: boolean }) {
+function TaskCard({ task, onOpenFile, onDelete, onRetry, defaultCollapsed }:
+  { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean>; onDelete?: (id: string) => void; onRetry?: (taskId: string) => Promise<void>; defaultCollapsed?: boolean }) {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
   const [reverting, setReverting] = useState(false);
@@ -380,6 +380,23 @@ function TaskCard({ task, onOpenFile, onDelete, defaultCollapsed }:
       )}
 
       {task.providerLabel && <div className="fs-ai-provider-used">{task.providerLabel}</div>}
+
+          {/* Retry + version switcher */}
+          <div className="fs-ai-retry-row">
+            {onRetry && task.phase !== 'generating' && task.phase !== 'searching' && task.phase !== 'planning' && (
+              <button className="fs-ai-retry-btn" onClick={() => onRetry(task.id)} title="重新生成">
+                <RotateCcw size={12} /> 重新生成
+              </button>
+            )}
+            {(task.versions?.length ?? 0) > 0 && (
+              <div className="fs-ai-version-info">
+                {task.versions!.length + 1} 个版本
+                {task.currentVersion !== undefined && (
+                  <span className="fs-ai-version-current"> · 查看版本 {Math.min(task.currentVersion + 1, task.versions!.length + 1)}/{task.versions!.length + 1}</span>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
     </article>
@@ -696,6 +713,44 @@ export default function FsAiPanel({
             onDelete={(id) => {
               setTasks((items) => items.filter((t) => t.id !== id));
               saveConversation(project.id, tasks.filter((t) => t.id !== id));
+            }}
+            onRetry={async (taskId) => {
+              const state = tasksRef.current;
+              const t = state.find((item) => item.id === taskId);
+              if (!t || running) return;
+              const controller = new AbortController();
+              abortRef.current = controller;
+              // Save current as old version
+              const versionEntry = t.answer || t.draft ? {
+                answer: t.answer, commit: t.commit, draft: t.draft, createdAt: Date.now(),
+              } : null;
+              patchTask(taskId, { phase: 'generating', phaseDetail: '重新生成…', error: null });
+              try {
+                const result = await runProjectAiTask({
+                  userInput: t.userInput, project, currentFilePath, currentFileContent,
+                  selection, providerId: providerId || undefined, signal: controller.signal,
+                  history: tasksRef.current.filter((x) => x.phase === 'completed')
+                    .slice(-6).map((x) => `用户：${x.userInput}\nAI：${(x.answer || x.phaseDetail || '').slice(0, 1000)}`),
+                  prepareWrite: onPrepareWrite, commitWrite: onCommitWrite,
+                  onProgress: (progress) => patchTask(taskId, { phase: progress.phase as any, phaseDetail: progress.detail }),
+                });
+                patchTask(taskId, {
+                  phase: result.commit ? 'completed' : result.draft ? 'blocked' : 'completed',
+                  phaseDetail: result.commit ? '作品已经安全更新' : result.draft ? '生成完成，但没有写入正式作品' : '只读任务完成',
+                  answer: result.answer, commit: result.commit, draft: result.draft, error: null,
+                  versions: versionEntry ? [...(t.versions || []), versionEntry] : (t.versions || []),
+                  currentVersion: (t.versions?.length ?? 0) + (versionEntry ? 1 : 0),
+                });
+              } catch (err: any) {
+                const cancelled = controller.signal.aborted;
+                patchTask(taskId, {
+                  phase: cancelled ? 'cancelled' : 'error',
+                  phaseDetail: cancelled ? '任务已停止' : '重新生成失败',
+                  error: cancelled ? null : String(err?.message || err),
+                });
+              } finally {
+                if (abortRef.current === controller) abortRef.current = null;
+              }
             }}
             defaultCollapsed={tasks.length - idx > 3}
           />
