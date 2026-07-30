@@ -164,10 +164,10 @@ export const useCanonStore = create<CanonStore>((set, get) => ({
         set({ scanning: false, error: '请先配置 AI 模型（设置 → AI 模型）' });
         return;
       }
-      const apiKey = await resolveProviderCredential(active.id).catch((e) => {
+      const apiKey = await resolveProviderCredential(active.providerId).catch((e) => {
         const msg = String(e);
         if (msg.includes('CREDENTIAL_RESOLVE_FAILED') || msg.includes('not found')) {
-          throw new Error('AI 模型配置无效（provider 已失效），请在设置中重新配置模型后重试');
+          throw new Error(`AI 模型配置无效：provider "${active.providerId}" 未找到对应凭据，请在 AI 设置中检查 API Key`);
         }
         if (msg.includes('API_KEY_MISSING')) {
           throw new Error('AI 模型未配置 API Key，请在设置中填入 API Key');
