@@ -30,7 +30,7 @@ import { countWords } from '../utils/markdown';
 import { editorHtmlToMarkdown, markdownToEditorHtml } from '../utils/markdown-editor';
 import { useCanonStore } from '../stores/canonStore';
 
-/** Post-process HTML to convert [[entity]] wiki links into clickable elements */
+/** Post-process HTML to convert [[entity]] wiki links into clickable links */
 function renderWikiLinksInHtml(html: string): string {
   return html.replace(
     /\[\[([^\[\]]+?)\]\]/g,
@@ -41,8 +41,8 @@ function renderWikiLinksInHtml(html: string): string {
       const type = typeAndName.length > 1 ? typeAndName[0].trim() : '';
       const name = (typeAndName.length > 1 ? typeAndName[1] : typeAndName[0]).trim();
       const escaped = name.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const typeAttr = type ? ` data-type="${type.replace(/"/g, '&quot;')}"` : '';
-      return `<wiki-link data-entity="${escaped}"${typeAttr}>${label}</wiki-link>`;
+      const typeAttr = type ? ` data-wiki-type="${type}"` : '';
+      return `<a class="wiki-link" href="#" data-entity="${escaped}"${typeAttr}>${label}</a>`;
     }
   );
 }
@@ -67,6 +67,7 @@ interface FsDocumentViewProps {
   sourceMode?: boolean;
   provenance?: ProvenanceRecord[];
   onSourceModeToggle?: () => void;
+  projectRoot?: string;
 }
 
 type EditMode = 'wysiwyg' | 'source' | 'preview';
@@ -302,6 +303,7 @@ export default function FsDocumentView({
   sourceMode = false,
   provenance = [],
   onSourceModeToggle,
+  projectRoot,
 }: FsDocumentViewProps) {
   const [editMode, setEditMode] = useState<EditMode>('wysiwyg');
   const [bubblePosition, setBubblePosition] = useState<FloatingPosition>(null);
@@ -330,22 +332,29 @@ export default function FsDocumentView({
     root.innerHTML = renderWikiLinksInHtml(markdownToEditorHtml(markdown));
   }, []);
 
-  // Wiki link click handler
+  // Wiki link click handler — show entity or prompt creation
   const handleWikiLinkClick = useCallback((e: MouseEvent) => {
-    const link = (e.target as HTMLElement).closest('wiki-link') as HTMLElement | null;
+    const link = (e.target as HTMLElement).closest('a.wiki-link') as HTMLAnchorElement | null;
     if (!link) return;
     e.preventDefault();
-    e.stopPropagation();
     const entityName = link.getAttribute('data-entity');
     if (!entityName) return;
-    const entities = useCanonStore.getState().entities;
-    const entity = entities.find((e) => e.name === entityName);
+    const store = useCanonStore.getState();
+    const entity = store.entities.find((en) => en.name === entityName);
     if (entity) {
       alert(`[${entity.type}] ${entity.name}\n${entity.summary || '(无摘要)'}`);
-    } else {
-      alert(`未找到设定「${entityName}」。运行 /scan 或手动创建。`);
+    } else if (projectRoot && confirm(`「${entityName}」还不存在于设定集中。创建这个设定吗？`)) {
+      const type = (link.getAttribute('data-wiki-type') || '人物') as import('../types/fs-ai').EntityType;
+      const newEntity: import('../types/fs-ai').Entity = {
+        id: '', type, name: entityName, aliases: [], status: '草稿',
+        canonLevel: '草案正典', summary: '', detail: '', schemaKeys: [],
+        sourceRefs: [], tags: [], referencesCount: 0, createdAt: Date.now(), updatedAt: Date.now(),
+      };
+      store.addEntity(projectRoot, newEntity)
+        .then(() => alert(`已创建设定「${entityName}」。`))
+        .catch((err: any) => alert(`创建失败：${err}`));
     }
-  }, []);
+  }, [projectRoot]);
 
   // Attach wiki link click handler to visual editor container
   useEffect(() => {

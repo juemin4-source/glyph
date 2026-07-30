@@ -131,13 +131,14 @@
 .cardTypeTabActive { border-bottom-color: var(--accent); color: var(--accent-text); }
 
 /* ══ Wiki Links ══ */
-wiki-link {
+a.wiki-link {
   color: var(--accent, #B7FF00);
   cursor: pointer;
   border-bottom: 1px dashed rgba(183, 255, 0, 0.3);
+  text-decoration: none;
   transition: all var(--transition-fast, 0.15s);
 }
-wiki-link:hover {
+a.wiki-link:hover {
   border-bottom-color: var(--accent, #B7FF00);
   background: var(--accent-soft, rgba(183,255,0,0.08));
 }

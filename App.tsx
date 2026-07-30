@@ -460,6 +460,7 @@ function AppInner() {
             sourceMode={sourceMode}
             provenance={provenance}
             onSourceModeToggle={() => setSourceMode(!sourceMode)}
+            projectRoot={activeProject.rootPath}
           />
         </main>
 
