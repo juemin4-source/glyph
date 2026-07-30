@@ -608,8 +608,9 @@ export default function FsAiPanel({
           if (!active) return '请先配置 AI 模型（设置 → AI 模型）后再运行 /整理。';
           const apiKey = await resolveProviderCredential(active.providerId).catch(() => '');
 
-          // 3. Build model config
-          const modelName = active.models.split(',')[0].trim();
+          // 3. Build model config from provider
+          const models = JSON.parse(active.models);
+          const modelName = (Array.isArray(models) ? models[0] : models).trim();
           const model = {
             id: `${active.providerId}:${modelName}`,
             name: modelName,
