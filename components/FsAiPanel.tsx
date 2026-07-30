@@ -49,10 +49,8 @@ import { useFsStore } from '../stores/fsStore';
 import { useCanonStore } from '../stores/canonStore';
 import FsAiProviderDialog from './FsAiProviderDialog';
 import AiRevertConflictDialog from './AiRevertConflictDialog';
-import { createTextFile, readFile, readFileState } from '../tauri-api';
+import { createTextFile, readFileState } from '../tauri-api';
 import { markdownToEditorHtml } from '../utils/markdown-editor';
-import { callLlm } from '../lib/llm-client';
-import { listProviderConfigs, resolveProviderCredential } from '../api/aiControlCenterApi';
 import type {
   AiCommitOutcome,
   AiWriteProposal,
@@ -474,121 +472,32 @@ export default function FsAiPanel({
     },
 
     整理: {
-      label: '整理设定', desc: 'AI 自动分析正文，填充世界观骨架并提取设定',
+      label: '整理设定', desc: 'AI 自行分析项目，按世界观方法论创建设定文档',
       handler: async (_args, task) => {
-        patchTask(task, { phase: 'searching', phaseDetail: '正在分析正文…' });
-        await loadAll(project.rootPath);
-        const store = useCanonStore.getState();
-
-        // Read project files for AI analysis
-        let fileContents = '';
+        patchTask(task, { phase: 'planning', phaseDetail: 'AI 正在分析项目并规划设定结构…' });
+        // Delegate to runProjectAiTask — AI has Gate C read/create/modify abilities
         try {
-          const index = await listProjectTextFiles(project.rootPath);
-          for (const f of index.files.slice(0, 15)) {
-            try {
-              const c = await readFile(project.rootPath, f.path);
-              fileContents += `\n--- ${f.path} ---\n${c.slice(0, 3000)}\n`;
-            } catch { /* skip */ }
-          }
-        } catch { /* no files */ }
-
-        // Get AI provider
-        const providers = await listProviderConfigs().catch(() => []);
-        const active = providers.find((p) => p.isActive);
-        if (!active) return '请先配置 AI 模型（设置 → AI 模型）后再运行 /整理。';
-        const apiKey = await resolveProviderCredential(active.providerId).catch(() => '');
-
-        const systemPrompt = `你是一个小说世界观分析助手。你的任务是分析以下正文内容，然后：
-1. 推断小说的世界观设定（核心追问、美学辨识度、核心机制等 P0 字段）
-2. 提取文中出现的人物、地点、组织、物品
-3. 对每项推断给出简短的原文证据
-
-只输出 JSON，格式：
-{
-  "schema": {
-    "coreQuestion": "读者为什么继续看？",
-    "aestheticSignature": "世界第一眼的气质",
-    "coreMechanism": "核心异常或机制",
-    "worldLack": "世界缺什么",
-    "protagonistLack": "主角缺什么",
-    "rulesAndCost": "规则与代价",
-    "enforcer": "执行人",
-    "currentSituation": "当前局势",
-    "compressionField": "集中体现世界的场景"
-  },
-  "entities": [
-    {"type":"人物","name":"名称","evidence":"原文证据"}
-  ]
-}
-
-如果无法从正文推断某个字段，设为空字符串。不要输出任何其他文字。`;
-
-        patchTask(task, { phase: 'generating', phaseDetail: 'AI 正在分析世界观…' });
-        const response = await callLlm([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `正文内容：\n${fileContents.slice(0, 40000)}` },
-        ], {
-          model: {
-            id: `${active.providerId}:${active.models.split(',')[0].trim()}`,
-            name: active.models.split(',')[0].trim(),
-            providerId: active.providerId, providerName: active.providerName,
-            description: '', costPer1KTokens: 0, icon: '', available: true,
-          },
-          endpoint: active.endpoint, apiKey, timeout: 90000,
-          outputType: 'detection',
-        });
-
-        // Parse AI response
-        let result: any = null;
-        try { result = JSON.parse(response.content); } catch {
-          const m = response.content.match(/\{[\s\S]*\}/);
-          if (m) try { result = JSON.parse(m[0]); } catch { /* failed */ }
+          const result = await runProjectAiTask({
+            userInput: '请分析本项目中的所有正文，然后：\n1. 按照世界观方法论（核心追问、核心机制、世界缺憾、人物、地点等）创建设定文档\n2. 在项目下创建 设定集/ 目录，按类别组织文件\n3. 每个设定文件内容要详细、有依据（引用原文）\n4. 如果有已有设定，检查一致性并补充\n5. 完成后总结你做了哪些工作',
+            project,
+            currentFilePath,
+            currentFileContent,
+            selection,
+            providerId: providerId || undefined,
+            signal: undefined,
+            prepareWrite: onPrepareWrite,
+            commitWrite: onCommitWrite,
+            onProgress: (progress) => patchTask(task, { phase: progress.phase as any, phaseDetail: progress.detail }),
+          });
+          const report = [
+            result.commit ? `✅ AI 已创建/修改文件：\n- \`${result.commit.targetPath}\`` : '',
+            result.draft ? `📝 有未提交的草稿：\n> ${result.draft.slice(0, 200)}` : '',
+            result.answer || '',
+          ].filter(Boolean).join('\n\n');
+          return report || '整理完成。AI 没有产生可写入的设定内容。';
+        } catch (e: any) {
+          return `整理过程出错：${e?.message || e}`;
         }
-        if (!result) return 'AI 分析失败，返回格式异常。请重试。';
-
-        // Apply schema suggestions
-        const schema = store.schema;
-        let filledCount = 0;
-        if (result.schema) {
-          for (const [key, value] of Object.entries(result.schema)) {
-            if (value && !(schema as any)[key]?.trim()) {
-              await store.updateSchema(project.rootPath, { [key]: value } as any);
-              filledCount++;
-            }
-          }
-        }
-
-        // Build report
-        const p0Fields = ['coreQuestion', 'aestheticSignature', 'coreMechanism', 'worldLack',
-          'protagonistLack', 'rulesAndCost', 'enforcer', 'currentSituation', 'compressionField'];
-        const p0Labels: Record<string, string> = {
-          coreQuestion: '核心追问', aestheticSignature: '美学辨识度', coreMechanism: '核心机制',
-          worldLack: '世界缺憾', protagonistLack: '主角缺憾', rulesAndCost: '规则与代价',
-          enforcer: '执行人', currentSituation: '当前局势', compressionField: '压缩场',
-        };
-
-        const lines: string[] = ['## 设定整理完成\n'];
-        if (filledCount > 0) {
-          lines.push(`AI 已自动填充 **${filledCount}** 个世界观字段：\n`);
-          for (const [key, value] of Object.entries(result.schema || {})) {
-            if (value && p0Labels[key]) {
-              lines.push(`- ✅ **${p0Labels[key]}**：${(value as string).slice(0, 80)}`);
-            }
-          }
-          lines.push('');
-        } else {
-          lines.push('所有 P0 字段已有内容，未覆盖。\n');
-        }
-
-        if (result.entities?.length > 0) {
-          lines.push(`### 📖 识别到的实体\n`);
-          for (const e of result.entities.slice(0, 10)) {
-            lines.push(`- **${e.name || '?'}**（${e.type || '?'}）${e.evidence ? `："${e.evidence.slice(0, 60)}"` : ''}`);
-          }
-          lines.push(`\n运行 \`/scan\` 将实体存入设定集。`);
-        }
-
-        return lines.join('\n');
       },
     },
 
