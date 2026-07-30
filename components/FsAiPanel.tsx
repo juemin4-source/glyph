@@ -449,42 +449,110 @@ export default function FsAiPanel({
   }, [project.id]);
 
   const scanProject = useCanonStore((s) => s.scanProject);
+  const canonSchema = useCanonStore((s) => s.schema);
+  const canonEntities = useCanonStore((s) => s.entities);
+  const loadAll = useCanonStore((s) => s.loadAll);
 
-  /** Slash command router: /cmd ...args */
-  async function runCommand(cmd: string, args: string, taskId: string): Promise<boolean> {
-    const task = taskId;
+  /** Command registry: maps command name → handler */
+  type CommandHandler = (args: string, taskId: string) => Promise<string>;
 
-    if (cmd === 'scan') {
-      patchTask(task, { phase: 'searching', phaseDetail: '正在扫描项目…' });
-      try {
+  const commands: Record<string, { label: string; desc: string; handler: CommandHandler }> = {
+    scan: {
+      label: '扫描项目', desc: '从正文中提取人物、地点、组织、物品等设定',
+      handler: async (_args, task) => {
+        patchTask(task, { phase: 'searching', phaseDetail: '正在扫描项目…' });
         await scanProject(project.rootPath);
         const candidates = useCanonStore.getState().scanCandidates;
         if (candidates.length > 0) {
           const names = candidates.map((c) => `- ${c.type} **${c.name}**（${c.sourcePath}）`).join('\n');
-          patchTask(task, {
-            phase: 'completed',
-            phaseDetail: `发现 ${candidates.length} 个候选设定`,
-            answer: `## 扫描完成\n\n发现 ${candidates.length} 个候选设定：\n\n${names}\n\n打开「设定」标签查看和确认。`,
-          });
-        } else {
-          patchTask(task, {
-            phase: 'completed',
-            phaseDetail: '未发现新设定',
-            answer: '扫描完成，未发现新的候选设定。',
-          });
+          return `## 扫描完成\n\n发现 ${candidates.length} 个候选设定：\n\n${names}\n\n打开「设定」标签查看和确认。`;
         }
-      } catch (e: any) {
-        patchTask(task, { phase: 'error', phaseDetail: '扫描失败', error: String(e?.message || e) });
-      }
+        return '扫描完成，未发现新的候选设定。';
+      },
+    },
+
+    整理: {
+      label: '整理设定', desc: '综合分析项目设定状态，给出整理建议',
+      handler: async (_args, task) => {
+        patchTask(task, { phase: 'searching', phaseDetail: '正在分析设定状态…' });
+        await loadAll(project.rootPath);
+        const schema = useCanonStore.getState().schema;
+        const entities = useCanonStore.getState().entities;
+
+        if (!schema) return '尚未创建世界观数据。请先填写世界观或运行 /scan。';
+
+        // Schema completeness
+        const p0Fields = ['coreQuestion', 'aestheticSignature', 'coreMechanism', 'worldLack',
+          'protagonistLack', 'rulesAndCost', 'enforcer', 'currentSituation', 'compressionField'];
+        const filled = p0Fields.filter((k) => (schema as any)[k]?.trim()).length;
+        const p0Labels: Record<string, string> = {
+          coreQuestion: '核心追问', aestheticSignature: '美学辨识度', coreMechanism: '核心机制',
+          worldLack: '世界缺憾', protagonistLack: '主角缺憾', rulesAndCost: '规则与代价',
+          enforcer: '执行人', currentSituation: '当前局势', compressionField: '压缩场',
+        };
+
+        const filledItems = p0Fields.filter((k) => (schema as any)[k]?.trim())
+          .map((k) => `- ✅ **${p0Labels[k]}**：${(schema as any)[k].slice(0, 40)}`).join('\n');
+        const missingItems = p0Fields.filter((k) => !(schema as any)[k]?.trim())
+          .map((k) => `- ❌ ${p0Labels[k]}：未填写`).join('\n');
+
+        // Entity stats
+        const byType: Record<string, number> = {};
+        for (const e of entities) { byType[e.type] = (byType[e.type] || 0) + 1; }
+        const entitySummary = Object.entries(byType)
+          .map(([t, c]) => `- ${t}：${c} 个`).join('\n') || '（暂无实体）';
+
+        return [
+          `## 设定整理报告`,
+          ``,
+          `### 📊 世界观骨架`,
+          `P0 骨架：**${filled}/${p0Fields.length}** 已填写`,
+          ``,
+          filledItems || '（无）',
+          missingItems ? `\n${missingItems}` : '',
+          ``,
+          `### 📖 实体索引`,
+          `共 **${entities.length}** 个设定实体`,
+          entitySummary,
+          ``,
+          `### 💡 推荐操作`,
+          missingItems ? `- 补充世界观：\`/世界观\`` : '',
+          entities.length === 0 ? `- 扫描项目：\`/scan\`` : '',
+          `- 使用双链：在正文中用 \`[[人物名]]\` 引用设定`,
+        ].filter(Boolean).join('\n');
+      },
+    },
+
+    help: {
+      label: '帮助', desc: '显示所有可用命令',
+      handler: async (_args, _task) => {
+        const lines = Object.entries(commands).map(
+          ([name, cmd]) => `- \`/${name}\` — ${cmd.desc}`
+        );
+        return `## 可用命令\n\n${lines.join('\n')}\n\n在 AI 面板输入 \`/命令名\` 执行。`;
+      },
+    },
+  };
+
+  /** Slash command router: /cmd ...args */
+  async function runCommand(cmd: string, _args: string, taskId: string): Promise<boolean> {
+    const def = commands[cmd];
+    if (!def) {
+      const available = Object.keys(commands).map((k) => `\`/${k}\``).join('、');
+      patchTask(taskId, {
+        phase: 'error',
+        phaseDetail: '未知命令',
+        error: `未知命令 /${cmd}。可用命令：${available}`,
+      });
       return true;
     }
-
-    // Unknown command
-    patchTask(task, {
-      phase: 'error',
-      phaseDetail: '未知命令',
-      error: `未知命令 /${cmd}。可用命令：/scan`,
-    });
+    patchTask(taskId, { phase: 'searching', phaseDetail: def.label + '…' });
+    try {
+      const answer = await def.handler(_args, taskId);
+      patchTask(taskId, { phase: 'completed', phaseDetail: def.label + ' 完成', answer });
+    } catch (e: any) {
+      patchTask(taskId, { phase: 'error', phaseDetail: def.label + ' 失败', error: String(e?.message || e) });
+    }
     return true;
   }
 

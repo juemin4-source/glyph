@@ -28,6 +28,24 @@ import type { FileSyncStatus } from '../types/fs';
 import type { EditorSelectionContext, ProvenanceRecord } from '../types/fs-ai';
 import { countWords } from '../utils/markdown';
 import { editorHtmlToMarkdown, markdownToEditorHtml } from '../utils/markdown-editor';
+import { useCanonStore } from '../stores/canonStore';
+
+/** Convert [[entity]] wiki links to wiki-link tags for rendering */
+function renderWikiLinks(markdown: string): string {
+  return markdown.replace(
+    /\[\[([^\[\]]+?)\]\]/g,
+    (_match, inner: string) => {
+      const parts = inner.split('|');
+      const label = parts[1]?.trim() || parts[0].split(':').pop()?.trim() || inner;
+      const typeAndName = parts[0].split(':');
+      const type = typeAndName.length > 1 ? typeAndName[0].trim() : '';
+      const name = (typeAndName.length > 1 ? typeAndName[1] : typeAndName[0]).trim();
+      const escaped = name.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const typeAttr = type ? ` data-type="${type.replace(/"/g, '&quot;')}"` : '';
+      return `<wiki-link data-entity="${escaped}"${typeAttr}>${label}</wiki-link>`;
+    }
+  );
+}
 
 interface FsDocumentViewProps {
   content: string | null;
@@ -308,8 +326,35 @@ export default function FsDocumentView({
     if (!root) return;
     const current = editorHtmlToMarkdown(root.innerHTML);
     if (current === markdown) return;
-    root.innerHTML = markdownToEditorHtml(markdown);
+    // Render wiki links [[entity]] before markdown conversion
+    const withWikiLinks = renderWikiLinks(markdown);
+    root.innerHTML = markdownToEditorHtml(withWikiLinks);
   }, []);
+
+  // Wiki link click handler
+  const handleWikiLinkClick = useCallback((e: MouseEvent) => {
+    const link = (e.target as HTMLElement).closest('wiki-link') as HTMLElement | null;
+    if (!link) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const entityName = link.getAttribute('data-entity');
+    if (!entityName) return;
+    const entities = useCanonStore.getState().entities;
+    const entity = entities.find((e) => e.name === entityName);
+    if (entity) {
+      alert(`[${entity.type}] ${entity.name}\n${entity.summary || '(无摘要)'}`);
+    } else {
+      alert(`未找到设定「${entityName}」。运行 /scan 或手动创建。`);
+    }
+  }, []);
+
+  // Attach wiki link click handler to visual editor container
+  useEffect(() => {
+    const root = visualRef.current;
+    if (!root) return;
+    root.addEventListener('click', handleWikiLinkClick);
+    return () => root.removeEventListener('click', handleWikiLinkClick);
+  }, [handleWikiLinkClick]);
 
   const reportSourceSelection = useCallback(() => {
     const textarea = sourceRef.current;

@@ -129,3 +129,15 @@
 .cardContent { flex: 1; padding: 16px; overflow-y: auto; }
 .cardTypeTab { flex: 1; padding: 8px 4px; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; font-size: var(--text-xs); }
 .cardTypeTabActive { border-bottom-color: var(--accent); color: var(--accent-text); }
+
+/* ══ Wiki Links ══ */
+wiki-link {
+  color: var(--accent, #B7FF00);
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(183, 255, 0, 0.3);
+  transition: all var(--transition-fast, 0.15s);
+}
+wiki-link:hover {
+  border-bottom-color: var(--accent, #B7FF00);
+  background: var(--accent-soft, rgba(183,255,0,0.08));
+}
