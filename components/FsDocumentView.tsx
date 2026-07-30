@@ -30,9 +30,9 @@ import { countWords } from '../utils/markdown';
 import { editorHtmlToMarkdown, markdownToEditorHtml } from '../utils/markdown-editor';
 import { useCanonStore } from '../stores/canonStore';
 
-/** Convert [[entity]] wiki links to wiki-link tags for rendering */
-function renderWikiLinks(markdown: string): string {
-  return markdown.replace(
+/** Post-process HTML to convert [[entity]] wiki links into clickable elements */
+function renderWikiLinksInHtml(html: string): string {
+  return html.replace(
     /\[\[([^\[\]]+?)\]\]/g,
     (_match, inner: string) => {
       const parts = inner.split('|');
@@ -326,9 +326,8 @@ export default function FsDocumentView({
     if (!root) return;
     const current = editorHtmlToMarkdown(root.innerHTML);
     if (current === markdown) return;
-    // Render wiki links [[entity]] before markdown conversion
-    const withWikiLinks = renderWikiLinks(markdown);
-    root.innerHTML = markdownToEditorHtml(withWikiLinks);
+    // Render wiki links [[entity]] after markdown → HTML conversion
+    root.innerHTML = renderWikiLinksInHtml(markdownToEditorHtml(markdown));
   }, []);
 
   // Wiki link click handler
