@@ -14,7 +14,8 @@ export default function EntityPanel({ projectRoot, onOpenFile }: EntityPanelProp
   const entities = useCanonStore((s) => s.entities);
   const loadEntities = useCanonStore((s) => s.loadEntities);
   const removeEntity = useCanonStore((s) => s.removeEntity);
-  const loading = useCanonStore((s) => s.loading);
+  const schema = useCanonStore((s) => s.schema);
+const loading = useCanonStore((s) => s.loading);
 
   const [filterType, setFilterType] = useState<string>('全部');
   const [filterStatus, setFilterStatus] = useState<string>('全部');
@@ -129,7 +130,7 @@ export default function EntityPanel({ projectRoot, onOpenFile }: EntityPanelProp
         {/* Detail */}
         <div className="canon-entity-detail">
           {selected ? (
-            <EntityDetail entity={selected} onDelete={handleDelete} onOpenFile={onOpenFile} />
+            <EntityDetail entity={selected} schema={schema} onDelete={handleDelete} onOpenFile={onOpenFile} />
           ) : (
             <div className="canon-detail-empty">选择一个实体查看详情</div>
           )}
@@ -151,10 +152,12 @@ export default function EntityPanel({ projectRoot, onOpenFile }: EntityPanelProp
 
 function EntityDetail({
   entity,
+  schema,
   onDelete,
   onOpenFile,
 }: {
   entity: Entity;
+  schema: import('../types/fs-ai').SparrowSchema;
   onDelete: (id: string) => void;
   onOpenFile: (path: string) => Promise<boolean>;
 }) {
@@ -205,11 +208,19 @@ function EntityDetail({
       {entity.schemaKeys.length > 0 && (
         <div className="canon-detail-section">
           <strong>关联世界观字段</strong>
-          <div className="canon-schema-tags">
-            {entity.schemaKeys.map((k) => (
-              <span key={k} className="canon-schema-key">{k}</span>
-            ))}
-          </div>
+          {entity.schemaKeys.map((k) => {
+            const value = (schema as any)[k]?.trim();
+            return (
+              <div key={k} className="canon-schema-field-link">
+                <span className="canon-schema-key">{k}</span>
+                {value ? (
+                  <p className="canon-schema-value">{value}</p>
+                ) : (
+                  <p className="canon-schema-value empty">（字段未填写）</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

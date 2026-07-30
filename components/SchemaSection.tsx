@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ChevronRight, Sparkles } from 'lucide-react';
 import { useCanonStore } from '../stores/canonStore';
 
@@ -28,11 +28,21 @@ const P0_KEYS = P0_FIELDS.map((f) => f.key);
 
 export default function SchemaSection({ projectRoot }: SchemaSectionProps) {
   const schema = useCanonStore((s) => s.schema);
+  const entities = useCanonStore((s) => s.entities);
   const updateSchema = useCanonStore((s) => s.updateSchema);
   const [expandedStep, setExpandedStep] = useState(1);
 
   const filled = P0_KEYS.filter((k) => (schema as any)[k]?.trim()).length;
   const total = P0_KEYS.length;
+
+  // Count entities linked to each schema key
+  const entityCountByKey = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const key of P0_KEYS) {
+      counts[key] = entities.filter((e) => e.schemaKeys.includes(key)).length;
+    }
+    return counts;
+  }, [entities]);
 
   const handleChange = useCallback(
     (key: string, value: string) => {
@@ -97,7 +107,14 @@ export default function SchemaSection({ projectRoot }: SchemaSectionProps) {
                         rows={Math.max(2, value.split('\n').length)}
                         placeholder={field.hint}
                       />
-                      <span className="canon-hint">{field.hint}</span>
+                      <div className="canon-field-footer">
+                        <span className="canon-hint">{field.hint}</span>
+                        {entityCountByKey[field.key] > 0 && (
+                          <span className="canon-entity-link-count">
+                            {entityCountByKey[field.key]} 个实体关联
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

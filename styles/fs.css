@@ -2598,10 +2598,23 @@
 }
 
 .canon-hint {
-  display: block;
   font-size: var(--text-xs, 11px);
   color: var(--text-muted, #6b6b6b);
+}
+
+.canon-field-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 2px;
+}
+
+.canon-entity-link-count {
+  font-size: 10px;
+  color: var(--accent, #B7FF00);
+  padding: 1px 6px;
+  background: var(--accent-soft, rgba(183,255,0,0.08));
+  border-radius: var(--radius-sm, 4px);
 }
 
 .canon-next-step {
@@ -2885,6 +2898,34 @@
   color: var(--accent, #B7FF00);
   border-radius: var(--radius-sm, 4px);
   font-family: var(--font-mono, monospace);
+}
+
+.canon-schema-field-link {
+  margin-bottom: var(--space-2, 8px);
+}
+
+.canon-schema-field-link .canon-schema-key {
+  display: inline-block;
+  margin-bottom: 2px;
+}
+
+.canon-schema-value {
+  font-size: var(--text-xs, 11px);
+  color: var(--text-secondary, #a0a0a0);
+  line-height: var(--leading-normal, 1.5);
+  margin: 0;
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  background: var(--bg-surface, #141414);
+  border-radius: var(--radius-sm, 4px);
+  border-left: 2px solid var(--accent-soft, rgba(183,255,0,0.2));
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.canon-schema-value.empty {
+  border-left-color: var(--border-light, #1e1e1e);
+  color: var(--text-muted, #6b6b6b);
+  font-style: italic;
 }
 
 .canon-source-ref {
