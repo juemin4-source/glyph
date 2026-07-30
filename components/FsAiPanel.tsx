@@ -586,7 +586,8 @@ export default function FsAiPanel({
       label: '整理设定', desc: 'AI 自行分析项目，按世界观方法论创建设定文档',
       handler: async (_args, task) => {
         patchTask(task, { phase: 'planning', phaseDetail: 'AI 正在分析项目并规划设定结构…' });
-        // Delegate to runProjectAiTask — AI has Gate C read/create/modify abilities
+        // Ensure abort controller exists for this command
+        if (!abortRef.current) abortRef.current = new AbortController();
         try {
           const result = await runProjectAiTask({
             userInput: '请分析本项目中的所有正文，然后：\n1. 按照世界观方法论（核心追问、核心机制、世界缺憾、人物、地点等）创建设定文档\n2. 在项目下创建 设定集/ 目录，按类别组织文件\n3. 每个设定文件内容要详细、有依据（引用原文）\n4. 如果有已有设定，检查一致性并补充\n5. 完成后总结你做了哪些工作',
@@ -595,7 +596,7 @@ export default function FsAiPanel({
             currentFileContent,
             selection,
             providerId: providerId || undefined,
-            signal: abortRef.current?.signal,
+            signal: abortRef.current.signal,
             prepareWrite: onPrepareWrite,
             commitWrite: onCommitWrite,
             onProgress: (progress) => patchTask(task, { phase: progress.phase as any, phaseDetail: progress.detail }),
