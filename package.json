@@ -34,6 +34,7 @@
     "test:gate-c": "vitest run tests/unit/fs-ai-bridge.test.ts",
     "accept:gate-c": "node tests/acceptance/gate-c-single-file-actions.mjs",
     "accept:gate-d": "node tests/acceptance/gate-d-long-term-control.mjs",
+    "accept:gate-e": "node tests/acceptance/gate-e-canon-baseline.mjs",
     "accept:gate-c-ux": "node tests/acceptance/gate-c-ux-repair.mjs"
   },
   "dependencies": {
