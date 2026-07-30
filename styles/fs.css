@@ -2389,6 +2389,102 @@
   color: var(--accent, #B7FF00);
 }
 
+/* ══ Stale message (context changed) ══ */
+
+.fs-ai-task-stale {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.fs-ai-task-stale .fs-ai-task-header {
+  cursor: default;
+}
+
+.fs-ai-task-stale .fs-ai-task-header::after {
+  content: '（上下文已变化）';
+  font-size: 10px;
+  color: var(--text-muted, #6b6b6b);
+  margin-left: auto;
+}
+
+/* ══ Edit mode ══ */
+
+.fs-ai-edit-area {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+}
+
+.fs-ai-edit-input {
+  width: 100%;
+  padding: var(--space-2, 8px);
+  background: var(--bg-input, #0a0a0a);
+  border: 1px solid var(--accent, #B7FF00);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-primary, #e8e8e8);
+  font-size: var(--text-sm, 13px);
+  font-family: var(--font-body, sans-serif);
+  line-height: var(--leading-normal, 1.6);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.fs-ai-edit-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent, #B7FF00);
+}
+
+.fs-ai-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
+}
+
+.fs-ai-edit-save {
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  background: var(--accent-soft, rgba(183,255,0,0.1));
+  border: 1px solid var(--accent, #B7FF00);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--accent, #B7FF00);
+  font-size: var(--text-xs, 11px);
+  cursor: pointer;
+}
+
+.fs-ai-edit-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fs-ai-edit-cancel {
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  background: transparent;
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted, #6b6b6b);
+  font-size: var(--text-xs, 11px);
+  cursor: pointer;
+}
+
+.fs-ai-edit-cancel:hover {
+  border-color: var(--border-hover, #444);
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.fs-ai-edit-hint {
+  font-size: 10px;
+  color: var(--text-muted, #6b6b6b);
+  margin-left: auto;
+}
+
+.fs-ai-edit-btn {
+  display: inline-flex !important;
+  vertical-align: middle;
+  margin-left: var(--space-2, 8px);
+}
+
+.fs-ai-user-message:hover .fs-ai-edit-btn {
+  opacity: 1;
+}
+
 /* ══ Gate D: Source mode toggle & provenance strip ══ */
 .fs-source-mode-toggle {
   display: inline-flex;

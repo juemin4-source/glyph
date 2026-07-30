@@ -342,4 +342,6 @@ export interface ProjectAiTaskCard {
   versions?: { answer: string; commit: AiFileActionCommit | null; draft: string | null; createdAt: number }[];
   /** Index into versions[] for current display (undefined = original) */
   currentVersion?: number;
+  /** True if a previous message was edited, making this task's context potentially stale */
+  stale?: boolean;
 }

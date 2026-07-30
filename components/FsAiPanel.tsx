@@ -165,8 +165,8 @@ function EvidenceItem({ item, onOpenFile }: { item: ReadEvidence; onOpenFile: (p
   );
 }
 
-function TaskCard({ task, onOpenFile, onDelete, onRetry, defaultCollapsed }:
-  { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean>; onDelete?: (id: string) => void; onRetry?: (taskId: string) => Promise<void>; defaultCollapsed?: boolean }) {
+function TaskCard({ task, onOpenFile, onDelete, onRetry, onEdit, defaultCollapsed }:
+  { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean>; onDelete?: (id: string) => void; onRetry?: (taskId: string) => Promise<void>; onEdit?: (taskId: string, newInput: string) => Promise<void>; defaultCollapsed?: boolean }) {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
   const [reverting, setReverting] = useState(false);
@@ -176,6 +176,8 @@ function TaskCard({ task, onOpenFile, onDelete, onRetry, defaultCollapsed }:
   const [conflictLoading, setConflictLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(task.userInput);
   const revertAction = useFsStore((s) => s.revertAction);
   const loadActionHistory = useFsStore((s) => s.loadActionHistory);
   const openActionDetail = useFsStore((s) => s.openActionDetail);
@@ -225,6 +227,30 @@ function TaskCard({ task, onOpenFile, onDelete, onRetry, defaultCollapsed }:
       setReverting(false);
     }
   }, [task.commit, reverting, revertAction, loadActionHistory, openActionDetail, activeProject]);
+
+  const handleStartEdit = useCallback(() => {
+    setEditValue(task.userInput);
+    setEditing(true);
+  }, [task.userInput]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditing(false);
+    setEditValue(task.userInput);
+  }, [task.userInput]);
+
+  const handleSaveEdit = useCallback(() => {
+    if (!onEdit || !editValue.trim() || editValue === task.userInput) {
+      setEditing(false);
+      return;
+    }
+    setEditing(false);
+    onEdit(task.id, editValue.trim());
+  }, [onEdit, editValue, task.id, task.userInput]);
+
+  const handleEditKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); }
+    if (e.key === 'Escape') { handleCancelEdit(); }
+  }, [handleSaveEdit, handleCancelEdit]);
 
   const handleCopy = useCallback(async () => {
     if (!task.answer || copied) return;
@@ -283,7 +309,7 @@ function TaskCard({ task, onOpenFile, onDelete, onRetry, defaultCollapsed }:
   }, []);
 
   return (
-    <article className={`fs-ai-task fs-ai-task-${task.phase} ${collapsed ? 'fs-ai-task-collapsed' : ''}`}>
+    <article className={`fs-ai-task fs-ai-task-${task.phase} ${collapsed ? 'fs-ai-task-collapsed' : ''} ${task.stale ? 'fs-ai-task-stale' : ''}`}>
       {/* Collapse toggle header */}
       <div className="fs-ai-task-header" onClick={() => setCollapsed((v) => !v)}>
         <ChevronRight size={13} className={`fs-ai-collapse-arrow ${collapsed ? '' : 'open'}`} />
@@ -299,7 +325,32 @@ function TaskCard({ task, onOpenFile, onDelete, onRetry, defaultCollapsed }:
 
       {!collapsed && (
         <>
-          <div className="fs-ai-user-message">{task.userInput}</div>
+          {editing ? (
+            <div className="fs-ai-edit-area">
+              <textarea
+                className="fs-ai-edit-input"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                autoFocus
+                rows={Math.max(2, editValue.split('\n').length)}
+              />
+              <div className="fs-ai-edit-actions">
+                <button className="fs-ai-edit-save" onClick={handleSaveEdit} disabled={!editValue.trim() || editValue === task.userInput}>保存</button>
+                <button className="fs-ai-edit-cancel" onClick={handleCancelEdit}>取消</button>
+                <span className="fs-ai-edit-hint">Enter 保存 · Esc 取消</span>
+              </div>
+            </div>
+          ) : (
+            <div className="fs-ai-user-message">
+              {task.userInput}
+              {onEdit && !task.stale && (
+                <button className="fs-ai-action-btn fs-ai-edit-btn" onClick={handleStartEdit} title="编辑" aria-label="编辑此条消息">
+                  <PencilLine size={13} />
+                </button>
+              )}
+            </div>
+          )}
           <div className="fs-ai-task-state">
             <span className={`fs-ai-phase-dot fs-ai-phase-dot-${task.phase}`} />
             <span>{PHASE_LABEL[task.phase]}</span>
@@ -728,6 +779,48 @@ export default function FsAiPanel({
               try {
                 const result = await runProjectAiTask({
                   userInput: t.userInput, project, currentFilePath, currentFileContent,
+                  selection, providerId: providerId || undefined, signal: controller.signal,
+                  history: tasksRef.current.filter((x) => x.phase === 'completed')
+                    .slice(-6).map((x) => `用户：${x.userInput}\nAI：${(x.answer || x.phaseDetail || '').slice(0, 1000)}`),
+                  prepareWrite: onPrepareWrite, commitWrite: onCommitWrite,
+                  onProgress: (progress) => patchTask(taskId, { phase: progress.phase as any, phaseDetail: progress.detail }),
+                });
+                patchTask(taskId, {
+                  phase: result.commit ? 'completed' : result.draft ? 'blocked' : 'completed',
+                  phaseDetail: result.commit ? '作品已经安全更新' : result.draft ? '生成完成，但没有写入正式作品' : '只读任务完成',
+                  answer: result.answer, commit: result.commit, draft: result.draft, error: null,
+                  versions: versionEntry ? [...(t.versions || []), versionEntry] : (t.versions || []),
+                  currentVersion: (t.versions?.length ?? 0) + (versionEntry ? 1 : 0),
+                });
+              } catch (err: any) {
+                const cancelled = controller.signal.aborted;
+                patchTask(taskId, {
+                  phase: cancelled ? 'cancelled' : 'error',
+                  phaseDetail: cancelled ? '任务已停止' : '重新生成失败',
+                  error: cancelled ? null : String(err?.message || err),
+                });
+              } finally {
+                if (abortRef.current === controller) abortRef.current = null;
+              }
+            }}
+            onEdit={async (taskId, newInput) => {
+              const state = tasksRef.current;
+              const t = state.find((item) => item.id === taskId);
+              if (!t || running) return;
+              const controller = new AbortController();
+              abortRef.current = controller;
+              const versionEntry = t.answer || t.draft ? {
+                answer: t.answer, commit: t.commit, draft: t.draft, createdAt: Date.now(),
+              } : null;
+              // Mark subsequent tasks as stale
+              const tIdx = state.findIndex((item) => item.id === taskId);
+              for (let i = tIdx + 1; i < state.length; i++) {
+                patchTask(state[i].id, { stale: true });
+              }
+              patchTask(taskId, { phase: 'generating', phaseDetail: '重新生成…', error: null });
+              try {
+                const result = await runProjectAiTask({
+                  userInput: newInput, project, currentFilePath, currentFileContent,
                   selection, providerId: providerId || undefined, signal: controller.signal,
                   history: tasksRef.current.filter((x) => x.phase === 'completed')
                     .slice(-6).map((x) => `用户：${x.userInput}\nAI：${(x.answer || x.phaseDetail || '').slice(0, 1000)}`),
