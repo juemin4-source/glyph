@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FileText, Search, ScanLine, X } from 'lucide-react';
+import { FileText, Search, ScanLine, X, Sparkles } from 'lucide-react';
 import { useCanonStore } from '../stores/canonStore';
 import type { Entity, EntityType } from '../types/fs-ai';
 import { ENTITY_TYPES, CANON_LEVELS, CANON_COLORS, ENTITY_STATUSES } from '../types/fs-ai';
+import SettingScanDialog from './SettingScanDialog';
 
 interface EntityPanelProps {
   projectRoot: string;
@@ -19,6 +20,7 @@ export default function EntityPanel({ projectRoot, onOpenFile }: EntityPanelProp
   const [filterStatus, setFilterStatus] = useState<string>('全部');
   const [searchText, setSearchText] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showScanDialog, setShowScanDialog] = useState(false);
 
   const filtered = useMemo(() => {
     return entities.filter((e) => {
@@ -81,6 +83,13 @@ export default function EntityPanel({ projectRoot, onOpenFile }: EntityPanelProp
           <button className="canon-refresh-btn" onClick={handleRefresh} title="刷新">
             <ScanLine size={14} />
           </button>
+          <button
+            className="canon-scan-btn"
+            onClick={() => setShowScanDialog(true)}
+            title="AI 扫描设定"
+          >
+            <Sparkles size={14} />
+          </button>
         </div>
       </div>
 
@@ -126,6 +135,16 @@ export default function EntityPanel({ projectRoot, onOpenFile }: EntityPanelProp
           )}
         </div>
       </div>
+
+      {showScanDialog && (
+        <SettingScanDialog
+          projectRoot={projectRoot}
+          onClose={() => {
+            setShowScanDialog(false);
+            handleRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }

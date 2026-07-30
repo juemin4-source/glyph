@@ -2944,3 +2944,284 @@
   background: rgba(244,67,54,0.1);
   border-color: #f44336;
 }
+
+.canon-scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--accent, #B7FF00);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.canon-scan-btn:hover {
+  border-color: var(--accent, #B7FF00);
+  background: var(--accent-soft, rgba(183,255,0,0.08));
+}
+
+/* ══ Scan Dialog ══ */
+
+.scan-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: var(--bg-surface, #141414);
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-lg, 8px);
+  display: flex;
+  flex-direction: column;
+  z-index: 310;
+  box-shadow: var(--shadow-lg, 0 4px 16px rgba(0,0,0,0.35));
+}
+
+.scan-dialog header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--space-4, 16px);
+  border-bottom: 1px solid var(--border-light, #1e1e1e);
+}
+
+.scan-dialog header > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.scan-dialog header strong {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-size: var(--text-sm, 14px);
+  color: var(--text-primary, #e8e8e8);
+}
+
+.scan-dialog header span {
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.scan-dialog header button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #6b6b6b);
+  cursor: pointer;
+  padding: var(--space-1, 4px);
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+}
+
+.scan-dialog header button:hover {
+  background: var(--bg-hover, #1a1a1a);
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.scan-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-8, 32px);
+  justify-content: center;
+  color: var(--text-muted, #6b6b6b);
+  font-size: var(--text-sm, 13px);
+}
+
+.scan-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.scan-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2, 8px);
+  padding: var(--space-4, 16px);
+  color: #d98d8d;
+  font-size: var(--text-sm, 13px);
+}
+
+.scan-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2, 8px);
+}
+
+.scan-item {
+  display: flex;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-sm, 4px);
+  transition: background var(--transition-fast, 0.15s);
+}
+
+.scan-item:hover {
+  background: var(--bg-hover, #1a1a1a);
+}
+
+.scan-item.accepted {
+  background: rgba(183,255,0,0.04);
+}
+
+.scan-check {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.scan-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast, 0.15s);
+  background: transparent;
+}
+
+.scan-checkbox.checked {
+  background: var(--accent, #B7FF00);
+  border-color: var(--accent, #B7FF00);
+  color: #0a0a0a;
+}
+
+.scan-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.scan-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-bottom: 2px;
+}
+
+.scan-item-name {
+  font-weight: 500;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-primary, #e8e8e8);
+}
+
+.scan-item-type {
+  font-size: var(--text-xs, 10px);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm, 2px);
+  background: rgba(255,255,255,0.05);
+}
+
+.scan-confidence {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm, 2px);
+}
+
+.scan-confidence.high {
+  background: rgba(76,175,80,0.15);
+  color: #4CAF50;
+}
+
+.scan-confidence.medium {
+  background: rgba(255,152,0,0.15);
+  color: #FF9800;
+}
+
+.scan-confidence.low {
+  background: rgba(244,67,54,0.15);
+  color: #f44336;
+}
+
+.scan-item-source {
+  display: block;
+  font-size: var(--text-xs, 10px);
+  color: var(--text-muted, #6b6b6b);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-item-evidence {
+  margin: 0;
+  font-size: var(--text-xs, 10px);
+  color: var(--text-muted, #6b6b6b);
+  line-height: var(--leading-normal, 1.5);
+  border-left: 2px solid var(--border-light, #1e1e1e);
+  padding-left: var(--space-2, 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-top: 1px solid var(--border-light, #1e1e1e);
+}
+
+.scan-footer span {
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.scan-footer-actions {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.scan-btn {
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--text-sm, 13px);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+  border: 1px solid var(--border-default, #2a2a2a);
+  background: transparent;
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.scan-btn:hover {
+  border-color: var(--border-hover, #444);
+  color: var(--text-primary, #e8e8e8);
+}
+
+.scan-btn.primary {
+  background: var(--accent-soft, rgba(183,255,0,0.1));
+  border-color: var(--accent, #B7FF00);
+  color: var(--accent, #B7FF00);
+}
+
+.scan-btn.primary:hover {
+  background: rgba(183,255,0,0.15);
+}
+
+.scan-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.scan-empty {
+  padding: var(--space-8, 32px);
+  text-align: center;
+  color: var(--text-muted, #6b6b6b);
+  font-size: var(--text-sm, 13px);
+}
