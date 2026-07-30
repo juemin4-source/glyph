@@ -1,4 +1,5 @@
 import { ScanLine, X, Check, Loader2, AlertTriangle } from 'lucide-react';
+import { useEffect } from 'react';
 import { useCanonStore } from '../stores/canonStore';
 import { ENTITY_TYPES } from '../types/fs-ai';
 
@@ -16,12 +17,14 @@ export default function SettingScanDialog({ projectRoot, onClose }: SettingScanD
   const confirmCandidates = useCanonStore((s) => s.confirmCandidates);
   const error = useCanonStore((s) => s.error);
 
-  // Start scan on mount if not already scanned
-  const started = scanCandidates.length > 0 || scanning;
-  if (!started && !error) {
-    // Use setTimeout to avoid calling async in render
-    setTimeout(() => scanProject(projectRoot), 0);
-  }
+  // Start scan once on mount
+  useEffect(() => {
+    if (scanCandidates.length === 0 && !scanning) {
+      scanProject(projectRoot);
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const acceptedCount = scanCandidates.filter((c) => c.confidence === 'high').length;
 

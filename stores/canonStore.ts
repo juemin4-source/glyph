@@ -16,6 +16,7 @@ import {
   listDirectory,
 } from '../tauri-api';
 import { defaultSparrowSchema, ENTITY_TYPES } from '../types/fs-ai';
+import { listProjectTextFiles } from '../lib/fs-ai-bridge';
 import { listProviderConfigs, resolveProviderCredential } from '../api/aiControlCenterApi';
 import { callLlm } from '../lib/llm-client';
 
@@ -165,11 +166,9 @@ export const useCanonStore = create<CanonStore>((set, get) => ({
       }
       const apiKey = await resolveProviderCredential(active.id);
 
-      // Get file list
-      const entries = await listDirectory(projectRoot, '');
-      const mdFiles = entries.filter(
-        (e) => !e.isDir && (e.name.endsWith('.md') || e.name.endsWith('.markdown'))
-      );
+      // Get file list (recursive)
+      const fileIndex = await listProjectTextFiles(projectRoot);
+      const mdFiles = fileIndex.files;
       if (mdFiles.length === 0) {
         set({ scanning: false, error: '项目中没有 Markdown 文件' });
         return;
