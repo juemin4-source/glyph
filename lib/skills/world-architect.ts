@@ -416,6 +416,7 @@ export async function analyzeWorld(input: WorldArchitectInput): Promise<WorldArc
   onProgress(`需分 ${chunkCount} 块处理`);
 
   const outputs: WorldArchitectOutput[] = [];
+  const errors: string[] = [];
 
   for (let i = 0; i < chunkCount; i++) {
     const chunk = chunks[i];
@@ -433,13 +434,17 @@ export async function analyzeWorld(input: WorldArchitectInput): Promise<WorldArc
         { model, endpoint, apiKey, signal, timeout: 120000, outputType: 'detection' },
       );
     } catch (err: any) {
-      onProgress(`块 ${i + 1}/${chunkCount} 失败：${err.message || err}，跳过`);
+      const errMsg = err?.message || String(err);
+      onProgress(`块 ${i + 1}/${chunkCount} 失败：${errMsg.slice(0, 100)}，跳过`);
+      errors.push(`块 ${i + 1} 异常：${errMsg}`);
       continue;
     }
 
     const parsed = parseJson(response.content);
     if (!parsed) {
-      onProgress(`块 ${i + 1}/${chunkCount}：AI 输出格式异常，跳过`);
+      const snippet = response.content.slice(0, 200);
+      onProgress(`块 ${i + 1}/${chunkCount}：AI 输出格式异常（${snippet.length} 字），跳过`);
+      errors.push(`块 ${i + 1} 格式异常：${snippet}`);
       continue;
     }
 
@@ -469,7 +474,8 @@ export async function analyzeWorld(input: WorldArchitectInput): Promise<WorldArc
   }
 
   if (outputs.length === 0) {
-    throw new Error('所有分块处理均失败，没有提取到任何设定');
+    const detail = errors.length > 0 ? `\n失败详情：\n${errors.slice(0, 3).join('\n')}` : '';
+    throw new Error(`所有分块处理均失败，没有提取到任何设定${detail}`);
   }
 
   const merged = mergeOutputs(outputs);
