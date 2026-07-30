@@ -28,7 +28,7 @@ import type { FileSyncStatus } from '../types/fs';
 import type { EditorSelectionContext, ProvenanceRecord } from '../types/fs-ai';
 import { countWords } from '../utils/markdown';
 import { editorHtmlToMarkdown, markdownToEditorHtml } from '../utils/markdown-editor';
-import { createTextFile } from '../tauri-api';
+import { createTextFile, readFile } from '../tauri-api';
 /**
  * Wiki links: [[filename]] → opens/creates filename.md
  * Like Obsidian: click the link, open the note.
@@ -347,11 +347,11 @@ export default function FsDocumentView({
     const target = link.getAttribute('data-target');
     if (!target || !projectRoot || !onOpenFile) return;
     const filePath = target.endsWith('.md') ? target : `${target}.md`;
-    onOpenFile(filePath).then((opened) => {
-      if (!opened) {
-        // File doesn't exist — create it, then open
-        createTextFile(projectRoot, filePath, `# ${target}\n\n`).then(() => onOpenFile(filePath));
-      }
+    // Try opening first; if file is missing, create it
+    readFile(projectRoot, filePath).then(() => {
+      onOpenFile(filePath);
+    }).catch(() => {
+      createTextFile(projectRoot, filePath, `# ${target}\n\n`).then(() => onOpenFile(filePath));
     });
   }, [projectRoot, onOpenFile]);
 
