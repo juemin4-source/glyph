@@ -20,6 +20,29 @@ import {
   useState,
   type KeyboardEvent,
 } from 'react';
+
+// AI conversation persistence key (per project)
+function convKey(projectId: string): string {
+  return `glyph-ai-conv-${projectId}`;
+}
+
+function saveConversation(projectId: string, tasks: ProjectAiTaskCard[]): void {
+  try {
+    const recent = tasks.slice(-50); // keep last 50 messages
+    localStorage.setItem(convKey(projectId), JSON.stringify({ tasks: recent, savedAt: Date.now() }));
+  } catch { /* storage full — silently skip */ }
+}
+
+function loadConversation(projectId: string, existingTasks: ProjectAiTaskCard[]): ProjectAiTaskCard[] {
+  if (existingTasks.length > 0) return existingTasks; // don't overwrite active conversation
+  try {
+    const raw = localStorage.getItem(convKey(projectId));
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    if (Array.isArray(data?.tasks)) return data.tasks;
+  } catch { /* corrupt data */ }
+  return [];
+}
 import type { FsProject } from '../types/fs';
 import type { AiActionDetail } from '../types/fs-ai';
 import { useFsStore } from '../stores/fsStore';
@@ -340,10 +363,22 @@ export default function FsAiPanel({
     setProviderId((current) => nextProviders.some((provider) => provider.id === current) ? current : nextProviders[0]?.id ?? '');
   }, []);
 
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+
   useEffect(() => {
     let disposed = false;
     setLoadingSetup(true);
-    setTasks([]);
+    // Restore AI conversation from localStorage (only on fresh mount)
+    try {
+      const raw = localStorage.getItem(convKey(project.id));
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data?.tasks) && data.tasks.length > 0) {
+          setTasks(data.tasks);
+        }
+      }
+    } catch { /* ignore corrupt data */ }
     setInput('');
     Promise.all([
       listProjectAiProviders().catch(() => []),
@@ -358,7 +393,10 @@ export default function FsAiPanel({
     return () => {
       disposed = true;
       abortRef.current?.abort();
+      // Save conversation on unmount (use ref for latest value)
+      saveConversation(project.id, tasksRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id, project.rootPath]);
 
   useEffect(() => {
@@ -396,8 +434,12 @@ export default function FsAiPanel({
   }, [input, mention]);
 
   const patchTask = useCallback((id: string, patch: Partial<ProjectAiTaskCard>) => {
-    setTasks((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
-  }, []);
+    setTasks((items) => {
+      const next = items.map((item) => item.id === id ? { ...item, ...patch } : item);
+      saveConversation(project.id, next);
+      return next;
+    });
+  }, [project.id]);
 
   const submit = useCallback(async () => {
     const value = input.trim();
