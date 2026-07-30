@@ -2,6 +2,7 @@ import {
   BookOpenText,
   ChevronDown,
   ChevronRight,
+  ClipboardCopy,
   FilePlus2,
   FileSearch,
   FileText,
@@ -11,6 +12,8 @@ import {
   Settings,
   Sparkles,
   Square,
+  Trash2,
+  Undo2,
 } from 'lucide-react';
 import {
   useCallback,
@@ -162,7 +165,8 @@ function EvidenceItem({ item, onOpenFile }: { item: ReadEvidence; onOpenFile: (p
   );
 }
 
-function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean> }) {
+function TaskCard({ task, onOpenFile, onDelete, defaultCollapsed }:
+  { task: ProjectAiTaskCard; onOpenFile: (path: string) => Promise<boolean>; onDelete?: (id: string) => void; defaultCollapsed?: boolean }) {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
   const [reverting, setReverting] = useState(false);
@@ -170,6 +174,8 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
   const [conflictDetail, setConflictDetail] = useState<AiActionDetail | null>(null);
   const [conflictCurrentContent, setConflictCurrentContent] = useState('');
   const [conflictLoading, setConflictLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false);
   const revertAction = useFsStore((s) => s.revertAction);
   const loadActionHistory = useFsStore((s) => s.loadActionHistory);
   const openActionDetail = useFsStore((s) => s.openActionDetail);
@@ -220,6 +226,19 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
     }
   }, [task.commit, reverting, revertAction, loadActionHistory, openActionDetail, activeProject]);
 
+  const handleCopy = useCallback(async () => {
+    if (!task.answer || copied) return;
+    try {
+      await navigator.clipboard.writeText(task.answer);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard not available */ }
+  }, [task.answer, copied]);
+
+  const handleDelete = useCallback(() => {
+    if (onDelete) onDelete(task.id);
+  }, [onDelete, task.id]);
+
   const handleCloseConflict = useCallback(() => {
     setConflictDetail(null);
   }, []);
@@ -264,29 +283,51 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
   }, []);
 
   return (
-    <article className={`fs-ai-task fs-ai-task-${task.phase}`}>
-      <div className="fs-ai-user-message">{task.userInput}</div>
-      <div className="fs-ai-task-state">
-        <span className={`fs-ai-phase-dot fs-ai-phase-dot-${task.phase}`} />
-        <span>{PHASE_LABEL[task.phase]}</span>
-        {task.phaseDetail && <span className="fs-ai-phase-detail">· {task.phaseDetail}</span>}
+    <article className={`fs-ai-task fs-ai-task-${task.phase} ${collapsed ? 'fs-ai-task-collapsed' : ''}`}>
+      {/* Collapse toggle header */}
+      <div className="fs-ai-task-header" onClick={() => setCollapsed((v) => !v)}>
+        <ChevronRight size={13} className={`fs-ai-collapse-arrow ${collapsed ? '' : 'open'}`} />
+        <span className="fs-ai-user-message-preview">{task.userInput.slice(0, 60)}{task.userInput.length > 60 ? '…' : ''}</span>
+        <div className="fs-ai-task-actions" onClick={(e) => e.stopPropagation()}>
+          {onDelete && (
+            <button className="fs-ai-action-btn fs-ai-action-delete" onClick={handleDelete} title="删除" aria-label="删除此条消息">
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {task.plan && (
-        <div className="fs-ai-action-summary">
-          {task.plan.action === 'create_file' ? <FilePlus2 size={13} /> : task.plan.action === 'answer' ? <BookOpenText size={13} /> : <PencilLine size={13} />}
-          <strong>{ACTION_LABEL[task.plan.action]}</strong>
-          {task.plan.targetPath && <span>{task.plan.targetPath}</span>}
-        </div>
-      )}
+      {!collapsed && (
+        <>
+          <div className="fs-ai-user-message">{task.userInput}</div>
+          <div className="fs-ai-task-state">
+            <span className={`fs-ai-phase-dot fs-ai-phase-dot-${task.phase}`} />
+            <span>{PHASE_LABEL[task.phase]}</span>
+            {task.phaseDetail && <span className="fs-ai-phase-detail">· {task.phaseDetail}</span>}
+          </div>
 
-      {task.answer && (
-        <div
-          className="fs-ai-answer"
-          dangerouslySetInnerHTML={{ __html: markdownToEditorHtml(task.answer) }}
-        />
-      )}
-      {task.error && <div className="fs-ai-error">{task.error}</div>}
+          {task.plan && (
+            <div className="fs-ai-action-summary">
+              {task.plan.action === 'create_file' ? <FilePlus2 size={13} /> : task.plan.action === 'answer' ? <BookOpenText size={13} /> : <PencilLine size={13} />}
+              <strong>{ACTION_LABEL[task.plan.action]}</strong>
+              {task.plan.targetPath && <span>{task.plan.targetPath}</span>}
+            </div>
+          )}
+
+          {task.answer && (
+            <div className="fs-ai-answer-wrapper">
+              <div
+                className="fs-ai-answer"
+                dangerouslySetInnerHTML={{ __html: markdownToEditorHtml(task.answer) }}
+              />
+              <div className="fs-ai-answer-actions">
+                <button className="fs-ai-action-btn" onClick={handleCopy} title="复制回答" aria-label="复制 AI 回答">
+                  {copied ? <span className="fs-ai-copied">已复制</span> : <ClipboardCopy size={13} />}
+                </button>
+              </div>
+            </div>
+          )}
+          {task.error && <div className="fs-ai-error">{task.error}</div>}
 
       {task.commit && (
         <div className="fs-ai-commit-result">
@@ -339,6 +380,8 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
       )}
 
       {task.providerLabel && <div className="fs-ai-provider-used">{task.providerLabel}</div>}
+        </>
+      )}
     </article>
   );
 }
@@ -645,7 +688,18 @@ export default function FsAiPanel({
             <strong>直接交代作品任务</strong>
             <p>例如：“布兰目前知道什么？”、“把选中段落写得更克制”或“按施工卡新建下一章”。</p>
           </div>
-        ) : tasks.map((task) => <TaskCard key={task.id} task={task} onOpenFile={onOpenFile} />)}
+        ) : tasks.map((task, idx) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            onOpenFile={onOpenFile}
+            onDelete={(id) => {
+              setTasks((items) => items.filter((t) => t.id !== id));
+              saveConversation(project.id, tasks.filter((t) => t.id !== id));
+            }}
+            defaultCollapsed={tasks.length - idx > 3}
+          />
+        ))}
       </div>
 
       <div className="fs-ai-composer">

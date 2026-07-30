@@ -2230,6 +2230,126 @@
   text-decoration-color: #555;
 }
 
+/* ══ AI Panel UX: hover actions, collapse ══ */
+
+.fs-ai-task-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: all var(--transition-fast, 0.15s);
+  user-select: none;
+}
+
+.fs-ai-task-header:hover {
+  background: var(--bg-hover, #1a1a1a);
+}
+
+.fs-ai-task:focus-within .fs-ai-task-header {
+  background: var(--bg-hover, #1a1a1a);
+}
+
+.fs-ai-collapse-arrow {
+  color: var(--text-muted, #6b6b6b);
+  transition: transform var(--transition-fast, 0.15s);
+  flex-shrink: 0;
+}
+
+.fs-ai-collapse-arrow.open {
+  transform: rotate(90deg);
+}
+
+.fs-ai-user-message-preview {
+  flex: 1;
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.fs-ai-task-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--transition-fast, 0.15s);
+}
+
+.fs-ai-task-header:hover .fs-ai-task-actions,
+.fs-ai-task:focus-within .fs-ai-task-actions {
+  opacity: 1;
+}
+
+.fs-ai-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted, #6b6b6b);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.fs-ai-action-btn:hover {
+  color: var(--text-secondary, #a0a0a0);
+  background: var(--bg-raised, #1e1e1e);
+}
+
+.fs-ai-action-delete:hover {
+  color: #d98d8d;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+/* Answer actions (copy button) */
+
+.fs-ai-answer-wrapper {
+  position: relative;
+}
+
+.fs-ai-answer-actions {
+  position: absolute;
+  top: var(--space-1, 4px);
+  right: var(--space-1, 4px);
+  opacity: 0;
+  transition: opacity var(--transition-fast, 0.15s);
+}
+
+.fs-ai-answer-wrapper:hover .fs-ai-answer-actions,
+.fs-ai-task:focus-within .fs-ai-answer-actions {
+  opacity: 1;
+}
+
+.fs-ai-copied {
+  font-size: 10px;
+  color: var(--accent, #B7FF00);
+  white-space: nowrap;
+}
+
+/* Collapsed state */
+
+.fs-ai-task-collapsed .fs-ai-user-message,
+.fs-ai-task-collapsed .fs-ai-task-state,
+.fs-ai-task-collapsed .fs-ai-action-summary,
+.fs-ai-task-collapsed .fs-ai-answer-wrapper,
+.fs-ai-task-collapsed .fs-ai-answer,
+.fs-ai-task-collapsed .fs-ai-error,
+.fs-ai-task-collapsed .fs-ai-commit-result,
+.fs-ai-task-collapsed .fs-ai-draft,
+.fs-ai-task-collapsed .fs-ai-evidence,
+.fs-ai-task-collapsed .fs-ai-provider-used {
+  display: none;
+}
+
 /* ══ Gate D: Source mode toggle & provenance strip ══ */
 .fs-source-mode-toggle {
   display: inline-flex;
