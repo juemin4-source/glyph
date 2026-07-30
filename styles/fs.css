@@ -2443,3 +2443,504 @@
   font-size: 10px;
   color: #d98d8d;
 }
+
+/* ══ Canon (设定集 v0.5) ══ */
+
+.canon-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.canon-divider {
+  height: 1px;
+  background: var(--border-default, #2a2a2a);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Schema Section */
+
+.canon-schema {
+  padding: var(--space-3, 12px);
+  overflow-y: auto;
+  flex-shrink: 0;
+  max-height: 55%;
+}
+
+.canon-schema-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2, 8px);
+}
+
+.canon-schema-header strong {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-primary, #e8e8e8);
+}
+
+.canon-schema-header span {
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.canon-step {
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-md, 6px);
+  margin-bottom: var(--space-2, 8px);
+  overflow: hidden;
+}
+
+.canon-step-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #a0a0a0);
+  font-size: var(--text-sm, 13px);
+  transition: background var(--transition-fast, 0.15s);
+}
+
+.canon-step-header:hover {
+  background: var(--bg-hover, #1a1a1a);
+}
+
+.canon-step-arrow {
+  transition: transform var(--transition-fast, 0.15s);
+}
+
+.canon-step-arrow.open {
+  transform: rotate(90deg);
+}
+
+.canon-step-label {
+  flex: 1;
+  text-align: left;
+  color: var(--text-primary, #e8e8e8);
+}
+
+.canon-step-count {
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.canon-step-count.done {
+  color: var(--accent, #B7FF00);
+}
+
+.canon-step-body {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-top: 1px solid var(--border-light, #1e1e1e);
+}
+
+.canon-field {
+  margin-bottom: var(--space-3, 12px);
+}
+
+.canon-field-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-1, 4px);
+}
+
+.canon-priority {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm, 4px);
+  letter-spacing: 0.5px;
+}
+
+.canon-priority.P0 {
+  background: var(--accent-soft, rgba(183,255,0,0.1));
+  color: var(--accent, #B7FF00);
+}
+
+.canon-priority.P1 {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.canon-field-label {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-primary, #e8e8e8);
+}
+
+.canon-textarea {
+  width: 100%;
+  padding: var(--space-2, 8px);
+  background: var(--bg-input, #0a0a0a);
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-primary, #e8e8e8);
+  font-size: var(--text-sm, 13px);
+  line-height: var(--leading-normal, 1.6);
+  resize: vertical;
+  min-height: 44px;
+  font-family: var(--font-body, sans-serif);
+  transition: border-color var(--transition-fast, 0.15s);
+}
+
+.canon-textarea:focus {
+  outline: none;
+  border-color: var(--accent, #B7FF00);
+}
+
+.canon-textarea::placeholder {
+  color: var(--text-muted, #6b6b6b);
+}
+
+.canon-hint {
+  display: block;
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+  margin-top: 2px;
+}
+
+.canon-next-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  margin-top: var(--space-2, 8px);
+  background: transparent;
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-secondary, #a0a0a0);
+  font-size: var(--text-xs, 11px);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.canon-next-step:hover {
+  border-color: var(--accent, #B7FF00);
+  color: var(--accent, #B7FF00);
+}
+
+.canon-complete-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: var(--space-2, 8px);
+  font-size: var(--text-xs, 11px);
+  color: var(--accent, #B7FF00);
+  background: var(--accent-soft, rgba(183,255,0,0.08));
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* Entity Panel */
+
+.canon-entity-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.canon-entity-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  gap: var(--space-2, 8px);
+  flex-shrink: 0;
+}
+
+.canon-entity-toolbar-left,
+.canon-entity-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.canon-select-sm {
+  padding: 3px 6px;
+  background: var(--bg-input, #0a0a0a);
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-secondary, #a0a0a0);
+  font-size: var(--text-xs, 11px);
+  cursor: pointer;
+}
+
+.canon-search-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bg-input, #0a0a0a);
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.canon-search-box input {
+  width: 80px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #e8e8e8);
+  font-size: var(--text-xs, 11px);
+  outline: none;
+}
+
+.canon-search-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #6b6b6b);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+}
+
+.canon-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border-default, #2a2a2a);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-secondary, #a0a0a0);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.canon-refresh-btn:hover {
+  border-color: var(--border-hover, #444);
+  color: var(--text-primary, #e8e8e8);
+}
+
+.canon-entity-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.canon-entity-list {
+  width: 160px;
+  border-right: 1px solid var(--border-light, #1e1e1e);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.canon-list-empty {
+  padding: var(--space-4, 16px);
+  text-align: center;
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.canon-entity-item {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light, #1e1e1e);
+  transition: background var(--transition-fast, 0.15s);
+}
+
+.canon-entity-item:hover {
+  background: var(--bg-hover, #1a1a1a);
+}
+
+.canon-entity-item.selected {
+  background: var(--accent-soft, rgba(183,255,0,0.08));
+}
+
+.canon-entity-item-name {
+  font-weight: 500;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-primary, #e8e8e8);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canon-entity-item-meta {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-muted, #6b6b6b);
+  flex-wrap: wrap;
+}
+
+.canon-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.canon-status-dot[data-status="已确认"] { background: #4CAF50; }
+.canon-status-dot[data-status="待验证"] { background: #FF9800; }
+.canon-status-dot[data-status="草稿"]   { background: #666; }
+.canon-status-dot[data-status="废弃"]   { background: #f44336; }
+
+.canon-tag {
+  font-size: 10px;
+  color: var(--text-muted, #6b6b6b);
+}
+
+/* Detail panel */
+
+.canon-entity-detail {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.canon-detail-empty {
+  padding: var(--space-6, 24px);
+  text-align: center;
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+}
+
+.canon-detail {
+  padding: var(--space-3, 12px);
+}
+
+.canon-detail-header {
+  margin-bottom: var(--space-2, 8px);
+}
+
+.canon-detail-header h2 {
+  font-size: var(--text-lg, 16px);
+  font-weight: 600;
+  color: var(--text-primary, #e8e8e8);
+  margin: 0 0 var(--space-1, 4px);
+}
+
+.canon-detail-badges {
+  display: flex;
+  gap: var(--space-2, 8px);
+  font-size: var(--text-xs, 11px);
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.canon-status-badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.canon-status-badge[data-status="已确认"] { background: rgba(76,175,80,0.15); color: #4CAF50; }
+.canon-status-badge[data-status="待验证"] { background: rgba(255,152,0,0.15); color: #FF9800; }
+.canon-status-badge[data-status="草稿"]   { background: rgba(255,255,255,0.05); color: #999; }
+.canon-status-badge[data-status="废弃"]   { background: rgba(244,67,54,0.15); color: #f44336; }
+
+.canon-detail-aliases {
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+  margin-bottom: var(--space-2, 8px);
+}
+
+.canon-detail-tags {
+  display: flex;
+  gap: var(--space-1, 4px);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3, 12px);
+}
+
+.canon-detail-section {
+  margin-bottom: var(--space-3, 12px);
+}
+
+.canon-detail-section strong {
+  display: block;
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+  margin-bottom: var(--space-1, 4px);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.canon-detail-section p {
+  font-size: var(--text-sm, 13px);
+  line-height: var(--leading-normal, 1.6);
+  color: var(--text-secondary, #a0a0a0);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.canon-schema-tags {
+  display: flex;
+  gap: var(--space-1, 4px);
+  flex-wrap: wrap;
+}
+
+.canon-schema-key {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--accent-soft, rgba(183,255,0,0.08));
+  color: var(--accent, #B7FF00);
+  border-radius: var(--radius-sm, 4px);
+  font-family: var(--font-mono, monospace);
+}
+
+.canon-source-ref {
+  margin-bottom: var(--space-2, 8px);
+  padding: var(--space-2, 8px);
+  background: var(--bg-surface, #141414);
+  border-radius: var(--radius-sm, 4px);
+  border-left: 2px solid var(--border-default, #2a2a2a);
+}
+
+.canon-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs, 11px);
+  color: var(--accent, #B7FF00);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: var(--space-1, 4px);
+}
+
+.canon-source-link:hover {
+  text-decoration: underline;
+}
+
+.canon-source-ref blockquote {
+  margin: 0;
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+  line-height: var(--leading-normal, 1.6);
+  border-left: 2px solid var(--border-light, #1e1e1e);
+  padding-left: var(--space-2, 8px);
+}
+
+.canon-detail-meta {
+  display: flex;
+  gap: var(--space-4, 16px);
+  font-size: var(--text-xs, 11px);
+  color: var(--text-muted, #6b6b6b);
+  margin: var(--space-3, 12px) 0;
+}
+
+.canon-delete-btn {
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  background: transparent;
+  border: 1px solid rgba(244,67,54,0.3);
+  border-radius: var(--radius-sm, 4px);
+  color: #d98d8d;
+  font-size: var(--text-xs, 11px);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.canon-delete-btn:hover {
+  background: rgba(244,67,54,0.1);
+  border-color: #f44336;
+}

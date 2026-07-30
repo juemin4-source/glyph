@@ -5,6 +5,7 @@ mod chapter_packet_commands;
 mod commands;
 mod db;
 mod decision_log_commands;
+mod canon_commands;
 mod fs_commands;
 mod fs_models;
 mod fs_watcher;
@@ -233,6 +234,14 @@ pub fn run() {
             fs_commands::list_file_provenance,
             fs_commands::save_file_provenance,
             fs_commands::startup_recovery_scan,
+
+            // Canon (设定集)
+            canon_commands::get_schema,
+            canon_commands::save_schema,
+            canon_commands::list_entities,
+            canon_commands::get_entity,
+            canon_commands::save_entity,
+            canon_commands::delete_entity,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -8,6 +8,10 @@ import type {
   ImportResult,
   CanvasTabStateResponse,
 } from './types/world';
+import type {
+  SparrowSchema,
+  Entity,
+} from './types/fs-ai';
 import type { PipelineState } from './docs/contracts/project.contract';
 import type {
   FsProject,
@@ -398,4 +402,32 @@ export function exportToFsProject(
   outputPath: string,
 ): Promise<ExportToFsResult> {
   return invoke('export_to_fs_project', { projectId, outputPath });
+}
+
+// ══════════════════════════════════════════
+//  Canon (设定集 v0.5)
+// ══════════════════════════════════════════
+
+export function getSchema(projectRoot: string): Promise<SparrowSchema> {
+  return invoke('get_schema', { projectRoot });
+}
+
+export function saveSchema(projectRoot: string, schema: SparrowSchema): Promise<void> {
+  return invoke('save_schema', { projectRoot, schema });
+}
+
+export function listEntities(projectRoot: string): Promise<Entity[]> {
+  return invoke('list_entities', { projectRoot });
+}
+
+export function getEntity(projectRoot: string, entityId: string): Promise<Entity> {
+  return invoke('get_entity', { projectRoot, entityId });
+}
+
+export function saveEntity(projectRoot: string, entity: Entity): Promise<Entity> {
+  return invoke('save_entity', { projectRoot, entity });
+}
+
+export function deleteEntity(projectRoot: string, entityId: string): Promise<void> {
+  return invoke('delete_entity', { projectRoot, entityId });
 }

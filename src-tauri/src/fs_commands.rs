@@ -178,7 +178,7 @@ fn prepare_temp_file(path: &Path, content: &str) -> Result<tempfile::NamedTempFi
 }
 
 /// Atomically replace a file using a unique temporary file in the same directory.
-fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
+pub(crate) fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
     let temp = prepare_temp_file(path, content)?;
     let temp_path = temp.into_temp_path();
     replace_file(temp_path.as_ref(), path)
@@ -236,7 +236,7 @@ fn now_millis() -> i64 {
 }
 
 
-fn safe_internal_directory(root: &Path, name: &str, create: bool) -> Result<PathBuf, String> {
+pub(crate) fn safe_internal_directory(root: &Path, name: &str, create: bool) -> Result<PathBuf, String> {
     let canonical_root = fs::canonicalize(root)
         .map_err(|e| format!("INVALID_PROJECT_ROOT: {}", e))?;
     let directory = canonical_root.join(name);

@@ -221,6 +221,92 @@ export interface StartupRecoveryResult {
   details: string[];
 }
 
+// ══ Canon: 设定集 v0.5 ══
+
+export type EntityType = '人物' | '地点' | '组织' | '物品';
+export type EntityStatus = '草稿' | '待验证' | '已确认' | '废弃';
+export type CanonLevel = '未收录' | '草案正典' | '项目正典' | '核心正典';
+
+export interface SourceRef {
+  filePath: string;
+  textSnippet: string;
+  offset: number;
+}
+
+export interface Entity {
+  id: string;
+  type: EntityType;
+  name: string;
+  aliases: string[];
+  status: EntityStatus;
+  canonLevel: CanonLevel;
+  summary: string;
+  detail: string;
+  schemaKeys: string[];
+  sourceRefs: SourceRef[];
+  tags: string[];
+  referencesCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SparrowSchema {
+  version: number;
+  updatedAt: number;
+  coreQuestion: string;
+  aestheticSignature: string;
+  coreMechanism: string;
+  worldLack: string;
+  protagonistLack: string;
+  rulesAndCost: string;
+  enforcer: string;
+  currentSituation: string;
+  compressionField: string;
+  effectivePast?: string;
+  supplySystem?: string;
+  identityQualifications?: string;
+  faithAndTaboo?: string;
+  dailyInterface?: string;
+}
+
+export interface ScanCandidate {
+  id: string;
+  type: EntityType;
+  name: string;
+  appearingChapters: string[];
+  evidenceText: string;
+  sourcePath: string;
+  confidence: 'high' | 'medium' | 'low';
+  mergeIntoSuggestion?: string;
+}
+
+export function defaultSparrowSchema(): SparrowSchema {
+  return {
+    version: 1,
+    updatedAt: Date.now(),
+    coreQuestion: '',
+    aestheticSignature: '',
+    coreMechanism: '',
+    worldLack: '',
+    protagonistLack: '',
+    rulesAndCost: '',
+    enforcer: '',
+    currentSituation: '',
+    compressionField: '',
+  };
+}
+
+export const CANON_LEVELS: CanonLevel[] = ['未收录', '草案正典', '项目正典', '核心正典'];
+export const ENTITY_TYPES: EntityType[] = ['人物', '地点', '组织', '物品'];
+export const ENTITY_STATUSES: EntityStatus[] = ['草稿', '待验证', '已确认', '废弃'];
+
+export const CANON_COLORS: Record<CanonLevel, string> = {
+  '未收录': '#666666',
+  '草案正典': '#CE93D8',
+  '项目正典': '#90CAF9',
+  '核心正典': '#FFB74D',
+};
+
 export interface ProjectFileIndex {
   files: DirEntry[];
   truncated: boolean;

@@ -12,7 +12,10 @@ import FileTree from './components/FileTree';
 import FsDocumentView from './components/FsDocumentView';
 import FsAiPanel from './components/FsAiPanel';
 import AiHistoryPanel from './components/AiHistoryPanel';
+import EntityPanel from './components/EntityPanel';
+import SchemaSection from './components/SchemaSection';
 import { useFsStore } from './stores/fsStore';
+import { useCanonStore } from './stores/canonStore';
 import { useExternalChangeDetector } from './hooks/useExternalChangeDetector';
 
 import './styles/global.css';
@@ -112,7 +115,7 @@ function AppInner() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(true);
-  const [aiPanelTab, setAiPanelTab] = useState<'task' | 'history'>('task');
+  const [aiPanelTab, setAiPanelTab] = useState<'task' | 'history' | 'canon'>('task');
   const [editorSelection, setEditorSelection] = useState<EditorSelectionContext | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -475,6 +478,15 @@ function AppInner() {
               >
                 历史
               </button>
+              <button
+                className={`fs-ai-tab ${aiPanelTab === 'canon' ? 'fs-ai-tab-active' : ''}`}
+                onClick={() => {
+                  setAiPanelTab('canon');
+                  if (activeProject) useCanonStore.getState().loadAll(activeProject.rootPath);
+                }}
+              >
+                设定
+              </button>
             </div>
             {aiPanelTab === 'task' ? (
               <FsAiPanel
@@ -486,6 +498,12 @@ function AppInner() {
                 onPrepareWrite={handlePrepareAiWrite}
                 onCommitWrite={handleCommitAiWrite}
               />
+            ) : aiPanelTab === 'canon' ? (
+              <div className="canon-sidebar">
+                <SchemaSection projectRoot={activeProject.rootPath} />
+                <div className="canon-divider" />
+                <EntityPanel projectRoot={activeProject.rootPath} onOpenFile={openFile} />
+              </div>
             ) : (
               <AiHistoryPanel onOpenFile={openFile} />
             )}
