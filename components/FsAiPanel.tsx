@@ -49,6 +49,7 @@ import { useFsStore } from '../stores/fsStore';
 import FsAiProviderDialog from './FsAiProviderDialog';
 import AiRevertConflictDialog from './AiRevertConflictDialog';
 import { createTextFile, readFileState } from '../tauri-api';
+import { markdownToEditorHtml } from '../utils/markdown-editor';
 import type {
   AiCommitOutcome,
   AiWriteProposal,
@@ -278,7 +279,12 @@ function TaskCard({ task, onOpenFile }: { task: ProjectAiTaskCard; onOpenFile: (
         </div>
       )}
 
-      {task.answer && <div className="fs-ai-answer">{task.answer}</div>}
+      {task.answer && (
+        <div
+          className="fs-ai-answer"
+          dangerouslySetInnerHTML={{ __html: markdownToEditorHtml(task.answer) }}
+        />
+      )}
       {task.error && <div className="fs-ai-error">{task.error}</div>}
 
       {task.commit && (
