@@ -314,7 +314,94 @@ patchTask(taskId, { phase: 'committing', phaseDetail: '写入 人物篇/主角.m
 
 ---
 
-## 六、否决方向
+## 六、分步执行计划
+
+### Step 1：创建 worldview-architect Skill（世界构建 Skill）
+
+基于【附录】完整世界观构件表，创建一个可调用的 AI Skill。
+
+```
+Skill: world-architect
+用途：分析小说正文，按世界观构件表提取设定信息
+输入：项目正文（一个或多个 .md 文件）
+输出：结构化 JSON，按 P0→P3 优先级排列
+
+输出结构（顶层字段）：
+├── sparrowSchema     → 麻雀世界观 P0 13 问
+├── heaven            → 天：宇宙观、核心机制、能力体系
+├── earth             → 地：空间结构、地理、关键地点
+├── people            → 人：势力、文化、信仰、经济、社会
+├── characters        → 人物：主角、盟友、敌人、灰色人物
+└── mechanisms        → 故事机制（按题材触发）
+```
+
+**实现方式**：不是一段写死的 prompt，而是一个封装了 systemPrompt + outputSchema 的可调用函数。存放在 `lib/skills/world-architect.ts`。
+
+```typescript
+// lib/skills/world-architect.ts
+interface WorldArchitectInput {
+  texts: { path: string; content: string }[];
+}
+
+interface WorldArchitectOutput {
+  sparrowSchema: SparrowSchema;
+  heaven: HeavenSection;
+  earth: EarthSection;
+  people: PeopleSection;
+  characters: CharacterSection;
+  mechanisms: MechanismSection;
+}
+
+export async function analyzeWorld(input: WorldArchitectInput): Promise<WorldArchitectOutput> {
+  // 1. 分块处理（如果内容过长）
+  // 2. 调 callLlm 用构件表 prompt
+  // 3. 解析结构化 JSON
+  // 4. 合并返回
+}
+```
+
+### Step 2：重写 `/整理` 命令
+
+Handler 调 `analyzeWorld()` 代替 `runProjectAiTask()`：
+
+```
+/整理
+  → listProjectTextFiles（列出所有 .md）
+  → readFile（读取全文）
+  → 如果总字数 > 阈值，分块
+  → 调 analyzeWorld(skill) ← 世界构件 Skill
+  → 拿到结构化 JSON
+  → 按输出内容创建 设定集/ 文件
+  → 更新 .glyph/context-summary.md
+  → 返回完成报告（带进度透明可见性）
+```
+
+### Step 3：Craft Skill 接入（后续）
+
+当 `world-architect` 稳定后，再把 Craft Skill 体系（CS-01~40）逐个封装成独立 Skill，按需调用。
+
+```
+world-architect → 世界观全量分析（Step 1）
+character-analyzer → 调用 CS-11~15 深度分析人物（后续）
+scene-analyzer → 调用 CS-25~32 分析场景（后续）
+```
+
+---
+
+## 七、文件清单
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `lib/skills/world-architect.ts` | 新建 | 世界构件 Skill 实现 |
+| `components/FsAiPanel.tsx` | 改 | `/整理` handler 重写 |
+| `lib/fs-ai-bridge.ts` | 不改 | 不再依赖 `runProjectAiTask` |
+| `.glyph/context-summary.md` | 自动生成 | 更新摘要格式 |
+
+**共 2 个文件需修改，1 个新增。** 低于复杂度阈值。
+
+---
+
+## 九、否决方向
 
 - ❌ 不走 `runProjectAiTask`——它是 Chat 管道，不是批量分析管道
 - ❌ 不做全量 AI 重写——AI 只提取和分类，不修改原文
