@@ -30,21 +30,31 @@ import { countWords } from '../utils/markdown';
 import { editorHtmlToMarkdown, markdownToEditorHtml } from '../utils/markdown-editor';
 import { useCanonStore } from '../stores/canonStore';
 
-/** Post-process HTML to convert [[entity]] wiki links into clickable links */
-function renderWikiLinksInHtml(html: string): string {
-  return html.replace(
-    /\[\[([^\[\]]+?)\]\]/g,
-    (_match, inner: string) => {
-      const parts = inner.split('|');
-      const label = parts[1]?.trim() || parts[0].split(':').pop()?.trim() || inner;
-      const typeAndName = parts[0].split(':');
-      const type = typeAndName.length > 1 ? typeAndName[0].trim() : '';
-      const name = (typeAndName.length > 1 ? typeAndName[1] : typeAndName[0]).trim();
-      const escaped = name.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const typeAttr = type ? ` data-wiki-type="${type}"` : '';
-      return `<a class="wiki-link" href="#" data-entity="${escaped}"${typeAttr}>${label}</a>`;
-    }
-  );
+/** Placeholder-based wiki link conversion — survives any markdown renderer */
+const WLINK_PLACEHOLDER = '§§WLINK_';
+
+function wikiLinkToHtml(markdown: string): string {
+  const placeholders: string[] = [];
+  // Step 1: extract [[...]] and replace with placeholders
+  const withoutBrackets = markdown.replace(/\[\[([^\[\]]+?)\]\]/g, (_m, inner) => {
+    const parts = inner.split('|');
+    const label = parts[1]?.trim() || parts[0].split(':').pop()?.trim() || inner;
+    const typeAndName = parts[0].split(':');
+    const type = typeAndName.length > 1 ? typeAndName[0].trim() : '';
+    const name = (typeAndName.length > 1 ? typeAndName[1] : typeAndName[0]).trim();
+    const idx = placeholders.length;
+    placeholders.push(JSON.stringify({ label, name, type }));
+    return `${WLINK_PLACEHOLDER}${idx}§§`;
+  });
+  // Step 2: convert to HTML (brackets are gone, renderer won't touch them)
+  const html = markdownToEditorHtml(withoutBrackets);
+  // Step 3: restore placeholders as actual links
+  return html.replace(/§§WLINK_(\d+)§§/g, (_m, idx) => {
+    const { label, name, type } = JSON.parse(placeholders[parseInt(idx)]);
+    const escaped = name.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const typeAttr = type ? ` data-wiki-type="${type}"` : '';
+    return `<a class="wiki-link" href="#" data-entity="${escaped}"${typeAttr}>${label}</a>`;
+  });
 }
 
 interface FsDocumentViewProps {
@@ -328,8 +338,8 @@ export default function FsDocumentView({
     if (!root) return;
     const current = editorHtmlToMarkdown(root.innerHTML);
     if (current === markdown) return;
-    // Render wiki links [[entity]] after markdown → HTML conversion
-    root.innerHTML = renderWikiLinksInHtml(markdownToEditorHtml(markdown));
+    // Render wiki links via placeholder approach
+    root.innerHTML = wikiLinkToHtml(markdown);
   }, []);
 
   // Wiki link click handler — show entity or prompt creation
