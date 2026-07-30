@@ -586,17 +586,20 @@ export default function FsAiPanel({
       label: '整理设定', desc: 'AI 自行分析项目，按世界观方法论创建设定文档',
       handler: async (_args, task) => {
         patchTask(task, { phase: 'planning', phaseDetail: 'AI 正在分析项目并规划设定结构…' });
-        // Ensure abort controller exists for this command
         if (!abortRef.current) abortRef.current = new AbortController();
+        // Read context summary for /整理 too
+        let ctxSummary = '';
+        try { ctxSummary = await readFile(project.rootPath, '.glyph/context-summary.md'); } catch { /* ok */ }
         try {
           const result = await runProjectAiTask({
-            userInput: '请分析本项目中的所有正文，然后：\n1. 按照世界观方法论（核心追问、核心机制、世界缺憾、人物、地点等）创建设定文档\n2. 在项目下创建 设定集/ 目录，按类别组织文件\n3. 每个设定文件内容要详细、有依据（引用原文）\n4. 如果有已有设定，检查一致性并补充\n5. 完成后总结你做了哪些工作',
+            userInput: '【任务】创建该项目的设定集。\n\n要求：\n1. 在项目下创建"设定集/"目录，按类别放设定文件（世界观、人物、地点、组织等）\n2. 每个设定文件要详细、有依据（引用原文）\n3. 如果已有设定文件，检查一致性和完整性\n\n【禁止】不要总结全文情节或写读后感。只提取和整理设定信息。\n\n完成后列出你创建/修改了哪些文件。',
             project,
             currentFilePath,
             currentFileContent,
             selection,
             providerId: providerId || undefined,
             signal: abortRef.current.signal,
+            contextSummary: ctxSummary,
             prepareWrite: onPrepareWrite,
             commitWrite: onCommitWrite,
             onProgress: (progress) => patchTask(task, { phase: progress.phase as any, phaseDetail: progress.detail }),
