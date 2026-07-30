@@ -127,6 +127,8 @@ export interface ProjectAiTaskInput {
   selection: EditorSelectionContext | null;
   providerId?: string;
   signal?: AbortSignal;
+  /** Conversation history: previous user inputs and AI answers */
+  history?: string[];
   onProgress?: (progress: ProjectAiProgress) => void;
   prepareWrite: (plan: ProjectAiPlan, context: {
     currentFilePath: string | null;

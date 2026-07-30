@@ -484,7 +484,7 @@ export default function FsAiPanel({
             currentFileContent,
             selection,
             providerId: providerId || undefined,
-            signal: undefined,
+            signal: abortRef.current?.signal,
             prepareWrite: onPrepareWrite,
             commitWrite: onCommitWrite,
             onProgress: (progress) => patchTask(task, { phase: progress.phase as any, phaseDetail: progress.detail }),
@@ -556,6 +556,11 @@ export default function FsAiPanel({
     }
 
     try {
+      // Build conversation history from recent tasks
+      const history = tasksRef.current
+        .filter((t) => t.phase === 'completed' && (t.answer || t.userInput))
+        .slice(-6)
+        .map((t) => `用户：${t.userInput}\nAI：${(t.answer || t.phaseDetail || '').slice(0, 1000)}`);
       const result = await runProjectAiTask({
         userInput: value,
         project,
@@ -564,6 +569,7 @@ export default function FsAiPanel({
         selection,
         providerId: providerId || undefined,
         signal: controller.signal,
+        history,
         prepareWrite: onPrepareWrite,
         commitWrite: onCommitWrite,
         onProgress: (progress) => patchTask(task.id, { phase: progress.phase, phaseDetail: progress.detail }),
