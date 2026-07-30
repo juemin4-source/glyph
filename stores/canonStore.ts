@@ -201,6 +201,20 @@ export const useCanonStore = create<CanonStore>((set, get) => ({
 
 不输出任何其他文字。如果没有任何实体，输出空数组 []。`;
 
+      // Parse JSON from response content
+      function extractJsonArray(text: string): any[] | null {
+        // Try direct parse first
+        try { const r = JSON.parse(text); if (Array.isArray(r)) return r; } catch { /* next */ }
+        // Try extracting from markdown code block
+        const m = text.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+        if (m) try { const r = JSON.parse(m[1]); if (Array.isArray(r)) return r; } catch { /* next */ }
+        // Try finding array between braces
+        const start = text.indexOf('[');
+        const end = text.lastIndexOf(']');
+        if (start >= 0 && end > start) try { const r = JSON.parse(text.slice(start, end + 1)); if (Array.isArray(r)) return r; } catch { /* next */ }
+        return null;
+      }
+
       const response = await callLlm(
         [
           { role: 'system', content: systemPrompt },
@@ -220,52 +234,24 @@ export const useCanonStore = create<CanonStore>((set, get) => ({
           endpoint: active.endpoint,
           apiKey,
           timeout: 60000,
-          outputSchema: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                type: { type: 'string', enum: ENTITY_TYPES },
-                name: { type: 'string' },
-                sourcePath: { type: 'string' },
-                evidenceText: { type: 'string' },
-                confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
-              },
-              required: ['type', 'name', 'sourcePath', 'evidenceText', 'confidence'],
-            },
-          },
           outputType: 'detection',
         }
       );
 
-      let candidates: ScanCandidate[] = [];
-      if (response.parsed && Array.isArray(response.parsed)) {
-        candidates = (response.parsed as any[]).map((item: any, i: number) => ({
-          id: `cand-${i}`,
-          type: item.type as EntityType,
-          name: item.name,
-          appearingChapters: [item.sourcePath],
-          evidenceText: item.evidenceText || '',
-          sourcePath: item.sourcePath || '',
-          confidence: item.confidence as 'high' | 'medium' | 'low',
-        }));
-      } else {
-        // Fallback: try JSON parse from content
-        try {
-          const parsed = JSON.parse(response.content);
-          if (Array.isArray(parsed)) {
-            candidates = parsed.map((item: any, i: number) => ({
-              id: `cand-${i}`,
-              type: item.type as EntityType,
-              name: item.name,
-              appearingChapters: [item.sourcePath],
-              evidenceText: item.evidenceText || '',
-              sourcePath: item.sourcePath || '',
-              confidence: item.confidence as 'high' | 'medium' | 'low',
-            }));
-          }
-        } catch { /* leave empty */ }
-      }
+      const parsedArray = response.parsed && Array.isArray(response.parsed)
+        ? (response.parsed as any[])
+        : extractJsonArray(response.content);
+      const candidates: ScanCandidate[] = parsedArray
+        ? parsedArray.map((item: any, i: number) => ({
+            id: `cand-${i}`,
+            type: (ENTITY_TYPES.includes(item.type) ? item.type : '人物') as EntityType,
+            name: item.name || '未知',
+            appearingChapters: item.sourcePath ? [item.sourcePath] : [],
+            evidenceText: item.evidenceText || '',
+            sourcePath: item.sourcePath || '',
+            confidence: (['high', 'medium', 'low'].includes(item.confidence) ? item.confidence : 'medium') as 'high' | 'medium' | 'low',
+          }))
+        : [];
 
       set({ scanning: false, scanCandidates: candidates });
     } catch (e) {
