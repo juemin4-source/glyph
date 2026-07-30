@@ -578,7 +578,9 @@ export async function runProjectAiTask(input: ProjectAiTaskInput): Promise<Proje
 
   if (plan.action === 'answer') {
     const hasEvidence = evidence.some((item) => item.kind !== 'read-error' && item.excerpt.trim() && item.excerpt.trim() !== '没有命中');
-    if (!hasEvidence) {
+    const hasContextHistory = input.history && input.history.length > 0;
+    // Skip evidence check if we have conversation history (user continuing a discussion)
+    if (!hasEvidence && !hasContextHistory) {
       return {
         answer: '当前读取的项目材料中没有找到足够依据。你可以指定相关文件、打开要处理的正文，或明确要求新建一份草稿。',
         evidence, plan, providerLabel: provider.label, commit: null, draft: null,
