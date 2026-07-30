@@ -28,32 +28,27 @@ import type { FileSyncStatus } from '../types/fs';
 import type { EditorSelectionContext, ProvenanceRecord } from '../types/fs-ai';
 import { countWords } from '../utils/markdown';
 import { editorHtmlToMarkdown, markdownToEditorHtml } from '../utils/markdown-editor';
-import { useCanonStore } from '../stores/canonStore';
-
-/** Placeholder-based wiki link conversion — survives any markdown renderer */
-const WLINK_PLACEHOLDER = '§§WLINK_';
-
+import { createTextFile } from '../tauri-api';
+/**
+ * Wiki links: [[filename]] → opens/creates filename.md
+ * Like Obsidian: click the link, open the note.
+ */
 function wikiLinkToHtml(markdown: string): string {
-  const placeholders: string[] = [];
-  // Step 1: extract [[...]] and replace with placeholders
-  const withoutBrackets = markdown.replace(/\[\[([^\[\]]+?)\]\]/g, (_m, inner) => {
+  // Placeholder approach: replace [[xxx]] before markdown render,
+  // restore as <a> after.
+  const links: string[] = [];
+  const safe = markdown.replace(/\[\[([^\[\]]+?)\]\]/g, (_m, inner) => {
     const parts = inner.split('|');
-    const label = parts[1]?.trim() || parts[0].split(':').pop()?.trim() || inner;
-    const typeAndName = parts[0].split(':');
-    const type = typeAndName.length > 1 ? typeAndName[0].trim() : '';
-    const name = (typeAndName.length > 1 ? typeAndName[1] : typeAndName[0]).trim();
-    const idx = placeholders.length;
-    placeholders.push(JSON.stringify({ label, name, type }));
-    return `${WLINK_PLACEHOLDER}${idx}§§`;
+    const label = parts[1]?.trim() || parts[0].trim();
+    const target = parts[0].trim();
+    const idx = links.length;
+    links.push(JSON.stringify({ label, target }));
+    return `§§WL${idx}§§`;
   });
-  // Step 2: convert to HTML (brackets are gone, renderer won't touch them)
-  const html = markdownToEditorHtml(withoutBrackets);
-  // Step 3: restore placeholders as actual links
-  return html.replace(/§§WLINK_(\d+)§§/g, (_m, idx) => {
-    const { label, name, type } = JSON.parse(placeholders[parseInt(idx)]);
-    const escaped = name.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const typeAttr = type ? ` data-wiki-type="${type}"` : '';
-    return `<a class="wiki-link" href="#" data-entity="${escaped}"${typeAttr}>${label}</a>`;
+  const html = markdownToEditorHtml(safe);
+  return html.replace(/§§WL(\d+)§§/g, (_m, idx) => {
+    const { label, target } = JSON.parse(links[parseInt(idx)]);
+    return `<a class="wiki-link" href="#" data-target="${target.replace(/"/g, '&quot;')}">${label}</a>`;
   });
 }
 
@@ -78,6 +73,7 @@ interface FsDocumentViewProps {
   provenance?: ProvenanceRecord[];
   onSourceModeToggle?: () => void;
   projectRoot?: string;
+  onOpenFile?: (path: string) => Promise<boolean>;
 }
 
 type EditMode = 'wysiwyg' | 'source' | 'preview';
@@ -314,6 +310,7 @@ export default function FsDocumentView({
   provenance = [],
   onSourceModeToggle,
   projectRoot,
+  onOpenFile,
 }: FsDocumentViewProps) {
   const [editMode, setEditMode] = useState<EditMode>('wysiwyg');
   const [bubblePosition, setBubblePosition] = useState<FloatingPosition>(null);
@@ -342,37 +339,21 @@ export default function FsDocumentView({
     root.innerHTML = wikiLinkToHtml(markdown);
   }, []);
 
-  // Wiki link click handler — show entity or prompt creation
-  const handleWikiLinkClick = useCallback((e: MouseEvent) => {
+  // Wiki link click: open the file, create if missing (Obsidian-style)
+  const handleWikiLinkClick = useCallback((e: React.MouseEvent) => {
     const link = (e.target as HTMLElement).closest('a.wiki-link') as HTMLAnchorElement | null;
     if (!link) return;
     e.preventDefault();
-    const entityName = link.getAttribute('data-entity');
-    if (!entityName) return;
-    const store = useCanonStore.getState();
-    const entity = store.entities.find((en) => en.name === entityName);
-    if (entity) {
-      alert(`[${entity.type}] ${entity.name}\n${entity.summary || '(无摘要)'}`);
-    } else if (projectRoot && confirm(`「${entityName}」还不存在于设定集中。创建这个设定吗？`)) {
-      const type = (link.getAttribute('data-wiki-type') || '人物') as import('../types/fs-ai').EntityType;
-      const newEntity: import('../types/fs-ai').Entity = {
-        id: '', type, name: entityName, aliases: [], status: '草稿',
-        canonLevel: '草案正典', summary: '', detail: '', schemaKeys: [],
-        sourceRefs: [], tags: [], referencesCount: 0, createdAt: Date.now(), updatedAt: Date.now(),
-      };
-      store.addEntity(projectRoot, newEntity)
-        .then(() => alert(`已创建设定「${entityName}」。`))
-        .catch((err: any) => alert(`创建失败：${err}`));
-    }
-  }, [projectRoot]);
-
-  // Attach wiki link click handler to visual editor container
-  useEffect(() => {
-    const root = visualRef.current;
-    if (!root) return;
-    root.addEventListener('click', handleWikiLinkClick);
-    return () => root.removeEventListener('click', handleWikiLinkClick);
-  }, [handleWikiLinkClick]);
+    const target = link.getAttribute('data-target');
+    if (!target || !projectRoot || !onOpenFile) return;
+    const filePath = target.endsWith('.md') ? target : `${target}.md`;
+    onOpenFile(filePath).then((opened) => {
+      if (!opened) {
+        // File doesn't exist — create it, then open
+        createTextFile(projectRoot, filePath, `# ${target}\n\n`).then(() => onOpenFile(filePath));
+      }
+    });
+  }, [projectRoot, onOpenFile]);
 
   const reportSourceSelection = useCallback(() => {
     const textarea = sourceRef.current;
@@ -682,9 +663,9 @@ export default function FsDocumentView({
               aria-label={editMode === 'preview' ? 'Markdown 预览' : 'Markdown 可视化编辑器'}
               data-placeholder="在这里继续你的作品……"
               onInput={handleVisualInput}
+              onClick={(e) => { handleWikiLinkClick(e); reportVisualSelection(); }}
               onMouseUp={reportVisualSelection}
               onKeyUp={reportVisualSelection}
-              onClick={reportVisualSelection}
               spellCheck={editMode === 'wysiwyg'}
             />
           </div>

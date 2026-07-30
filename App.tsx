@@ -461,6 +461,7 @@ function AppInner() {
             provenance={provenance}
             onSourceModeToggle={() => setSourceMode(!sourceMode)}
             projectRoot={activeProject.rootPath}
+            onOpenFile={openFile}
           />
         </main>
 
