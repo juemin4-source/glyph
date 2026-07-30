@@ -129,6 +129,8 @@ export interface ProjectAiTaskInput {
   signal?: AbortSignal;
   /** Conversation history: previous user inputs and AI answers */
   history?: string[];
+  /** Project context summary (.glyph/context-summary.md) */
+  contextSummary?: string;
   onProgress?: (progress: ProjectAiProgress) => void;
   prepareWrite: (plan: ProjectAiPlan, context: {
     currentFilePath: string | null;

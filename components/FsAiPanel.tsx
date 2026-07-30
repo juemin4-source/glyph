@@ -52,7 +52,7 @@ import { useFsStore } from '../stores/fsStore';
 import { useCanonStore } from '../stores/canonStore';
 import FsAiProviderDialog from './FsAiProviderDialog';
 import AiRevertConflictDialog from './AiRevertConflictDialog';
-import { createTextFile, readFileState } from '../tauri-api';
+import { createTextFile, readFile, readFileState, writeFile } from '../tauri-api';
 import { markdownToEditorHtml } from '../utils/markdown-editor';
 import type {
   AiCommitOutcome,
@@ -605,6 +605,11 @@ export default function FsAiPanel({
             result.draft ? `📝 有未提交的草稿：\n> ${result.draft.slice(0, 200)}` : '',
             result.answer || '',
           ].filter(Boolean).join('\n\n');
+          // Update project context summary after organize
+          const answerSummary = result.answer?.slice(0, 500) || '';
+          const commitSummary = result.commit ? `, 操作文件: ${result.commit.targetPath}` : '';
+          const summaryContent = `# 项目上下文摘要\n\n## 最近一次整理\n- 时间: ${new Date().toLocaleString('zh-CN')}\n- 结果: ${answerSummary.split('\n')[0] || '已完成'}${commitSummary}\n\n## 实体索引\n（等待 /scan 更新）\n\n## 未解决的问题\n（待补充）\n\n## 最近变更\n- [${new Date().toISOString().slice(0, 10)}] 执行了 /整理\n`;
+          writeFile(project.rootPath, '.glyph/context-summary.md', summaryContent).catch(() => {});
           return report || '整理完成。AI 没有产生可写入的设定内容。';
         } catch (e: any) {
           return `整理过程出错：${e?.message || e}`;
@@ -667,6 +672,9 @@ export default function FsAiPanel({
     }
 
     try {
+      // Read project context summary
+      let contextSummary = '';
+      try { contextSummary = await readFile(project.rootPath, '.glyph/context-summary.md'); } catch { /* no summary yet */ }
       // Build conversation history from recent tasks
       const history = tasksRef.current
         .filter((t) => t.phase === 'completed' && (t.answer || t.userInput))
@@ -674,6 +682,7 @@ export default function FsAiPanel({
         .map((t) => `用户：${t.userInput}\nAI：${(t.answer || t.phaseDetail || '').slice(0, 1000)}`);
       const result = await runProjectAiTask({
         userInput: value,
+        contextSummary,
         project,
         currentFilePath,
         currentFileContent,
